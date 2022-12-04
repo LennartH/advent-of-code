@@ -4,7 +4,7 @@
   "description": "Solutions to advent of code 2022 puzzles https://adventofcode.com/2022",
   "main": "dist/index.js",
   "scripts": {
-    "day1": "ts-node ./src/day-1_calorie-counting.ts"
+    "puzzle": "./run-puzzle.sh"
   },
   "author": "Lennart Hensler",
   "license": "MIT",
