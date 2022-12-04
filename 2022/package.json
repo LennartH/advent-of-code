@@ -1,10 +1,10 @@
 {
   "name": "advent-of-code-2022",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Solutions to advent of code 2022 puzzles https://adventofcode.com/2022",
   "main": "dist/index.js",
   "scripts": {
-    "test": "jest"
+    "day1": "ts-node ./src/day-1_calorie-counting.ts"
   },
   "author": "Lennart Hensler",
   "license": "MIT",
