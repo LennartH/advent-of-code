@@ -17,7 +17,7 @@ import * as fs from 'fs';
 // 10000
 // `.trim()
 
-const input = fs.readFileSync('./assets/day1_calorie-counting.input.txt', 'utf-8').trim();
+const input = fs.readFileSync('./assets/day-1_calorie-counting.input.txt', 'utf-8').trim();
 
 const lines = input.split('\n');
 
