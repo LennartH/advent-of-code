@@ -4,11 +4,9 @@
     "../util/*.ts",
     "src/**/*",
   ],
-  "exclude": [
-    "dist"
-  ],
+  "exclude": ["dist"],
   "compilerOptions": {
-    "rootDirs": ["./src", "../util"],  /* Specify 'virtual' directories acting as single root. */
-    "outDir": "./dist",                /* Specify an output folder for all emitted files. */
+    "rootDirs": ["./src", "../util"]  /* Specify 'virtual' directories acting as single root. */,
+    "outDir": "./dist"                /* Specify an output folder for all emitted files. */
   }
 }
