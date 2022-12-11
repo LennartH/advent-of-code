@@ -16,9 +16,8 @@ class Rope {
   private visitedByTail: Set<string> = new Set<string>(['0,0']);
 
   constructor(length: number) {
-    this.points = new Array(length).fill('').map(() => ({x: 0, y: 0}));
+    this.points = new Array(length).fill('').map(() => ({ x: 0, y: 0 }));
   }
-
 
   moveHead(by: Movement) {
     this.movePoint(this.points[0], by);
@@ -33,7 +32,7 @@ class Rope {
         };
         this.movePoint(point, successorMovement);
         if (index === this.points.length - 1) {
-          this.visitedByTail.add(`${point.x},${point.y}`)
+          this.visitedByTail.add(`${point.x},${point.y}`);
         }
       }
     }
@@ -48,11 +47,11 @@ class Rope {
     point.y += by.deltaY;
   }
 
-  private getPointsRelation(point1: Point, point2: Point): { adjacent: boolean, delta: Point } {
+  private getPointsRelation(point1: Point, point2: Point): { adjacent: boolean; delta: Point } {
     const delta = {
       x: point1.x - point2.x,
       y: point1.y - point2.y,
-    }
+    };
     return {
       adjacent: Math.abs(delta.x) <= 1 && Math.abs(delta.y) <= 1,
       delta,
@@ -76,13 +75,13 @@ function parseMovements(lines: string[]): Movement[] {
     } else if (direction === 'L') {
       deltaX = -1;
     } else {
-      throw new Error(`Invalid movement direction '${direction}'`)
+      throw new Error(`Invalid movement direction '${direction}'`);
     }
     for (let i = 0; i < amount; i++) {
-      movements.push({deltaX, deltaY});
+      movements.push({ deltaX, deltaY });
     }
     return movements;
-  }, [] as Movement[])
+  }, [] as Movement[]);
 }
 
 function exampleSolution() {
@@ -95,7 +94,10 @@ function exampleSolution() {
     D 1
     L 5
     R 2
-  `.trim().split('\n').map((l) => l.trim());
+  `
+    .trim()
+    .split('\n')
+    .map((l) => l.trim());
   const ropePart1 = new Rope(2);
   parseMovements(linesPart1).forEach((m) => ropePart1.moveHead(m));
   const part1Result = ropePart1.countPositionsVisitedByTail();
@@ -109,7 +111,10 @@ function exampleSolution() {
     D 10
     L 25
     U 20
-  `.trim().split('\n').map((l) => l.trim());
+  `
+    .trim()
+    .split('\n')
+    .map((l) => l.trim());
   const ropePart2 = new Rope(10);
   parseMovements(linesPart2).forEach((m) => ropePart2.moveHead(m));
   const part2Result = ropePart2.countPositionsVisitedByTail();
@@ -131,7 +136,6 @@ function part2Solution() {
   const positionVisitedByTail = rope.countPositionsVisitedByTail();
   console.log(`Solution for Part 2: ${positionVisitedByTail}`);
 }
-
 
 exampleSolution();
 part1Solution();

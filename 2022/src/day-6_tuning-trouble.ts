@@ -10,7 +10,11 @@ function findStartOfPacket(data: string, markerLength: number): number {
     if (markerStart >= 0) {
       const character = data[markerStart];
       characterCount[character] -= 1;
-      if (!Object.values(characterCount).filter((c) => c > 0).some((c) => c !== 1)) {
+      if (
+        !Object.values(characterCount)
+          .filter((c) => c > 0)
+          .some((c) => c !== 1)
+      ) {
         return index + 1;
       }
     }
@@ -44,7 +48,6 @@ function part2Solution() {
   const startOfMessage = findStartOfPacket(input, 14);
   console.log(`Solution for Part 2: ${startOfMessage}`);
 }
-
 
 exampleSolution();
 part1Solution();

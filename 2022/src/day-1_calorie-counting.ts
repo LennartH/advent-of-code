@@ -2,14 +2,17 @@ import * as fs from 'fs';
 
 function getOrderedCaloriesCounts(lines: string[]): number[] {
   let accumulator = 0;
-  return  lines.map((s) => s.length === 0 ? 0 : Number(s)).reduce((list, value, index, values) => {
-    accumulator += value;
-    if (value === 0 || index === values.length - 1) {
-      list.push(accumulator);
-      accumulator = 0;
-    }
-    return list;
-  }, [] as number[]).sort((a, b) => b - a);
+  return lines
+    .map((s) => (s.length === 0 ? 0 : Number(s)))
+    .reduce((list, value, index, values) => {
+      accumulator += value;
+      if (value === 0 || index === values.length - 1) {
+        list.push(accumulator);
+        accumulator = 0;
+      }
+      return list;
+    }, [] as number[])
+    .sort((a, b) => b - a);
 }
 
 function exampleSolution() {
@@ -28,7 +31,10 @@ function exampleSolution() {
     9000
     
     10000
-  `.trim().split('\n').map((l) => l.trim());
+  `
+    .trim()
+    .split('\n')
+    .map((l) => l.trim());
   const caloriesCarried = getOrderedCaloriesCounts(lines);
   const part1Score = caloriesCarried[0];
   const part2Score = caloriesCarried.slice(0, 3).reduce((s, v) => s + v, 0);
@@ -47,7 +53,6 @@ function part2Solution() {
   const top3CaloriesCarried = caloriesCarried.slice(0, 3).reduce((s, v) => s + v, 0);
   console.log(`Solution for Part 2: ${top3CaloriesCarried}`);
 }
-
 
 exampleSolution();
 part1Solution();

@@ -67,7 +67,7 @@ class Device {
     return this.signalStrengthLog.reduce((s, v) => s + v, 0);
   }
 
-  private readonly display: string[][]
+  private readonly display: string[][];
 
   constructor() {
     this.display = [
@@ -77,7 +77,7 @@ class Device {
       new Array(40).fill('.'),
       new Array(40).fill('.'),
       new Array(40).fill('.'),
-    ]
+    ];
   }
 
   step() {
@@ -95,7 +95,7 @@ class Device {
   }
 
   displaySnapshot(): string {
-    return this.display.map((l) => l.map((c) => c+c).join('')).join('\n');
+    return this.display.map((l) => l.map((c) => c + c).join('')).join('\n');
   }
 }
 
@@ -115,7 +115,9 @@ function exampleSolution() {
 ############............############............############............########
 ##############..............##############..............##############..........
     `.trim();
-  console.log(`Solution for example input\n  Part 1 ${part1Result}\n  Part 2\n${part2Result}\n  Expected for Part 2\n${expectedPart2Result}\n\n${separatorLine}\n`);
+  console.log(
+    `Solution for example input\n  Part 1 ${part1Result}\n  Part 2\n${part2Result}\n  Expected for Part 2\n${expectedPart2Result}\n\n${separatorLine}\n`
+  );
 }
 
 function part1Solution() {
@@ -131,7 +133,6 @@ function part2Solution() {
   lines.map((l) => Instruction.parse(l)).forEach((i) => i.execute(device));
   console.log(`Solution for Part 2:\n${device.displaySnapshot()}`);
 }
-
 
 exampleSolution();
 part1Solution();
