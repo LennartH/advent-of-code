@@ -14,7 +14,7 @@ function parseStacks(input: string): string[][] {
       continue;
     }
     for (let i = 0; i < stacks.length; i++) {
-      const crateIndex = 1 + (i * 4);
+      const crateIndex = 1 + i * 4;
       const crate = line[crateIndex];
       if (crate !== ' ') {
         let stack = stacks[i];
@@ -39,17 +39,19 @@ function parseInstructions(input: string): Instruction[] {
   const lines = input.split('\n');
   const instructionPattern = /move (?<quantity>\d+) from (?<from>\d+) to (?<to>\d+)/;
 
-  return lines.filter((l) => l.length > 0).map((line) => {
-    const match = line.match(instructionPattern);
-    if (match == null || match.groups == null) {
-      throw new Error(`Invalid instruction input '${line}'`);
-    }
-    return {
-      quantity: Number(match.groups['quantity']),
-      from: Number(match.groups['from']) - 1,
-      to: Number(match.groups['to']) - 1,
-    };
-  });
+  return lines
+    .filter((l) => l.length > 0)
+    .map((line) => {
+      const match = line.match(instructionPattern);
+      if (match == null || match.groups == null) {
+        throw new Error(`Invalid instruction input '${line}'`);
+      }
+      return {
+        quantity: Number(match.groups['quantity']),
+        from: Number(match.groups['from']) - 1,
+        to: Number(match.groups['to']) - 1,
+      };
+    });
 }
 
 function processInstructions(stacks: string[][], instructions: Instruction[], bulk: boolean): string[][] {
@@ -59,7 +61,9 @@ function processInstructions(stacks: string[][], instructions: Instruction[], bu
     const from = changedStacks[instruction.from];
     const to = changedStacks[instruction.to];
     if (from.length < quantity) {
-      throw new Error(`Invalid instructions ${instruction.from} -${quantity}-> ${instruction.to}: Source stack is empty`);
+      throw new Error(
+        `Invalid instructions ${instruction.from} -${quantity}-> ${instruction.to}: Source stack is empty`
+      );
     }
     if (bulk) {
       const crates = from.splice(-quantity, quantity);
@@ -89,8 +93,12 @@ move 1 from 1 to 2
   const stacks = parseStacks(stacksInput);
   const instructions = parseInstructions(instructionsInput);
 
-  const part1Result = processInstructions(stacks, instructions, false).map((s) => s[s.length - 1]).join('');
-  const part2Result = processInstructions(stacks, instructions, true).map((s) => s[s.length - 1]).join('');
+  const part1Result = processInstructions(stacks, instructions, false)
+    .map((s) => s[s.length - 1])
+    .join('');
+  const part2Result = processInstructions(stacks, instructions, true)
+    .map((s) => s[s.length - 1])
+    .join('');
   console.log(`Solution for example input: Part 1 ${part1Result} | Part 2 ${part2Result}`);
 }
 
@@ -113,7 +121,6 @@ function part2Solution() {
   const topCrates = stacks.map((s) => s[s.length - 1]).join('');
   console.log(`Solution for Part 2: ${topCrates}`);
 }
-
 
 exampleSolution();
 part1Solution();

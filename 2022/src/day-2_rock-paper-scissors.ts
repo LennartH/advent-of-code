@@ -1,33 +1,41 @@
 import * as fs from 'fs';
 
-enum Shape {Rock, Paper, Scissors}
-const shapeMap: Record<string, Shape> = {
-  'A': Shape.Rock,
-  'X': Shape.Rock,
-
-  'B': Shape.Paper,
-  'Y': Shape.Paper,
-
-  'C': Shape.Scissors,
-  'Z': Shape.Scissors,
+enum Shape {
+  Rock,
+  Paper,
+  Scissors,
 }
+const shapeMap: Record<string, Shape> = {
+  A: Shape.Rock,
+  X: Shape.Rock,
+
+  B: Shape.Paper,
+  Y: Shape.Paper,
+
+  C: Shape.Scissors,
+  Z: Shape.Scissors,
+};
 const scoreForShape: Record<Shape, number> = {
   [Shape.Rock]: 1,
   [Shape.Paper]: 2,
   [Shape.Scissors]: 3,
-}
+};
 
-enum RoundResult {Loss, Draw, Win}
-const roundResultMap: Record<string, RoundResult> = {
-  'X': RoundResult.Loss,
-  'Y': RoundResult.Draw,
-  'Z': RoundResult.Win,
+enum RoundResult {
+  Loss,
+  Draw,
+  Win,
 }
+const roundResultMap: Record<string, RoundResult> = {
+  X: RoundResult.Loss,
+  Y: RoundResult.Draw,
+  Z: RoundResult.Win,
+};
 const scoreForGameResult: Record<RoundResult, number> = {
   [RoundResult.Loss]: 0,
   [RoundResult.Draw]: 3,
   [RoundResult.Win]: 6,
-}
+};
 
 function getRoundResult(playerShape: Shape, opponentShape: Shape): RoundResult {
   if (playerShape === opponentShape) {
@@ -86,7 +94,10 @@ function exampleSolution() {
     A Y
     B X
     C Z
-  `.trim().split('\n').map((l) => l.trim());
+  `
+    .trim()
+    .split('\n')
+    .map((l) => l.trim());
   const part1Score = calculateTotalScoreIfSecondSymbolIsShape(lines);
   const part2Score = calculateTotalScoreIfSecondSymbolIsResult(lines);
   console.log(`Solution for example input: Part 1 ${part1Score} | Part 2 ${part2Score}`);
@@ -103,7 +114,6 @@ function part2Solution() {
   const totalScore = calculateTotalScoreIfSecondSymbolIsResult(lines);
   console.log(`Solution for Part 2: ${totalScore}`);
 }
-
 
 exampleSolution();
 part1Solution();

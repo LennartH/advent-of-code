@@ -31,7 +31,8 @@ class Command {
         }
         filesystem.workingDirectory = filesystem.workingDirectory.parent;
       } else {
-        const childDirectory = filesystem.workingDirectory.children.filter((c): c is Directory => c instanceof Directory)
+        const childDirectory = filesystem.workingDirectory.children
+          .filter((c): c is Directory => c instanceof Directory)
           .find((d) => d.name === targetDirectoryName);
         if (!childDirectory) {
           throw new Error(`Directory '${targetDirectoryName}' not found`);
@@ -39,14 +40,17 @@ class Command {
         filesystem.workingDirectory = childDirectory;
       }
     } else if (this.name === 'ls') {
-      this.output?.split('\n').map((l) => l.trim().split(' ')).forEach(([sizeOrDir, name]) => {
-        if (sizeOrDir === 'dir') {
-          filesystem.workingDirectory.children.push(new Directory(name, filesystem.workingDirectory));
-        } else {
-          const size = Number(sizeOrDir);
-          filesystem.workingDirectory.children.push(new File(name, filesystem.workingDirectory, size));
-        }
-      })
+      this.output
+        ?.split('\n')
+        .map((l) => l.trim().split(' '))
+        .forEach(([sizeOrDir, name]) => {
+          if (sizeOrDir === 'dir') {
+            filesystem.workingDirectory.children.push(new Directory(name, filesystem.workingDirectory));
+          } else {
+            const size = Number(sizeOrDir);
+            filesystem.workingDirectory.children.push(new File(name, filesystem.workingDirectory, size));
+          }
+        });
     } else {
       throw new Error(`Not implemented for command '${this.name}'`);
     }
@@ -54,7 +58,10 @@ class Command {
 }
 
 function parseCommands(input: string): Command[] {
-  const commandInputs = input.split('$').slice(1).map((i) => i.trim());
+  const commandInputs = input
+    .split('$')
+    .slice(1)
+    .map((i) => i.trim());
   return commandInputs.map((i) => new Command(i));
 }
 
@@ -72,11 +79,7 @@ abstract class FileEntry {
 }
 
 class File extends FileEntry {
-  constructor(
-    name: string,
-    parent: Directory,
-    public size: number,
-  ) {
+  constructor(name: string, parent: Directory, public size: number) {
     super(name, parent);
   }
 }
@@ -156,8 +159,14 @@ function exampleSolution() {
   const filesystem = new Filesystem();
   commands.forEach((c) => c.process(filesystem));
 
-  const part1Result = filesystem.allDirectories().filter((d) => d.size <= 100000).reduce((s, d) => s + d.size, 0);
-  const part2Result = filesystem.allDirectories().filter((d) => d.size >= 8381165).reduce((a, b) => a.size < b.size ? a : b).size;
+  const part1Result = filesystem
+    .allDirectories()
+    .filter((d) => d.size <= 100000)
+    .reduce((s, d) => s + d.size, 0);
+  const part2Result = filesystem
+    .allDirectories()
+    .filter((d) => d.size >= 8381165)
+    .reduce((a, b) => (a.size < b.size ? a : b)).size;
   console.log(`Solution for example input: Part 1 ${part1Result} | Part 2 ${part2Result}`);
 }
 
@@ -166,7 +175,10 @@ function part1Solution() {
   const commands = parseCommands(input);
   const filesystem = new Filesystem();
   commands.forEach((c) => c.process(filesystem));
-  const totalSizeOfSmallDirectories = filesystem.allDirectories().filter((d) => d.size <= 100000).reduce((s, d) => s + d.size, 0);
+  const totalSizeOfSmallDirectories = filesystem
+    .allDirectories()
+    .filter((d) => d.size <= 100000)
+    .reduce((s, d) => s + d.size, 0);
   console.log(`Solution for Part 1: ${totalSizeOfSmallDirectories}`);
 }
 
@@ -176,10 +188,12 @@ function part2Solution() {
   const filesystem = new Filesystem();
   commands.forEach((c) => c.process(filesystem));
   const spaceNeeded = 30000000 - (70000000 - filesystem.size);
-  const deletionSize = filesystem.allDirectories().filter((d) => d.size >= spaceNeeded).reduce((a, b) => a.size < b.size ? a : b).size;
+  const deletionSize = filesystem
+    .allDirectories()
+    .filter((d) => d.size >= spaceNeeded)
+    .reduce((a, b) => (a.size < b.size ? a : b)).size;
   console.log(`Solution for Part 2: ${deletionSize}`);
 }
-
 
 exampleSolution();
 part1Solution();

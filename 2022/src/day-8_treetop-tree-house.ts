@@ -1,6 +1,11 @@
 import * as fs from 'fs';
 
-enum Direction { Top, Right, Bottom, Left}
+enum Direction {
+  Top,
+  Right,
+  Bottom,
+  Left,
+}
 const directionDelta = [
   [0, -1],
   [1, 0],
@@ -83,7 +88,10 @@ function exampleSolution() {
     65332
     33549
     35390
-  `.trim().split('\n').map((l) => l.trim());
+  `
+    .trim()
+    .split('\n')
+    .map((l) => l.trim());
   const grid = readGrid(lines);
 
   const part1Result = countVisibleTrees(grid);
@@ -104,7 +112,6 @@ function part2Solution() {
   const maxScenicScore = findMaxScenicScore(grid);
   console.log(`Solution for Part 2: ${maxScenicScore}`);
 }
-
 
 exampleSolution();
 part1Solution();

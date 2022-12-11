@@ -11,13 +11,11 @@ class SectionAssignment {
   }
 
   hasSubsetRelationshipWith(other: SectionAssignment): boolean {
-    return (this.from >= other.from && this.to <= other.to)
-        || (other.from >= this.from && other.to <= this.to);
+    return (this.from >= other.from && this.to <= other.to) || (other.from >= this.from && other.to <= this.to);
   }
 
   overlapsWith(other: SectionAssignment): boolean {
-    return (this.to >= other.from && this.from <= other.from)
-        || (other.to >= this.from && other.from <= this.from);
+    return (this.to >= other.from && this.from <= other.from) || (other.to >= this.from && other.from <= this.from);
   }
 }
 
@@ -34,14 +32,17 @@ function exampleSolution() {
     2-8,3-7
     6-6,4-6
     2-6,4-8
-  `.trim().split('\n').map((l) => l.trim());
+  `
+    .trim()
+    .split('\n')
+    .map((l) => l.trim());
   const assignmentPairs = lines.map(createAssignmentPair);
 
   const part1Result = assignmentPairs
-    .map(([a1, a2]) => a1.hasSubsetRelationshipWith(a2) ? 1 : 0)
+    .map(([a1, a2]) => (a1.hasSubsetRelationshipWith(a2) ? 1 : 0))
     .reduce((s: number, v) => s + v, 0);
   const part2Result = assignmentPairs
-    .map(([a1, a2]) => a1.overlapsWith(a2) ? 1 : 0)
+    .map(([a1, a2]) => (a1.overlapsWith(a2) ? 1 : 0))
     .reduce((s: number, v) => s + v, 0);
   console.log(`Solution for example input: Part 1 ${part1Result} | Part 2 ${part2Result}`);
 }
@@ -50,7 +51,7 @@ function part1Solution() {
   const lines = fs.readFileSync('./assets/day-4_camp-cleanup.input.txt', 'utf-8').trim().split('\n');
   const assignmentPairs = lines.map(createAssignmentPair);
   const subsetPairCount = assignmentPairs
-    .map(([a1, a2]) => a1.hasSubsetRelationshipWith(a2) ? 1 : 0)
+    .map(([a1, a2]) => (a1.hasSubsetRelationshipWith(a2) ? 1 : 0))
     .reduce((s: number, v) => s + v, 0);
   console.log(`Solution for Part 1: ${subsetPairCount}`);
 }
@@ -59,11 +60,10 @@ function part2Solution() {
   const lines = fs.readFileSync('./assets/day-4_camp-cleanup.input.txt', 'utf-8').trim().split('\n');
   const assignmentPairs = lines.map(createAssignmentPair);
   const overlapsCount = assignmentPairs
-    .map(([a1, a2]) => a1.overlapsWith(a2) ? 1 : 0)
+    .map(([a1, a2]) => (a1.overlapsWith(a2) ? 1 : 0))
     .reduce((s: number, v) => s + v, 0);
   console.log(`Solution for Part 2: ${overlapsCount}`);
 }
-
 
 exampleSolution();
 part1Solution();
