@@ -1,5 +1,5 @@
-import {readLines, splitLines} from '../util';
 import {countValueIncrements} from './index';
+import {readLines, splitLines} from '../../../util/util';
 
 describe('day 1', () => {
   describe('example input', () => {
