@@ -6,7 +6,6 @@ import {
   lowerCaseAlphabet,
   Point,
   pointAsString,
-  shuffle,
   translate,
 } from '../../../util/util';
 
@@ -49,7 +48,7 @@ export function gridAsString(grid: Grid): string {
 export function getEdges(grid: Grid): Edges {
   return grid.map((row, y) =>
     row.map((cell, x) => {
-      return shuffle([...directions]).reduce((edges, direction) => {
+      return directions.reduce((edges, direction) => {
         const neighbourPoint = translate({ x, y }, getDirectionDelta(direction));
         const neighbour = grid[neighbourPoint.y]?.[neighbourPoint.x];
         if (neighbour && neighbour.elevation - cell.elevation <= 1) {
@@ -127,9 +126,26 @@ export function findShortestPath(grid: Grid, from?: Point, to?: Point): Directio
   return path;
 }
 
-export function printRoute(grid: Grid, path: Direction[]): string {
+export function findShortestPathFromLowestElevation(grid: Grid): { start: Point; path: Direction[] } {
+  const lowPoints = grid.flat().filter((n) => n.elevation === 0);
+  const routes = lowPoints
+    .map((n) => {
+      let path: Direction[] | null = null;
+      try {
+        path = findShortestPath(grid, n.position);
+      } catch (error) {
+        /* Ignore error */
+      }
+      return { start: n.position, path };
+    })
+    .filter((e): e is { start: Point; path: Direction[] } => e.path != null);
+  routes.sort((a, b) => a.path.length - b.path.length);
+  return routes[0];
+}
+
+export function printRoute(grid: Grid, path: Direction[], start?: Point): string {
   const output = grid.map(() => new Array(grid[0].length).fill('.'));
-  const start = grid.flat().find((c) => c.isStart)!.position;
+  start ||= grid.flat().find((c) => c.isStart)!.position;
   const end = grid.flat().find((c) => c.isEnd)!.position;
   output[end.y][end.x] = 'E';
 
