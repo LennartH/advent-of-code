@@ -31,7 +31,7 @@ describe('day 11', () => {
         Test: divisible by 17
           If true: throw to monkey 0
           If false: throw to monkey 1
-    `
+    `;
 
     test('returns 10605 for part 1', () => {
       const monkeys = parseMonkeys(input);
@@ -39,7 +39,7 @@ describe('day 11', () => {
       game.executeGame(20);
       expect(game.inspectionsCounts).toEqual([101, 95, 7, 105]);
       expect(game.calculateMonkeyBusiness()).toEqual(10605);
-    })
+    });
     test('returns 2713310158 for part 2', () => {
       const monkeys = parseMonkeys(input);
       const game = new Game(monkeys, 1);
@@ -47,7 +47,7 @@ describe('day 11', () => {
       expect(game.inspectionsCounts).toEqual([99, 97, 8, 103]);
       game.executeGame(10000 - 20);
       expect(game.calculateMonkeyBusiness()).toEqual(2713310158);
-    })
+    });
 
     describe('parse input', () => {
       test('of monkey with addition as operator', () => {
@@ -59,12 +59,14 @@ describe('day 11', () => {
               If true: throw to monkey 2
               If false: throw to monkey 0
         `);
-        expect(monkey).toEqual(new Monkey(
-          [54, 65, 75, 74],
-          { operand1: 'old', operator: '+', operand2: 6},
-          {divisor: 19, targetIfTrue: 2, targetIfFalse: 0},
-        ))
-      })
+        expect(monkey).toEqual(
+          new Monkey(
+            [54, 65, 75, 74],
+            { operand1: 'old', operator: '+', operand2: 6 },
+            { divisor: 19, targetIfTrue: 2, targetIfFalse: 0 }
+          )
+        );
+      });
       test("of monkey with 'old' as both operands", () => {
         const [monkey] = parseMonkeys(`
           Monkey 0:
@@ -74,12 +76,14 @@ describe('day 11', () => {
               If true: throw to monkey 1
               If false: throw to monkey 3
         `);
-        expect(monkey).toEqual(new Monkey(
-          [79, 60, 97],
-          { operand1: 'old', operator: '*', operand2: 'old'},
-          {divisor: 13, targetIfTrue: 1, targetIfFalse: 3},
-        ))
-      })
+        expect(monkey).toEqual(
+          new Monkey(
+            [79, 60, 97],
+            { operand1: 'old', operator: '*', operand2: 'old' },
+            { divisor: 13, targetIfTrue: 1, targetIfFalse: 3 }
+          )
+        );
+      });
       test("of monkey with 'old' as second operand", () => {
         const [monkey] = parseMonkeys(`
           Monkey 0:
@@ -89,12 +93,14 @@ describe('day 11', () => {
               If true: throw to monkey 2
               If false: throw to monkey 3
         `);
-        expect(monkey).toEqual(new Monkey(
-          [79, 98],
-          { operand1: 19, operator: '*', operand2: 'old'},
-          {divisor: 23, targetIfTrue: 2, targetIfFalse: 3},
-        ))
-      })
+        expect(monkey).toEqual(
+          new Monkey(
+            [79, 98],
+            { operand1: 19, operator: '*', operand2: 'old' },
+            { divisor: 23, targetIfTrue: 2, targetIfFalse: 3 }
+          )
+        );
+      });
       test('of multiple monkeys', () => {
         const monkeys = parseMonkeys(`
           Monkey 0:
@@ -114,18 +120,18 @@ describe('day 11', () => {
         expect(monkeys).toEqual([
           new Monkey(
             [79, 60, 97],
-            { operand1: 'old', operator: '*', operand2: 'old'},
-            {divisor: 13, targetIfTrue: 1, targetIfFalse: 3},
+            { operand1: 'old', operator: '*', operand2: 'old' },
+            { divisor: 13, targetIfTrue: 1, targetIfFalse: 3 }
           ),
           new Monkey(
             [74],
-            { operand1: 'old', operator: '+', operand2: 3},
-            {divisor: 17, targetIfTrue: 0, targetIfFalse: 1},
-          )
-        ])
-      })
-    })
-  })
+            { operand1: 'old', operator: '+', operand2: 3 },
+            { divisor: 17, targetIfTrue: 0, targetIfFalse: 1 }
+          ),
+        ]);
+      });
+    });
+  });
 
   describe('solution is', () => {
     test('99840 for part 1', () => {
@@ -141,4 +147,4 @@ describe('day 11', () => {
       expect(game.calculateMonkeyBusiness()).toEqual(20683044837);
     });
   });
-})
+});
