@@ -1,5 +1,12 @@
 import { Direction, readLines, splitLines } from '../../../util/util';
-import { Node, findShortestPath, getEdges, gridAsString, readGrid, printRoute } from './index';
+import {
+  findShortestPath,
+  findShortestPathFromLowestElevation,
+  getEdges,
+  gridAsString,
+  printRoute,
+  readGrid,
+} from './index';
 
 describe('day 12', () => {
   describe('example input', () => {
@@ -17,6 +24,12 @@ describe('day 12', () => {
       const shortestPath = findShortestPath(grid);
       console.log(printRoute(grid, shortestPath));
       expect(shortestPath.length).toEqual(31);
+    });
+    test('returns 29 for part 2', () => {
+      const grid = readGrid(lines);
+      const { start, path } = findShortestPathFromLowestElevation(grid);
+      console.log(printRoute(grid, path, start));
+      expect(path.length).toEqual(29);
     });
 
     describe('read input', () => {
@@ -56,6 +69,11 @@ describe('day 12', () => {
       const shortestPath = findShortestPath(grid);
       console.log(printRoute(grid, shortestPath));
       expect(shortestPath.length).toEqual(449);
+    });
+    test('443 for part 2', () => {
+      const { start, path } = findShortestPathFromLowestElevation(grid);
+      console.log(printRoute(grid, path, start));
+      expect(path.length).toEqual(443);
     });
   });
 });
