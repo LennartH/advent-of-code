@@ -57,6 +57,35 @@ export function calculateOrderliness(pairs: PacketPair[]): number {
     .reduce((s, v) => s + v, 0);
 }
 
+const dividerPacket1 = [[2]];
+const dividerPacket2 = [[6]];
+
+export function calculateDecoderKey(pairs: PacketPair[]): number {
+  const packets = orderPackets(pairs);
+  const dividerIndex1 = packets.indexOf(dividerPacket1) + 1;
+  const dividerIndex2 = packets.indexOf(dividerPacket2) + 1;
+  return dividerIndex1 * dividerIndex2;
+}
+
+export function orderPackets(pairs: PacketPair[]): Packet[] {
+  const packets = pairs.reduce((list, p) => {
+    list.push(p[0], p[1]);
+    return list;
+  }, [] as Packet[]);
+  packets.push(dividerPacket1, dividerPacket2);
+  packets.sort((p1, p2) => {
+    const comparison = isSegmentInOrder([p1, p2]);
+    if (comparison === true) {
+      return -1;
+    }
+    if (comparison === false) {
+      return 1;
+    }
+    return 0;
+  });
+  return packets;
+}
+
 export function isInOrder(pair: PacketPair): boolean {
   const isOrdered = isSegmentInOrder(pair);
   if (isOrdered === null) {
