@@ -82,6 +82,17 @@ export function distanceToPoint(from: Point, to: Point): number {
   return Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
 }
 
+export function directionToPoint(from: Point, to: Point): Direction {
+  const vector = { x: to.x - from.x, y: to.y - from.y };
+  if (vector.y === 0) {
+    return vector.x < 0 ? Direction.Left : Direction.Right;
+  }
+  if (vector.x === 0) {
+    return vector.y < 0 ? Direction.Top : Direction.Bottom;
+  }
+  throw new Error(`No straight line from ${pointAsString(from, true)} to ${pointAsString(to, true)}`);
+}
+
 export interface Rect {
   x: number;
   y: number;
