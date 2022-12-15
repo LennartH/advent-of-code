@@ -11,6 +11,7 @@ export enum CellType {
 export interface Cave {
   readonly grid: CellType[][];
   readonly rockOutline: Rect;
+  hasFloor: boolean;
 }
 
 export function parseCave(input: string): Cave {
@@ -60,7 +61,7 @@ export function parseCave(input: string): Cave {
     width: outlineBottomRight.x - outlineTopLeft.x + 1,
     height: outlineBottomRight.y - outlineTopLeft.y + 1,
   };
-  const cave = { grid, rockOutline };
+  const cave = { grid, rockOutline, hasFloor: false };
   fillCaveWithAir(cave);
   return cave;
 }
@@ -88,7 +89,8 @@ export function caveAsString(cave: Cave): string {
 
 export function simulateSandfall(cave: Cave, sandOrigin: Point): number {
   const fallDeltas = [{x: 0, y: 1}, {x: -1, y: 1}, {x: 1, y: 1}];
-  const { grid } = cave;
+  const { grid, hasFloor } = cave;
+  const floorY = hasFloor ? grid.length + 1 : -1;
 
   let sandCount = 0;
   let equilibrium = false;
@@ -99,10 +101,18 @@ export function simulateSandfall(cave: Cave, sandOrigin: Point): number {
       sandMoved = false;
       for (const delta of fallDeltas) {
         const nextPosition = translate(position, delta);
-        const nextCell = grid[nextPosition.y]?.[nextPosition.x];
+        let nextCell = grid[nextPosition.y]?.[nextPosition.x];
         if (nextCell == null) {
-          equilibrium = true;
-          break;
+          if (!hasFloor) {
+            equilibrium = true;
+            break;
+          } else {
+            if (grid[nextPosition.y] == null) {
+              grid[nextPosition.y] = [];
+            }
+            nextCell = nextPosition.y === floorY ? CellType.Rock : CellType.Air;
+            grid[nextPosition.y][nextPosition.x] = nextCell;
+          }
         }
         if (nextCell === CellType.Air || nextCell === CellType.SandFlow) {
           grid[position.y][position.x] = CellType.SandFlow;
@@ -112,6 +122,11 @@ export function simulateSandfall(cave: Cave, sandOrigin: Point): number {
         }
       }
     } while (sandMoved);
+
+    if (grid[sandOrigin.y][sandOrigin.x] === CellType.Sand) {
+      equilibrium = true;
+    }
+
     if (!equilibrium) {
       grid[position.y][position.x] = CellType.Sand;
       sandCount++;
@@ -119,7 +134,18 @@ export function simulateSandfall(cave: Cave, sandOrigin: Point): number {
       grid[position.y][position.x] = CellType.SandFlow;
     }
   }
-  grid[sandOrigin.y][sandOrigin.x] = CellType.SandOrigin;
+
+  if (hasFloor) {
+    const floor = grid[grid.length - 1];
+    cave.rockOutline.x = floor.indexOf(CellType.Rock);
+    floor.fill(CellType.Rock, cave.rockOutline.x);
+    cave.rockOutline.height += 2;
+    cave.rockOutline.width = floor.lastIndexOf(CellType.Rock) - cave.rockOutline.x;
+    fillCaveWithAir(cave);
+    grid[sandOrigin.y][sandOrigin.x] = CellType.Sand;
+  } else {
+    grid[sandOrigin.y][sandOrigin.x] = CellType.SandOrigin;
+  }
 
   return sandCount;
 }
