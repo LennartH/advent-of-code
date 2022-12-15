@@ -15,9 +15,13 @@ describe('day-14', () => {
       console.log(caveAsString(cave));
       expect(sandCount).toEqual(24);
     });
-    test.skip('solution is ? for part 2', () => {
+    test('solution is 93 for part 2', () => {
+      const sandOrigin = {x: 500, y: 0};
       const cave = parseCave(input);
-      throw new Error('Not implemented')
+      cave.hasFloor = true;
+      const sandCount = simulateSandfall(cave, sandOrigin);
+      console.log(caveAsString(cave));
+      expect(sandCount).toEqual(93);
     });
   });
   describe('solution is', () => {
@@ -28,9 +32,13 @@ describe('day-14', () => {
       console.log(caveAsString(cave));
       expect(sandCount).toEqual(592);
     });
-    test.skip('? for part 2', () => {
+    test('30367 for part 2', () => {
+      const sandOrigin = {x: 500, y: 0};
       const cave = parseCave(readFile(`${__dirname}/input`));
-      throw new Error('Not implemented')
+      cave.hasFloor = true;
+      const sandCount = simulateSandfall(cave, sandOrigin);
+      console.log(caveAsString(cave));
+      expect(sandCount).toEqual(30367);
     });
   });
 
