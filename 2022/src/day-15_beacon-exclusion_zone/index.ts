@@ -1,9 +1,5 @@
 import { Point, splitLines } from '../../../util/util';
 
-export interface SensorSystem {
-  sensors: Sensor[];
-}
-
 export interface Sensor {
   position: Point;
   closestBeacon: Point;
@@ -12,9 +8,9 @@ export interface Sensor {
 
 const positionPattern = /at x=(?<x>-?\d+), y=(?<y>-?\d+)/g;
 
-export function parseSensorSystem(input: string): SensorSystem {
+export function parseSensors(input: string): Sensor[] {
   const lines = splitLines(input);
-  const sensors: SensorSystem['sensors'] = [];
+  const sensors: Sensor[] = [];
   for (const line of lines) {
     const [{groups: sensorMatch}, {groups: beaconMatch}] = [...line.matchAll(positionPattern)];
     if (!sensorMatch || !beaconMatch) {
@@ -28,12 +24,12 @@ export function parseSensorSystem(input: string): SensorSystem {
       detectionRadius: Math.abs(sensorPosition.x - beaconPosition.x) + Math.abs(sensorPosition.y - beaconPosition.y),
     })
   }
-  return { sensors };
+  return sensors;
 }
 
-export function countExclusionSizeInRow(system: SensorSystem, rowY: number): number {
+export function countExclusionSizeInRow(sensors: Sensor[], rowY: number): number {
   const excludedX = new Set<number>();
-  for (const sensor of system.sensors) {
+  for (const sensor of sensors) {
     const {position, detectionRadius} = sensor;
     const cutoff = detectionRadius - Math.abs(position.y - rowY);
     if (cutoff < 0) {
@@ -46,6 +42,12 @@ export function countExclusionSizeInRow(system: SensorSystem, rowY: number): num
       excludedX.add(position.x - deltaX);
     }
   }
-  system.sensors.filter((s) => s.closestBeacon.y === rowY).forEach((s) => excludedX.delete(s.closestBeacon.x));
+  sensors.filter((s) => s.closestBeacon.y === rowY).forEach((s) => excludedX.delete(s.closestBeacon.x));
   return excludedX.size;
+}
+
+export function findDistressTuningFrequency(sensors: Sensor[], positionMin: number, positionMax: number): number {
+  let x = 0;
+  let y = 0;
+  return (x * 4000000) + y;
 }
