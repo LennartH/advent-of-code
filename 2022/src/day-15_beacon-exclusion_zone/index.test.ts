@@ -37,10 +37,10 @@ describe('day-15', () => {
       const exclusionSize = countExclusionSizeInRow(sensors, 2000000);
       expect(exclusionSize).toEqual(5838453);
     });
-    test.skip('? for part 2', () => {
-      const sensors = parseSensors(`${__dirname}/input`);
+    test('12413999391794 for part 2', () => {
+      const sensors = parseSensors(readFile(`${__dirname}/input`));
       const tuningFrequency = findDistressTuningFrequency(sensors, 0, 4000000);
-      expect(tuningFrequency).toEqual(56000011);
+      expect(tuningFrequency).toEqual(12413999391794);
     });
   });
 
