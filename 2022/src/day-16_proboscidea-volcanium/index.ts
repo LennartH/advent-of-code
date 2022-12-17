@@ -70,11 +70,13 @@ export function releasePressure(graph: Graph, time: number): number {
 
 export function collectPossiblePaths(graph: Graph, time: number): Node[][] {
   const paths: Node[][] = [];
-  let openPaths: PathCandidate[] = [{
-    nodes: [graph.start],
-    remainingNodes: graph.functioningNodes.filter((n) => costToOpenValve(graph, graph.start, n) < time),
-    totalCost: 0,
-  }]
+  let openPaths: PathCandidate[] = [
+    {
+      nodes: [graph.start],
+      remainingNodes: graph.functioningNodes.filter((n) => costToOpenValve(graph, graph.start, n) < time),
+      totalCost: 0,
+    },
+  ];
   while (openPaths.length > 0) {
     const { nodes, remainingNodes, totalCost } = openPaths.shift()!;
     const current = nodes[nodes.length - 1];
@@ -132,13 +134,13 @@ function searchPathTo(graph: Graph, from: Node, to: Node): VisitedNode {
   });
   do {
     const current = openNodes.pop()!;
-    const {label, cost, predecessors} = current;
+    const { label, cost, predecessors } = current;
     visited.add(label);
     if (label === to.label) {
       return current;
     }
 
-    const neighbours = graph.nodes[label].edges
+    const neighbours = graph.nodes[label].edges;
     for (const neighbour of neighbours) {
       if (!visited.has(neighbour)) {
         const index = openNodes.findIndex((n) => n.label === neighbour);
@@ -146,7 +148,7 @@ function searchPathTo(graph: Graph, from: Node, to: Node): VisitedNode {
           label: neighbour,
           cost: cost + 1,
           predecessors: [...predecessors, label],
-        }
+        };
         if (index === -1) {
           openNodes.push(next);
         } else if (next.cost < openNodes[index].cost) {
