@@ -1,16 +1,25 @@
 import { splitLines } from '../../../util/util';
 
-export interface Node {
+interface SimpleNode {
   label: string;
   flowRate: number;
   edges: string[];
 }
 
+interface SimpleGraph {
+  start: SimpleNode;
+  nodes: Record<string, SimpleNode>;
+}
+
+export interface Node {
+  label: string;
+  flowRate: number;
+  edges: Record<string, number>;
+}
+
 export interface Graph {
   start: Node;
   nodes: Record<string, Node>;
-  functioningNodes: Node[];
-  costCache: Record<string, Record<string, number>>;
 }
 
 const nodePattern = /Valve (?<label>[A-Z]+) has flow rate=(?<rate>\d+); tunnels? leads? to valves? (?<edges>[A-Z, ]+)/;
@@ -18,33 +27,44 @@ const nodePattern = /Valve (?<label>[A-Z]+) has flow rate=(?<rate>\d+); tunnels?
 export function parseGraph(input: string): Graph {
   const lines = splitLines(input);
 
-  let start: Node | undefined = undefined;
-  const nodes: Record<string, Node> = {};
-  const functioningNodes: Node[] = [];
+  const nodes: Record<string, SimpleNode> = {};
+  const relevantNodes: SimpleNode[] = [];
   lines.forEach((line) => {
     const match = line.match(nodePattern);
     if (!match || !match.groups) {
       throw new Error(`Unable to parse node from: ${line}`);
     }
     const { label, rate, edges } = match.groups;
-    const node: Node = {
+    const node: SimpleNode = {
       label,
       flowRate: Number(rate),
       edges: edges.split(', '),
     };
-    if (node.flowRate > 0) {
-      functioningNodes.push(node);
-    }
-    if (node.label === 'AA') {
-      start = node;
+    if (node.flowRate > 0 || node.label === 'AA') {
+      relevantNodes.push(node);
     }
     nodes[label] = node;
   });
 
-  if (!start) {
+  if (!nodes['AA']) {
     throw new Error('Starting node could not be found');
   }
-  return { start, nodes, functioningNodes, costCache: {} };
+  const simpleGraph: SimpleGraph = { start: nodes['AA'], nodes };
+
+  const traveledNodes: Record<string, Node> = Object.fromEntries(
+    relevantNodes.map((from) => [from.label, {
+      label: from.label,
+      flowRate: from.flowRate,
+      edges: Object.fromEntries(relevantNodes
+        .filter((n) => from !== n)
+        .map((to) => [to.label, searchPathTo(simpleGraph, from, to).cost])
+      )
+    }])
+  );
+  return {
+    start: traveledNodes['AA'],
+    nodes: traveledNodes,
+  };
 }
 
 export function releasePressure(graph: Graph, time: number): number {
@@ -73,7 +93,7 @@ export function collectPossiblePaths(graph: Graph, time: number): Node[][] {
   let openPaths: PathCandidate[] = [
     {
       nodes: [graph.start],
-      remainingNodes: graph.functioningNodes.filter((n) => costToOpenValve(graph, graph.start, n) < time),
+      remainingNodes: Object.values(graph.nodes).filter((n) => n !== graph.start && costToOpenValve(graph, graph.start, n) < time),
       totalCost: 0,
     },
   ];
@@ -110,26 +130,16 @@ interface PathCandidate {
 }
 
 function costToOpenValve(graph: Graph, from: Node, to: Node): number {
-  let costsFrom = graph.costCache[from.label];
-  if (!costsFrom) {
-    costsFrom = {};
-    graph.costCache[from.label] = costsFrom;
-  }
-  let cost = costsFrom[to.label];
-  if (!cost) {
-    cost = searchPathTo(graph, from, to).cost;
-    costsFrom[to.label] = cost;
-  }
-  return cost;
+  return graph.nodes[from.label].edges[to.label] + 1;
 }
 
-function searchPathTo(graph: Graph, from: Node, to: Node): VisitedNode {
+function searchPathTo(graph: SimpleGraph, from: SimpleNode, to: SimpleNode): VisitedNode {
   const openNodes: VisitedNode[] = [];
   const visited = new Set<string>();
 
   openNodes.push({
     label: from.label,
-    cost: 1,
+    cost: 0,
     predecessors: [],
   });
   do {
