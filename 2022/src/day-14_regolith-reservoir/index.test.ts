@@ -9,14 +9,14 @@ describe('day-14', () => {
     `;
 
     test('solution is 24 for part 1', () => {
-      const sandOrigin = {x: 500, y: 0};
+      const sandOrigin = { x: 500, y: 0 };
       const cave = parseCave(input);
       const sandCount = simulateSandfall(cave, sandOrigin);
       console.log(caveAsString(cave));
       expect(sandCount).toEqual(24);
     });
     test('solution is 93 for part 2', () => {
-      const sandOrigin = {x: 500, y: 0};
+      const sandOrigin = { x: 500, y: 0 };
       const cave = parseCave(input);
       cave.hasFloor = true;
       const sandCount = simulateSandfall(cave, sandOrigin);
@@ -26,14 +26,14 @@ describe('day-14', () => {
   });
   describe('solution is', () => {
     test('592 for part 1', () => {
-      const sandOrigin = {x: 500, y: 0};
+      const sandOrigin = { x: 500, y: 0 };
       const cave = parseCave(readFile(`${__dirname}/input`));
       const sandCount = simulateSandfall(cave, sandOrigin);
       console.log(caveAsString(cave));
       expect(sandCount).toEqual(592);
     });
     test('30367 for part 2', () => {
-      const sandOrigin = {x: 500, y: 0};
+      const sandOrigin = { x: 500, y: 0 };
       const cave = parseCave(readFile(`${__dirname}/input`));
       cave.hasFloor = true;
       const sandCount = simulateSandfall(cave, sandOrigin);
@@ -64,7 +64,7 @@ describe('day-14', () => {
         #########.
       `).join('\n');
       expect(caveAsString(cave)).toEqual(expectedOutput);
-    })
-  })
+    });
+  });
   // endregion
-})
+});

@@ -23,7 +23,7 @@ export function parseCave(input: string): Cave {
   for (const line of lines) {
     const points: Point[] = line.split(' -> ').map((point) => {
       const parts = point.split(',');
-      return {x: Number(parts[0]), y: Number(parts[1])};
+      return { x: Number(parts[0]), y: Number(parts[1]) };
     });
     while (points.length >= 2) {
       let current = points.shift()!;
@@ -36,7 +36,7 @@ export function parseCave(input: string): Cave {
       const delta = {
         x: Math.min(1, Math.max(target.x - current.x, -1)),
         y: Math.min(1, Math.max(target.y - current.y, -1)),
-      }
+      };
       do {
         let row = grid[current.y];
         if (row == null) {
@@ -88,7 +88,11 @@ export function caveAsString(cave: Cave): string {
 }
 
 export function simulateSandfall(cave: Cave, sandOrigin: Point): number {
-  const fallDeltas = [{x: 0, y: 1}, {x: -1, y: 1}, {x: 1, y: 1}];
+  const fallDeltas = [
+    { x: 0, y: 1 },
+    { x: -1, y: 1 },
+    { x: 1, y: 1 },
+  ];
   const { grid, hasFloor } = cave;
   const floorY = hasFloor ? grid.length + 1 : -1;
 

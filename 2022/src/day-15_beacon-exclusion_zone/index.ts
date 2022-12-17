@@ -12,17 +12,17 @@ export function parseSensors(input: string): Sensor[] {
   const lines = splitLines(input);
   const sensors: Sensor[] = [];
   for (const line of lines) {
-    const [{groups: sensorMatch}, {groups: beaconMatch}] = [...line.matchAll(positionPattern)];
+    const [{ groups: sensorMatch }, { groups: beaconMatch }] = [...line.matchAll(positionPattern)];
     if (!sensorMatch || !beaconMatch) {
       throw new Error(`Unable to parse line: ${line}`);
     }
-    const sensorPosition = {x: Number(sensorMatch.x), y: Number(sensorMatch.y)};
-    const beaconPosition = {x: Number(beaconMatch.x), y: Number(beaconMatch.y)};
+    const sensorPosition = { x: Number(sensorMatch.x), y: Number(sensorMatch.y) };
+    const beaconPosition = { x: Number(beaconMatch.x), y: Number(beaconMatch.y) };
     sensors.push({
       position: sensorPosition,
       closestBeacon: beaconPosition,
       detectionRadius: Math.abs(sensorPosition.x - beaconPosition.x) + Math.abs(sensorPosition.y - beaconPosition.y),
-    })
+    });
   }
   return sensors;
 }
@@ -30,7 +30,7 @@ export function parseSensors(input: string): Sensor[] {
 export function countExclusionSizeInRow(sensors: Sensor[], rowY: number): number {
   const excludedX = new Set<number>();
   for (const sensor of sensors) {
-    const {position, detectionRadius} = sensor;
+    const { position, detectionRadius } = sensor;
     const remainingRange = detectionRadius - Math.abs(position.y - rowY);
     if (remainingRange < 0) {
       continue;
@@ -54,15 +54,15 @@ export function findDistressTuningFrequency(sensors: Sensor[], positionMin: numb
     x = positionMin;
     y++;
 
-    const exclusionSegments: {from: number, to: number}[] = [];
+    const exclusionSegments: { from: number; to: number }[] = [];
     for (const sensor of sensors) {
-      const {position, detectionRadius} = sensor;
+      const { position, detectionRadius } = sensor;
       const remainingRange = detectionRadius - Math.abs(position.y - y);
       if (remainingRange > 0) {
-        exclusionSegments.push({from: position.x - remainingRange, to: position.x + remainingRange});
+        exclusionSegments.push({ from: position.x - remainingRange, to: position.x + remainingRange });
       }
     }
-    exclusionSegments.sort(({from: a}, {from: b}) => a - b);
+    exclusionSegments.sort(({ from: a }, { from: b }) => a - b);
 
     if (exclusionSegments[0].from > positionMin) {
       x = positionMin;
@@ -86,5 +86,5 @@ export function findDistressTuningFrequency(sensors: Sensor[], positionMin: numb
   if (!distressBeaconFound) {
     throw new Error('No distress beacon could be found');
   }
-  return (x * 4000000) + y;
+  return x * 4000000 + y;
 }

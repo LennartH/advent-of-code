@@ -53,11 +53,11 @@ describe('day-15', () => {
       `;
       const sensors = parseSensors(input);
       const expectedSensors = [
-        { position: {x: 2, y: 18}, closestBeacon: {x: -2, y: 15}, detectionRadius: 7 },
-        { position: {x: 9, y: 16}, closestBeacon: {x: 10, y: 16}, detectionRadius: 1 },
+        { position: { x: 2, y: 18 }, closestBeacon: { x: -2, y: 15 }, detectionRadius: 7 },
+        { position: { x: 9, y: 16 }, closestBeacon: { x: 10, y: 16 }, detectionRadius: 1 },
       ];
       expect(sensors).toEqual(expectedSensors);
-    })
-  })
+    });
+  });
   // endregion
-})
+});

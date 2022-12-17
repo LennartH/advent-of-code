@@ -38,16 +38,14 @@ describe('day-16', () => {
 
   // region Tests for smaller parts
   describe('possible paths of puzzle input', () => {
-    test.each<[number, string[]]>([
-      [5, ['AY', 'GJ', 'HX', 'PB', 'PH']]
-    ])('for time %s', (time, expected) => {
+    test.each<[number, string[]]>([[5, ['AY', 'GJ', 'HX', 'PB', 'PH']]])('for time %s', (time, expected) => {
       const graph = parseGraph(readFile(`${__dirname}/input`));
       const paths = collectPossiblePaths(graph, time)
         .map((p) => p.map((n) => n.label).join('-'))
         .sort();
       expect(paths).toEqual(expected);
-    })
-  })
+    });
+  });
 
   test('collect possible paths with enough time', () => {
     const input = `
@@ -88,8 +86,8 @@ describe('day-16', () => {
       'FF-CC-EE-BB',
       'FF-EE-BB-CC',
       'FF-EE-CC-BB',
-    ])
-  })
+    ]);
+  });
   describe('collect possible paths reaching all nodes', () => {
     const input = `
       Valve AA has flow rate=0; tunnels lead to valves BB, CC, DD
@@ -217,10 +215,10 @@ describe('day-16', () => {
         'GG-FF-EE-CC',
         'GG-FF-JJ',
         'GG-JJ',
-        'JJ-GG'
-      ])
+        'JJ-GG',
+      ]);
     });
-  })
+  });
   describe('collect possible paths with unreachable nodes', () => {
     const input = `
       Valve AA has flow rate=0; tunnels lead to valves BB, CC, DD
@@ -238,39 +236,59 @@ describe('day-16', () => {
     test('for time 4', () => {
       const graph = parseGraph(input);
       const paths = collectPossiblePaths(graph, 4).map((p) => p.map((n) => n.label).join('-'));
-      expect(paths).toEqual(['BB', 'CC', 'EE', 'FF'])
-    })
+      expect(paths).toEqual(['BB', 'CC', 'EE', 'FF']);
+    });
     test('for time 5', () => {
       const graph = parseGraph(input);
       const paths = collectPossiblePaths(graph, 5).map((p) => p.map((n) => n.label).join('-'));
-      expect(paths).toEqual(['BB', 'CC', 'EE', 'FF', 'GG'])
-    })
+      expect(paths).toEqual(['BB', 'CC', 'EE', 'FF', 'GG']);
+    });
     test('for time 6', () => {
       const graph = parseGraph(input);
       const paths = collectPossiblePaths(graph, 6).map((p) => p.map((n) => n.label).join('-'));
       expect(paths).toEqual([
         'GG',
-        'BB-CC', 'BB-EE', 'BB-FF',
-        'CC-BB', 'CC-EE', 'CC-FF',
-        'EE-FF', 'EE-GG',
-        'FF-EE', 'FF-GG',
-      ])
-    })
+        'BB-CC',
+        'BB-EE',
+        'BB-FF',
+        'CC-BB',
+        'CC-EE',
+        'CC-FF',
+        'EE-FF',
+        'EE-GG',
+        'FF-EE',
+        'FF-GG',
+      ]);
+    });
     test('for time 8', () => {
       const graph = parseGraph(input);
       const paths = collectPossiblePaths(graph, 8).map((p) => p.map((n) => n.label).join('-'));
       expect(paths).toEqual([
         'JJ',
-        'BB-CC', 'BB-GG',
-        'CC-BB', 'CC-GG',
-        'EE-BB', 'EE-CC',
-        'FF-BB', 'FF-CC',
-        'GG-EE', 'GG-FF',
-        'BB-EE-FF', 'BB-EE-GG', 'BB-FF-EE', 'BB-FF-GG',
-        'CC-EE-FF', 'CC-EE-GG', 'CC-FF-EE', 'CC-FF-GG',
-        'EE-FF-GG', 'EE-GG-FF', 'FF-EE-GG', 'FF-GG-EE',
-      ])
-    })
-  })
+        'BB-CC',
+        'BB-GG',
+        'CC-BB',
+        'CC-GG',
+        'EE-BB',
+        'EE-CC',
+        'FF-BB',
+        'FF-CC',
+        'GG-EE',
+        'GG-FF',
+        'BB-EE-FF',
+        'BB-EE-GG',
+        'BB-FF-EE',
+        'BB-FF-GG',
+        'CC-EE-FF',
+        'CC-EE-GG',
+        'CC-FF-EE',
+        'CC-FF-GG',
+        'EE-FF-GG',
+        'EE-GG-FF',
+        'FF-EE-GG',
+        'FF-GG-EE',
+      ]);
+    });
+  });
   // endregion
-})
+});
