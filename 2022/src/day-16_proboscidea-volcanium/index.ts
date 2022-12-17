@@ -67,41 +67,50 @@ export function parseGraph(input: string): Graph {
   };
 }
 
-export function releasePressure(graph: Graph, time: number): number {
-  let releasedPressure = 0;
-  for (const route of collectPossiblePaths(graph, time)) {
-    let routePressure = 0;
-    let timeLeft = time;
-    let current = graph.start;
-    while (route.length > 0 && timeLeft > 0) {
-      const next = route.shift()!;
-      const cost = costToOpenValve(graph, current, next);
-      timeLeft = timeLeft - cost;
-      if (timeLeft < 0) {
-        break;
-      }
-      current = next;
-      routePressure += timeLeft * current.flowRate;
+export function releasePressure(graph: Graph, time: number, actors: number): number {
+  if (actors === 1) {
+    let releasedPressure = 0;
+    for (const { releasedPressure: routePressure } of collectPossiblePaths(graph, time)) {
+      releasedPressure = Math.max(releasedPressure, routePressure);
     }
-    releasedPressure = Math.max(releasedPressure, routePressure);
+    return releasedPressure;
+  } else if (actors === 2) {
+    const paths = [...collectPossiblePaths(graph, time)];
+    let releasedPressure = 0;
+    for (const path of paths) {
+      for (const other of paths) {
+        if (path === other || path.releasedPressure + other.releasedPressure < releasedPressure) {
+          continue;
+        }
+        const hasOverlap = path.nodes.some((n1) => other.nodes.some((n2) => n1.label === n2.label));
+        if (hasOverlap) {
+          continue;
+        }
+        releasedPressure = Math.max(releasedPressure, path.releasedPressure + other.releasedPressure);
+      }
+    }
+    return releasedPressure;
   }
-  return releasedPressure;
+  throw new Error(`Not implemented for ${actors} actors`);
 }
 
-export function collectPossiblePaths(graph: Graph, time: number): Node[][] {
-  const paths: Node[][] = [];
+export function* collectPossiblePaths(graph: Graph, time: number): Generator<Path> {
   let openPaths: PathCandidate[] = [
     {
       nodes: [graph.start],
       remainingNodes: Object.values(graph.nodes).filter((n) => n !== graph.start && costToOpenValve(graph, graph.start, n) < time),
+      releasedPressure: 0,
       totalCost: 0,
     },
   ];
   while (openPaths.length > 0) {
-    const { nodes, remainingNodes, totalCost } = openPaths.shift()!;
+    const { nodes, remainingNodes, totalCost, releasedPressure } = openPaths.shift()!;
     const current = nodes[nodes.length - 1];
     if (remainingNodes.length === 0) {
-      paths.push(nodes);
+      yield {
+        nodes: nodes.slice(1),
+        releasedPressure,
+      }
       continue;
     }
     let continued = false;
@@ -112,21 +121,30 @@ export function collectPossiblePaths(graph: Graph, time: number): Node[][] {
           nodes: [...nodes, next],
           remainingNodes: remainingNodes.filter((n) => n !== next),
           totalCost: totalCost + cost,
+          releasedPressure: releasedPressure + (time - totalCost - cost) * next.flowRate,
         });
         continued = true;
       }
     }
     if (!continued) {
-      paths.push(nodes);
+      yield {
+        nodes: nodes.slice(1),
+        releasedPressure,
+      }
     }
   }
-  return paths.map((p) => p.slice(1));
+}
+
+interface Path {
+  nodes: Node[];
+  releasedPressure: number;
 }
 
 interface PathCandidate {
   nodes: Node[];
   remainingNodes: Node[];
   totalCost: number;
+  releasedPressure: number;
 }
 
 function costToOpenValve(graph: Graph, from: Node, to: Node): number {
