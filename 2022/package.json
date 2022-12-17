@@ -4,7 +4,7 @@
   "description": "Solutions to advent of code 2022 puzzles https://adventofcode.com/2022",
   "main": "dist/index.js",
   "scripts": {
-    "puzzle": "./run-puzzle.sh",
+    "exec": "ts-node",
     "format": "prettier --write .",
     "test": "jest"
   },

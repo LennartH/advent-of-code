@@ -1,15 +1,16 @@
 import { splitLines } from '../../../util/util';
 
 export interface Node {
-  id: number;
   label: string;
   flowRate: number;
+  edges: string[];
 }
 
 export interface Graph {
   start: Node;
-  nodes: Node[];
-  edges: number[][];
+  nodes: Record<string, Node>;
+  functioningNodes: Node[];
+  costCache: Record<string, Record<string, number>>;
 }
 
 const nodePattern = /Valve (?<label>[A-Z]+) has flow rate=(?<rate>\d+); tunnels? leads? to valves? (?<edges>[A-Z, ]+)/;
@@ -18,108 +19,149 @@ export function parseGraph(input: string): Graph {
   const lines = splitLines(input);
 
   let start: Node | undefined = undefined;
-  const nodes: Node[] = [];
-  const edgesById: string[][] = new Array(lines.length).fill(0).map(() => []);
-  lines.forEach((line, index) => {
+  const nodes: Record<string, Node> = {};
+  const functioningNodes: Node[] = [];
+  lines.forEach((line) => {
     const match = line.match(nodePattern);
     if (!match || !match.groups) {
       throw new Error(`Unable to parse node from: ${line}`);
     }
     const { label, rate, edges } = match.groups;
-    const node = {id: index, label, flowRate: Number(rate)};
+    const node: Node = {
+      label,
+      flowRate: Number(rate),
+      edges: edges.split(', '),
+    };
+    if (node.flowRate > 0) {
+      functioningNodes.push(node);
+    }
     if (node.label === 'AA') {
       start = node;
     }
-    nodes.push(node);
-    edgesById[index] = edges.split(', ');
+    nodes[label] = node;
   });
 
   if (!start) {
     throw new Error('Starting node could not be found');
   }
-  const edges: number[][] = edgesById.map((edgesFrom) => edgesFrom.map((label) => nodes.find((n) => n.label === label)!.id));
-  return { start, nodes, edges };
+  return { start, nodes, functioningNodes, costCache: {} };
 }
 
 export function releasePressure(graph: Graph, time: number): number {
   let releasedPressure = 0;
-  let current = graph.start;
-  let candidates: Node[] = graph.nodes.filter((n) => n.flowRate > 0);
-  while (time > 0 && candidates.length > 0) {
-    const candidatesWithScore = candidates
-      .map((node) => [node, costToOpenValve(graph, current, node)] as [Node, number])
-      .filter(([_, cost]) => cost < time)
-      .map(([node, cost]) => [node, cost, (time - cost) * node.flowRate] as [Node, number, number]);
-    if (candidatesWithScore.length === 0) {
-      break;
+  for (const route of collectPossiblePaths(graph, time)) {
+    let routePressure = 0;
+    let timeLeft = time;
+    let current = graph.start;
+    while (route.length > 0 && timeLeft > 0) {
+      const next = route.shift()!;
+      const cost = costToOpenValve(graph, current, next);
+      timeLeft = timeLeft - cost;
+      if (timeLeft < 0) {
+        break;
+      }
+      current = next;
+      routePressure += timeLeft * current.flowRate;
     }
-    candidatesWithScore.sort((candidate1, candidate2) => {
-      const [, cost1, pressure1] = candidate1;
-      const [, cost2, pressure2] = candidate2;
-      const efficiency1 = pressure1 / cost1;
-      const efficiency2 = pressure2 / cost2;
-      return efficiency2 - efficiency1;
-    });
-    const [next, cost, pressure] = candidatesWithScore[0];
-    current = next;
-    time = time - cost;
-    releasedPressure += pressure;
-    candidates = candidates.filter((c) => c.label !== next.label);
+    releasedPressure = Math.max(releasedPressure, routePressure);
   }
   return releasedPressure;
 }
 
+export function collectPossiblePaths(graph: Graph, time: number): Node[][] {
+  const paths: Node[][] = [];
+  let openPaths: PathCandidate[] = [{
+    nodes: [graph.start],
+    remainingNodes: graph.functioningNodes.filter((n) => costToOpenValve(graph, graph.start, n) < time),
+    totalCost: 0,
+  }]
+  while (openPaths.length > 0) {
+    const { nodes, remainingNodes, totalCost } = openPaths.shift()!;
+    const current = nodes[nodes.length - 1];
+    if (remainingNodes.length === 0) {
+      paths.push(nodes);
+      continue;
+    }
+    let continued = false;
+    for (const next of remainingNodes) {
+      const cost = costToOpenValve(graph, current, next);
+      if (totalCost + cost < time) {
+        openPaths.push({
+          nodes: [...nodes, next],
+          remainingNodes: remainingNodes.filter((n) => n !== next),
+          totalCost: totalCost + cost,
+        });
+        continued = true;
+      }
+    }
+    if (!continued) {
+      paths.push(nodes);
+    }
+  }
+  return paths.map((p) => p.slice(1));
+}
+
+interface PathCandidate {
+  nodes: Node[];
+  remainingNodes: Node[];
+  totalCost: number;
+}
+
 function costToOpenValve(graph: Graph, from: Node, to: Node): number {
-  const { cost } = searchPathTo(graph, from, to);
+  let costsFrom = graph.costCache[from.label];
+  if (!costsFrom) {
+    costsFrom = {};
+    graph.costCache[from.label] = costsFrom;
+  }
+  let cost = costsFrom[to.label];
+  if (!cost) {
+    cost = searchPathTo(graph, from, to).cost;
+    costsFrom[to.label] = cost;
+  }
   return cost;
 }
 
 function searchPathTo(graph: Graph, from: Node, to: Node): VisitedNode {
-  const { nodes, edges } = graph;
   const openNodes: VisitedNode[] = [];
   const visited = new Set<string>();
 
-  let finalNode: VisitedNode | undefined = undefined;
   openNodes.push({
-    node: from,
+    label: from.label,
     cost: 1,
-    predecessor: null,
+    predecessors: [],
   });
   do {
-    const node = openNodes.pop()!;
-    visited.add(node.node.label);
-    if (node.node.label === to.label) {
-      finalNode = node;
-      break;
+    const current = openNodes.pop()!;
+    const {label, cost, predecessors} = current;
+    visited.add(label);
+    if (label === to.label) {
+      return current;
     }
 
-    const neighbours = edges[node.node.id].map((i) => nodes[i]);
+    const neighbours = graph.nodes[label].edges
     for (const neighbour of neighbours) {
-      if (!visited.has(neighbour.label)) {
-        const index = openNodes.findIndex((n) => n.node.label === neighbour.label);
-        const successorNode: VisitedNode = {
-          node: neighbour,
-          cost: node.cost + 1,
-          predecessor: node,
+      if (!visited.has(neighbour)) {
+        const index = openNodes.findIndex((n) => n.label === neighbour);
+        const next: VisitedNode = {
+          label: neighbour,
+          cost: cost + 1,
+          predecessors: [...predecessors, label],
         }
         if (index === -1) {
-          openNodes.push(successorNode);
-        } else if (node.cost + 1 < openNodes[index].cost) {
-          openNodes[index] = successorNode;
+          openNodes.push(next);
+        } else if (next.cost < openNodes[index].cost) {
+          openNodes[index] = next;
         }
       }
     }
-    openNodes.sort((a, b) => a.cost - b.cost);
+    openNodes.sort((a, b) => b.cost - a.cost);
   } while (openNodes.length > 0);
 
-  if (finalNode == null) {
-    throw new Error(`No path could be found from ${from.label} to ${to.label}`);
-  }
-  return finalNode;
+  throw new Error(`No path could be found from ${from.label} to ${to.label}`);
 }
 
 interface VisitedNode {
-  node: Node;
+  label: string;
   cost: number;
-  predecessor: VisitedNode | null;
+  predecessors: string[];
 }
