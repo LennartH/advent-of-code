@@ -17,5 +17,8 @@
       "@util": ["../util/typescript/index"],
       "@util/*": ["../util/typescript/*"]
     }
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
   }
 }

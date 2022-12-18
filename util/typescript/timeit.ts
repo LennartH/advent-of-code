@@ -1,7 +1,7 @@
 export interface TimeitConfig {
-  name?: string;
   count?: number;
-  setup?: () => void;
+  beforeAll?: () => void;
+  beforeEach?: () => void;
   timer?: () => number;
   args?: unknown[];
 }
@@ -16,19 +16,34 @@ export interface TimeitResult {
 }
 
 const defaultCount = 1000000;
-const defaultSetup = () => {};
+const noopFunction = () => {};
 const defaultTimer = performance.now;
 
-export function timeit(snippet: (...args: unknown[]) => unknown, config?: TimeitConfig): TimeitResult {
-  const { name, count, setup, timer, args } = getConfig(config);
+export function timeit(snippet: Snippet, config?: TimeitConfig): TimeitResult
+export function timeit(name: string, snippet: Snippet, config?: TimeitConfig): TimeitResult
+export function timeit(nameOrSnippet: string | Snippet, snippetOrConfig?: Snippet | TimeitConfig, maybeConfig?: TimeitConfig): TimeitResult {
+  let name: string | undefined;
+  let snippet: Snippet;
+  let partialConfig: TimeitConfig | undefined;
+  if (typeof nameOrSnippet === 'string') {
+    name = nameOrSnippet;
+    snippet = snippetOrConfig as Snippet;
+    partialConfig = maybeConfig;
+  } else {
+    snippet = nameOrSnippet as Snippet;
+    partialConfig = snippetOrConfig as TimeitConfig;
+  }
+
+  const { count, beforeAll, beforeEach, timer, args } = getConfig(partialConfig);
 
   const results: number[] = [];
   let total = 0;
   let average = 0;
   let median: number;
 
-  setup();
+  beforeAll();
   for (let i = 0; i < count; i++) {
+    beforeEach();
     const start = timer();
     snippet(...args);
     const end = timer();
@@ -50,18 +65,19 @@ export function timeit(snippet: (...args: unknown[]) => unknown, config?: Timeit
   return { name, count, total, average, median };
 }
 
-type OptionalConfigProperties = 'name';
-type InternalConfig = Required<Omit<TimeitConfig, OptionalConfigProperties>> & Pick<TimeitConfig, OptionalConfigProperties>;
+type Snippet = (...args: unknown[]) => unknown;
+type InternalConfig = Required<TimeitConfig>;
 
 function getConfig(config?: TimeitConfig): InternalConfig {
   const count = config?.count || defaultCount;
-  const setup = config?.setup || defaultSetup;
+  const beforeAll = config?.beforeAll || noopFunction;
+  const beforeEach = config?.beforeEach || noopFunction;
   const timer = config?.timer || defaultTimer;
   const args = config?.args || [];
   return {
-    name: config?.name,
     count,
-    setup,
+    beforeAll,
+    beforeEach,
     timer,
     args,
   }
