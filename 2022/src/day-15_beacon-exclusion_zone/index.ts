@@ -1,4 +1,5 @@
-import { Point, splitLines } from '../../../util/util';
+import { Point } from '@util/misc';
+import { splitLines } from '@util';
 
 export interface Sensor {
   position: Point;

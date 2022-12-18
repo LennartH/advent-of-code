@@ -1,4 +1,4 @@
-import { splitLines } from '../../../util/util';
+import { splitLines } from '@util';
 
 interface SimpleNode {
   label: string;

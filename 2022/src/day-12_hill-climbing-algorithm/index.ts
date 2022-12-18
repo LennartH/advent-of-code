@@ -1,13 +1,5 @@
-import {
-  Direction,
-  directions,
-  distanceToPoint,
-  getDirectionDelta,
-  lowerCaseAlphabet,
-  Point,
-  pointAsString,
-  translate,
-} from '../../../util/util';
+import { Direction, directions, distanceToPoint, getDirectionDelta, Point, pointAsString, translate } from '@util/misc';
+import { lowerCaseAlphabet } from '@util';
 
 export interface Node {
   readonly symbol: string;
@@ -152,13 +144,13 @@ export function printRoute(grid: Grid, path: Direction[], start?: Point): string
   let current = start;
   for (const direction of path) {
     let symbol = '';
-    if (direction === Direction.Top) {
+    if (direction === Direction.Up) {
       symbol = '^';
     }
     if (direction === Direction.Right) {
       symbol = '>';
     }
-    if (direction === Direction.Bottom) {
+    if (direction === Direction.Down) {
       symbol = 'v';
     }
     if (direction === Direction.Left) {

@@ -1,5 +1,5 @@
-import { readFile, splitLines } from '../../../util/util';
 import { caveAsString, parseCave, simulateSandfall } from './index';
+import { readFile, splitLines } from '@util';
 
 describe('day-14', () => {
   describe('example input', () => {

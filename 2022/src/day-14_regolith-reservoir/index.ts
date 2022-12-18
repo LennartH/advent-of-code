@@ -1,4 +1,5 @@
-import { Point, Rect, splitLines, translate } from '../../../util/util';
+import { Point, Rect, translate } from '@util/misc';
+import { splitLines } from '@util';
 
 export enum CellType {
   Rock = '#',

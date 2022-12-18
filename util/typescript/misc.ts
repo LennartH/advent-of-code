@@ -1,43 +1,16 @@
-import * as fs from 'fs';
 
-export function readLines(path: fs.PathOrFileDescriptor, trimFileContent = true, trimLines = true): string[] {
-  return splitLines(readFile(path, false), trimFileContent, trimLines);
-}
-
-export function readFile(path: fs.PathOrFileDescriptor, trimFileContent = true): string {
-  const content = fs.readFileSync(path, 'utf-8');
-  return trimFileContent ? content.trim() : content;
-}
-
-export function splitLines(text: string, trimText = true, trimLines = true): string[] {
-  if (trimText) {
-    text = text.trim();
-  }
-  return text.split('\n').map((l) => trimLines ? l.trim() : l);
-}
-
-export function shuffle<T>(list: T[]): T[] {
-  for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [list[i], list[j]] = [list[j], list[i]];
-  }
-  return list;
-}
-
-export const lowerCaseAlphabet = 'abcdefghijklmnopqrstuvwxyz';
-export const upperCaseAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 export enum Direction {
-  Top = 'T',
+  Up = 'U',
   Right = 'R',
-  Bottom = 'B',
+  Down = 'D',
   Left = 'L',
 }
-export const directions = [Direction.Top, Direction.Right, Direction.Bottom, Direction.Left] as const;
+export const directions = [Direction.Up, Direction.Right, Direction.Down, Direction.Left] as const;
 const directionDelta: Record<Direction, { deltaX: number, deltaY: number }> = {
-  [Direction.Top]: { deltaX: 0, deltaY: -1 },
+  [Direction.Up]: { deltaX: 0, deltaY: -1 },
   [Direction.Right]: { deltaX: 1, deltaY: 0 },
-  [Direction.Bottom]: { deltaX: 0, deltaY: 1 },
+  [Direction.Down]: { deltaX: 0, deltaY: 1 },
   [Direction.Left]: { deltaX: -1, deltaY: 0 },
 };
 
@@ -48,6 +21,11 @@ export function getDirectionDelta(direction: Direction): {deltaX: number, deltaY
 export interface Point {
   x: number;
   y: number;
+}
+
+export interface Size {
+  width: number;
+  height: number;
 }
 
 export type PointLike = Point | {deltaX: number, deltaY: number} | {dx: number, dy: number} | [number, number];
@@ -88,7 +66,7 @@ export function directionToPoint(from: Point, to: Point): Direction {
     return vector.x < 0 ? Direction.Left : Direction.Right;
   }
   if (vector.x === 0) {
-    return vector.y < 0 ? Direction.Top : Direction.Bottom;
+    return vector.y < 0 ? Direction.Up : Direction.Down;
   }
   throw new Error(`No straight line from ${pointAsString(from, true)} to ${pointAsString(to, true)}`);
 }
@@ -131,24 +109,33 @@ export function containsPoint(rect: RectLike, point: Point): boolean {
   return x >= rectMinX && x < rectMaxX && y >= rectMinY && y < rectMaxY;
 }
 
-export function* allPermutations<T>(list: T[]): Generator<T[]> {
-  const length = list.length;
-  const c = new Array(length).fill(0);
-  let i = 1, k, p;
+export function overlap(a: RectLike, b: RectLike): boolean {
+  const { x: aX1, y: aY1, width: aWidth, height: aHeight } = asRect(a);
+  const aX2 = aX1 + aWidth - 1;
+  const aY2 = aY1 + aHeight - 1;
+  const { x: bX1, y: bY1, width: bWidth, height: bHeight } = asRect(b);
+  const bX2 = bX1 + bWidth - 1;
+  const bY2 = bY1 + bHeight - 1;
 
-  yield list.slice();
-  while (i < length) {
-    if (c[i] < i) {
-      k = i % 2 && c[i];
-      p = list[i];
-      list[i] = list[k];
-      list[k] = p;
-      ++c[i];
-      i = 1;
-      yield list.slice();
-    } else {
-      c[i] = 0;
-      ++i;
+  return aX1 < bX2 && aX2 >= bX1
+      && aY1 < bY2 && aY2 >= bY1;
+}
+
+function asRect(rect: RectLike): Rect {
+  let x = 0;
+  let y = 0;
+  let width: number;
+  let height: number;
+  if (Array.isArray(rect)) {
+    width = rect[0].length;
+    height = rect.length;
+  } else {
+    ({ width, height } = rect);
+    if ('x' in rect && 'y' in rect) {
+      x = rect.x;
+      y = rect.y;
     }
   }
+  return { x, y, width, height };
 }
+

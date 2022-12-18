@@ -1,4 +1,4 @@
-import { splitLines } from '../../../util/util';
+import { splitLines } from '@util';
 
 export type Packet = (number | Packet)[];
 export type PacketPair = [Packet, Packet];

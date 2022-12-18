@@ -1,5 +1,5 @@
 import { Game, Monkey, parseMonkeys } from './index';
-import { readFile } from '../../../util/util';
+import { readFile } from '@util';
 
 describe('day 11', () => {
   describe('example input', () => {
