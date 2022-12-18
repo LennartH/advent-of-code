@@ -11,7 +11,7 @@
     /* Modules */
     "module": "commonjs",                                /* Specify what module code is generated. */
     "moduleResolution": "node",
-//    "resolveJsonModule": true,                           /* Enable importing .json files. */
+    "resolveJsonModule": true,                           /* Enable importing .json files. */
 
     /* Emit */
     "declaration": true,                                 /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
@@ -25,12 +25,12 @@
     /* Type Checking */
     "strict": true,                                      /* Enable all strict type-checking options. */
     "noImplicitAny": true,                               /* Enable error reporting for expressions and declarations with an implied 'any' type. */
-//    "strictPropertyInitialization": true,                /* Check for class properties that are declared but not set in the constructor. */
+//    "strictPropertyInitialization": false,                /* Check for class properties that are declared but not set in the constructor. */
     "useUnknownInCatchVariables": true,                  /* Default catch clause variables as 'unknown' instead of 'any'. */
     "noImplicitReturns": true,                           /* Enable error reporting for codepaths that do not explicitly return in a function. */
     "noFallthroughCasesInSwitch": true,                  /* Enable error reporting for fallthrough cases in switch statements. */
 
     /* Completeness */
-    "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
+    "skipLibCheck": true,                                /* Skip type checking all .d.ts files. */
   }
 }

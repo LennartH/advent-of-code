@@ -1,5 +1,5 @@
-import { readFile, splitLines } from '../../../util/util';
 import { countExclusionSizeInRow, findDistressTuningFrequency, parseSensors } from './index';
+import { readFile } from '@util';
 
 describe('day-15', () => {
   describe('example input', () => {

@@ -1,12 +1,13 @@
-import { Direction, readLines, splitLines } from '../../../util/util';
+import { Direction } from '@util/misc';
 import {
   findShortestPath,
   findShortestPathFromLowestElevation,
   getEdges,
   gridAsString,
   printRoute,
-  readGrid,
+  readGrid
 } from './index';
+import { readLines, splitLines } from '@util';
 
 describe('day 12', () => {
   describe('example input', () => {
@@ -58,7 +59,7 @@ describe('day 12', () => {
       });
       test('can go down anytime', () => {
         const edgesOfHighestPoint = edges[1][1];
-        expect(edgesOfHighestPoint).toEqual([Direction.Top, Direction.Left]);
+        expect(edgesOfHighestPoint).toEqual([Direction.Up, Direction.Left]);
       });
     });
   });

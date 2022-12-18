@@ -1,5 +1,6 @@
 import { countValueIncrements } from './index';
-import { readLines, splitLines } from '../../../util/util';
+import { readLines } from '../../../util/typescript/io';
+import { splitLines } from '../../../util/typescript/string';
 
 describe('day 1', () => {
   describe('example input', () => {

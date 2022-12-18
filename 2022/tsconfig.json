@@ -1,14 +1,21 @@
 {
   "extends": "../tsconfig.base.json",
   "include": [
-    "../util/*.ts",
-    "src/**/*",
+    "../util/typescript/**/*.ts",
+    "src/**/*"
   ],
   "exclude": [
+    "node_modules",
     "dist"
   ],
   "compilerOptions": {
-    "rootDirs": ["./src", "../util"],  /* Specify 'virtual' directories acting as single root. */
-    "outDir": "./dist",                /* Specify an output folder for all emitted files. */
+    "rootDirs": ["./src", "../util"],
+    "outDir": "./dist",
+
+    "baseUrl": ".",
+    "paths": {
+      "@util": ["../util/typescript/index"],
+      "@util/*": ["../util/typescript/*"]
+    }
   }
 }

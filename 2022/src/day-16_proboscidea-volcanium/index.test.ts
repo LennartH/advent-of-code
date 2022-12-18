@@ -1,7 +1,8 @@
-import { readFile } from '../../../util/util';
 import { parseGraph, releasePressure } from './index';
+import { readFile } from '@util';
 
 describe('day-16', () => {
+
   describe('example input', () => {
     const input = `
       Valve AA has flow rate=0; tunnels lead to valves DD, II, BB

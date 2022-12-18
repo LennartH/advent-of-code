@@ -1,4 +1,4 @@
-import { splitLines } from '../../../util/util';
+import { splitLines } from '@util';
 
 export function parseMonkeys(input: string): Monkey[] {
   const monkeyInputs = input.trim().split(/\n\s*\n/);

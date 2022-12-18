@@ -1,5 +1,5 @@
 import { calculateDecoderKey, calculateOrderliness, isInOrder, orderPackets, PacketPair, parsePackets } from './index';
-import { readFile, splitLines } from '../../../util/util';
+import { readFile, splitLines } from '@util';
 
 describe('day-13', () => {
   describe('example input', () => {
