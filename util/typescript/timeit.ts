@@ -15,6 +15,8 @@ export interface TimeitResult {
   median: number;
 }
 
+// TODO Format Result
+
 const defaultCount = 1000000;
 const noopFunction = () => {};
 const defaultTimer = performance.now;

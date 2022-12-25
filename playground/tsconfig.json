@@ -1,7 +1,7 @@
 {
   "extends": "../tsconfig.base.json",
   "include": [
-    "../util/typescript/**/*.ts",
+    "../util/typescript/**/*",
     "src/**/*"
   ],
   "exclude": [
