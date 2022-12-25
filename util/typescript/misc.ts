@@ -1,5 +1,3 @@
-
-
 export enum Direction {
   Up = 'U',
   Right = 'R',

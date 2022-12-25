@@ -13,7 +13,7 @@ const jestConfig: JestConfigWithTsJest = {
   clearMocks: true,
   collectCoverage: false,
 
-  roots: ['<rootDir>'],
+  roots: compilerOptions.rootDirs,
   modulePaths: [compilerOptions.baseUrl],
   moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, { prefix: '<rootDir>/' }),
 };
