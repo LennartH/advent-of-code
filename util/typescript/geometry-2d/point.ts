@@ -88,22 +88,26 @@ export class Point2D {
   }
 }
 
-function asPlainPoint(valueOrDataOrX?: number | PointLike, yValue?: number): { x: number, y: number } {
-  if (valueOrDataOrX instanceof Point2D) {
-    return valueOrDataOrX;
+export function asPlainPoint(scalar: number): { x: number, y: number }
+export function asPlainPoint(x: number, y: number): { x: number, y: number }
+export function asPlainPoint(data: PointLike): { x: number, y: number }
+export function asPlainPoint(scalarOrDataOrX?: number | PointLike, yValue?: number): { x: number, y: number }
+export function asPlainPoint(scalarOrDataOrX?: number | PointLike, yValue?: number): { x: number, y: number } {
+  if (scalarOrDataOrX instanceof Point2D) {
+    return scalarOrDataOrX;
   }
 
   let x: number;
   let y: number;
-  if (typeof valueOrDataOrX === 'number') {
-    x = valueOrDataOrX;
+  if (typeof scalarOrDataOrX === 'number') {
+    x = scalarOrDataOrX;
     if (yValue !== undefined) {
       y = yValue;
     } else {
-      y = valueOrDataOrX;
+      y = scalarOrDataOrX;
     }
   } else {
-    const data = valueOrDataOrX as PointLike;
+    const data = scalarOrDataOrX as PointLike;
     if (Array.isArray(data)) {
       x = data[0];
       y = data[1];
