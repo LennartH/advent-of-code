@@ -226,6 +226,13 @@ describe('format grid', () => {
     `))
   })
 
+  test('of empty grid', () => {
+    expect(formatGrid([])).toEqual('');
+  })
+  test('of grid with single empty row', () => {
+    expect(formatGrid([[]])).toEqual('');
+  })
+
   function cleanExpectedString(expected: string): string {
     return expected.trim().split('\n').map((l) => l.trim()).join('\n');
   }
