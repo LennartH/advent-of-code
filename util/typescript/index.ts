@@ -4,3 +4,5 @@ export * from './number';
 export * from './string';
 export * from './timeit';
 export * from './geometry-2d';
+
+// TODO Logger

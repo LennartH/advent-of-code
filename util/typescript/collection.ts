@@ -31,7 +31,7 @@ export function* allPermutations<T>(list: T[]): Generator<T[]> {
 }
 
 export interface GridFormat<V> {
-  valueFormatter?: (v: V) => string;
+  valueFormatter?: (v: V, x: number, y: number) => string;
 
   rowPrefix?: string;
   rowSuffix?: string;
@@ -46,6 +46,9 @@ export interface GridFormat<V> {
 
 export function formatGrid<V>(grid: V[][] | Grid<V>, format?: GridFormat<V>): string {
   const _grid = Array.isArray(grid) ? new ArrayGrid(grid) : grid;
+  if (_grid.height === 0) {
+    return '';
+  }
 
   format ||= {};
   const valueFormatter = format.valueFormatter || ((v) => `${v}`);
@@ -56,7 +59,7 @@ export function formatGrid<V>(grid: V[][] | Grid<V>, format?: GridFormat<V>): st
   for (let y = 0; y < _grid.height; y++) {
     const lineSymbols: string[] = [];
     for (let x = 0; x < _grid.width; x++) {
-      lineSymbols.push(valueFormatter(_grid.get(x, y)));
+      lineSymbols.push(valueFormatter(_grid.get(x, y), x, y));
     }
     const line = lineSymbols.join(columnSeparator);
     lines.push(line);

@@ -1,4 +1,5 @@
-import { createCaveChamber, processFallingRocks } from './index';
+import { chamberAsString, createCaveChamber, processFallingRocks } from './index';
+import { readFile } from '@util';
 
 describe('Day 17', () => {
   describe('example input', () => {
@@ -15,8 +16,10 @@ describe('Day 17', () => {
   });
   describe('solution is', () => {
     const inputPath = `${__dirname}/input`;
-    test('? for part 1', () => {
-      throw new Error('Not implemented')
+    test('3191 for part 1', () => {
+      const chamber = createCaveChamber(readFile(inputPath));
+      processFallingRocks(chamber, 2022);
+      expect(chamber.stoppedRocksHeight).toEqual(3191);
     });
     test.skip('? for part 2', () => {
       throw new Error('Not implemented')
@@ -24,10 +27,53 @@ describe('Day 17', () => {
   });
 
   // region Tests for smaller parts
-  test('height is 7 for example after 4 rocks', () => {
+  describe('chamber after 3 rocks', () => {
     const chamber = createCaveChamber('>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>');
-    processFallingRocks(chamber, 4);
-    expect(chamber.stoppedRocksHeight).toEqual(7);
+    processFallingRocks(chamber, 3);
+
+    test('looks correct', () => {
+      expect(chamberAsString(chamber)).toEqual(`
+        |..#....|
+        |..#....|
+        |####...|
+        |..###..|
+        |...#...|
+        |..####.|
+        +-------+
+      `.trim().split('\n').map((l) => l.trim()).join('\n'));
+    })
+    test('has height of 6', () => {
+      expect(chamber.stoppedRocksHeight).toEqual(6);
+    })
+  })
+  describe('chamber after 10 rocks', () => {
+    const chamber = createCaveChamber('>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>');
+    processFallingRocks(chamber, 10);
+    test('looks correct', () => {
+      expect(chamberAsString(chamber)).toEqual(`
+        |....#..|
+        |....#..|
+        |....##.|
+        |##..##.|
+        |######.|
+        |.###...|
+        |..#....|
+        |.####..|
+        |....##.|
+        |....##.|
+        |....#..|
+        |..#.#..|
+        |..#.#..|
+        |#####..|
+        |..###..|
+        |...#...|
+        |..####.|
+        +-------+
+      `.trim().split('\n').map((l) => l.trim()).join('\n'));
+    })
+    test('has height of 17', () => {
+      expect(chamber.stoppedRocksHeight).toEqual(17);
+    })
   })
   // endregion
 });

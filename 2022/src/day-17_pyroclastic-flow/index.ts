@@ -1,58 +1,69 @@
-import { Direction, getDirectionDelta, overlap, Point, Rect, Size } from '@util/misc';
+import { Direction, getDirectionDelta, Point } from '@util/misc';
+import { formatGrid, Point2D } from '@util';
 
 export interface CaveChamber {
   width: number;
   jetPattern: (Direction.Left | Direction.Right)[];
-  rockPattern: RockShape[];
-  rockSpawner: Point;
+  rockPattern: RockType[];
+  rockSpawnOffset: Point;
 
   stoppedRocksHeight: number;
-  stoppedRocks: Rock[];
+  grid: boolean[][];
 }
 
-export enum RockShape {
+export enum RockType {
   Bar = '_',
   Cross = '+',
   Elbow = 'e',
   Pillar = '|',
   Box = 'o',
 }
-const shapeSprite: Record<RockShape, boolean[][]> = {
-  [RockShape.Bar]: [
-    [true, true, true, true],
-  ],
-  [RockShape.Cross]: [
-    [false, true, false],
-    [ true, true, true],
-    [false, true, false],
-  ],
-  [RockShape.Elbow]: [
-    [false, false, true],
-    [false, false, true],
-    [ true,  true, true],
-  ],
-  [RockShape.Pillar]: [
-    [true],
-    [true],
-    [true],
-    [true],
-  ],
-  [RockShape.Box]: [
-    [true, true],
-    [true, true],
-  ],
-}
-const shapeSize: Record<RockShape, Size> = {
-  [RockShape.Bar]: { width: 4, height: 1},
-  [RockShape.Cross]: { width: 3, height: 3 },
-  [RockShape.Elbow]: { width: 3, height: 3 },
-  [RockShape.Pillar]: { width: 1, height: 4 },
-  [RockShape.Box]: { width: 2, height: 2 },
-}
 
-export interface Rock {
-  boundingBox: Rect;
-  shape: RockShape;
+export class Rock {
+
+  readonly type: RockType;
+  readonly position: Point2D;
+  readonly sprite: boolean[][];
+  readonly size: {width: number, height: number};
+
+  get topLeft(): Point2D {
+    return this.position.clone();
+  }
+
+  get bottomRight(): Point2D {
+    return this.position.clone().translateBy(this.size.width - 1, this.size.height - 1);
+  }
+
+  constructor(type: RockType, position: Point2D) {
+    this.type = type;
+    this.position = position;
+    if (type === RockType.Bar) {
+      this.sprite = [[true, true, true, true]];
+      this.size = { width: 4, height: 1};
+    } else if (type === RockType.Cross) {
+      this.sprite = [
+        [false, true, false],
+        [ true, true, true],
+        [false, true, false],
+      ];
+      this.size = { width: 3, height: 3};
+    } else if (type === RockType.Elbow) {
+      this.sprite = [
+        [false, false, true],
+        [false, false, true],
+        [ true,  true, true],
+      ];
+      this.size = { width: 3, height: 3};
+    } else if (type === RockType.Pillar) {
+      this.sprite = [[true], [true], [true], [true]];
+      this.size = { width: 1, height: 4};
+    } else if (type === RockType.Box) {
+      this.sprite = [[true, true], [true, true]];
+      this.size = { width: 2, height: 2};
+    } else {
+      throw new Error(`Unknown rock type ${type}`);
+    }
+  }
 }
 
 export function createCaveChamber(input: string): CaveChamber {
@@ -65,78 +76,155 @@ export function createCaveChamber(input: string): CaveChamber {
   return {
     width: 7,
     jetPattern,
-    rockPattern: [RockShape.Bar, RockShape.Cross, RockShape.Elbow, RockShape.Pillar, RockShape.Box],
-    rockSpawner: {x: 2, y: -3},
+    rockPattern: [RockType.Bar, RockType.Cross, RockType.Elbow, RockType.Pillar, RockType.Box],
+    rockSpawnOffset: {x: 2, y: -3},
     stoppedRocksHeight: 0,
-    stoppedRocks: [],
+    grid: [],
   }
 }
 
 export function processFallingRocks(chamber: CaveChamber, amount: number) {
-  const { width, jetPattern, rockPattern } = chamber;
+  const { jetPattern, rockPattern } = chamber;
 
   let step = 0;
   for (let i = 0; i < amount; i++) {
-    console.log(`Rock ${i+1}/${amount}`)
-    const shape = rockPattern[i % rockPattern.length];
-    const fallingRock = initializeRock(chamber, shape);
+    // console.log(`Rock ${i+1}/${amount} Step ${step}`);
+    const fallingRock = spawnRock(chamber, rockPattern[i % rockPattern.length]);
+    // console.log(chamberAsString(chamber, fallingRock) + '\n');
+
     let isFalling = true;
     while (isFalling) {
       const jetDirection = jetPattern[step % jetPattern.length];
       step++;
 
-      let nextX = fallingRock.boundingBox.x + getDirectionDelta(jetDirection).deltaX;
-      if (nextX >= 0 && nextX + fallingRock.boundingBox.width - 1 < width) {
-        fallingRock.boundingBox.x = nextX;
+      if (canShift(chamber, fallingRock, jetDirection)) {
+        fallingRock.position.x += getDirectionDelta(jetDirection).deltaX;
       }
-      const hasContact = (chamber.stoppedRocks.length === 0 || fallingRock.boundingBox.y + fallingRock.boundingBox.height - 1 >= chamber.stoppedRocks[0].boundingBox.y) && rockHasContact(chamber, fallingRock);
-      if (hasContact) {
-        chamber.stoppedRocks.unshift(fallingRock);
-        chamber.stoppedRocks.sort((a, b) => a.boundingBox.y - b.boundingBox.y);
-        chamber.stoppedRocksHeight = Math.max(chamber.stoppedRocksHeight, -1 * fallingRock.boundingBox.y);
-        isFalling = false;
-      } else {
-        fallingRock.boundingBox.y++;
+      isFalling = canFall(chamber, fallingRock);
+      if (isFalling) {
+        fallingRock.position.y++;
       }
     }
+    stopRock(chamber, fallingRock);
   }
 }
 
-function initializeRock(chamber: CaveChamber, shape: RockShape): Rock {
-  const { rockSpawner, stoppedRocksHeight } = chamber;
-  const size = shapeSize[shape];
-  return {
-    boundingBox: {
-      x: rockSpawner.x,
-      y: -stoppedRocksHeight - size.height + rockSpawner.y,
-      ...size,
-    },
-    shape,
+function canShift(chamber: CaveChamber, rock: Rock, direction: Direction.Left | Direction.Right): boolean {
+  const grid = chamber.grid;
+  const { position, size: { width, height }, sprite } = rock;
+  const deltaX = getDirectionDelta(direction).deltaX;
+  if (position.x + deltaX < 0 || position.x + deltaX + width > chamber.width) {
+    return false;
   }
+
+  for (let y = height - 1; y >= 0; y--) {
+    const caveY = position.y + y;
+    const row = grid[caveY];
+    if (!row) {
+      continue; // TODO Break instead?
+    }
+
+    for (let x = 0; x < width; x++) {
+      if (!sprite[y][x]) {
+        continue;
+      }
+      const caveX = position.x + x + deltaX;
+      if (row[caveX]) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
-function rockHasContact(chamber: CaveChamber, rock: Rock): boolean {
-  const sprite = shapeSprite[rock.shape];
-  const nextBoundingBox = { ...rock.boundingBox, y: rock.boundingBox.y + 1 };
-  if (nextBoundingBox.y + nextBoundingBox.height > 0) {
-    return true;
+function canFall(chamber: CaveChamber, rock: Rock): boolean {
+  const grid = chamber.grid;
+  const { position, size: { width, height }, sprite } = rock;
+  if (position.y + height >= grid.length) {
+    return false;
   }
-  for (const other of chamber.stoppedRocks) {
-    if (!overlap(nextBoundingBox, other.boundingBox)) {
-      continue;
+
+  for (let y = height - 1; y >= 0; y--) {
+    const caveY = position.y + y + 1;
+    const row = grid[caveY];
+    if (!row) {
+      continue; // TODO Break instead?
     }
-    const otherSprite = shapeSprite[other.shape];
-    for (let y = nextBoundingBox.y + nextBoundingBox.height - 1; y > nextBoundingBox.y; y--) {
-      for (let x = nextBoundingBox.x; x < nextBoundingBox.x + nextBoundingBox.width; x++) {
-        const localX = x - nextBoundingBox.x;
-        const localY = y - nextBoundingBox.y;
-        const otherX = x - other.boundingBox.x;
-        const otherY = y - other.boundingBox.y;
-        if (sprite[localY][localX] && otherSprite[otherY]?.[otherX]) {
-          return true;
+
+    for (let x = 0; x < width; x++) {
+      if (!sprite[y][x]) {
+        continue;
+      }
+      const caveX = position.x + x;
+      if (row[caveX]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function spawnRock(chamber: CaveChamber, type: RockType): Rock {
+  const { rockSpawnOffset } = chamber;
+  const rock = new Rock(type, new Point2D(rockSpawnOffset));
+  rock.position.y -= rock.size.height;
+  return rock;
+}
+
+function stopRock(chamber: CaveChamber, rock: Rock) {
+  const { position: { x: rockX, y: rockY }, size: { width, height }, sprite } = rock;
+  for (let y = rockY + height - 1; y >= rockY; y--) {
+    const row: boolean[] = y >= 0 ? chamber.grid[y] : new Array(chamber.width);
+    for (let x = 0; x < width; x++) {
+      if (sprite[y - rockY][x]) {
+        row[x + rockX] = true;
+      }
+    }
+    if (y < 0) {
+      chamber.grid.unshift(row);
+    }
+  }
+
+  // TODO Update rock height
+  chamber.stoppedRocksHeight = chamber.grid.length;
+  // TODO Reduce cave grid
+}
+
+export function chamberAsString(chamber: CaveChamber, fallingRock?: Rock): string {
+  let result = formatGrid(chamber.grid, {
+    valueFormatter: (isRock, x, y) => {
+      if (fallingRock) {
+        const { position: { x: leftX, y: topY }, sprite } = fallingRock;
+        if (sprite[y - topY]?.[x - leftX]) {
+          return '@';
         }
       }
+      if (isRock) {
+        return '#';
+      }
+      return '.';
+    },
+    rowPrefix: '|', rowSuffix: '|',
+    columnSuffix: '-',
+    outsideCorner: '+',
+  });
+  if (fallingRock && fallingRock.position.y < 0) {
+    const aboveGrid = [];
+    for (let y = fallingRock.position.y; y < 0; y++) {
+      const row: boolean[] = new Array(chamber.width);
+      for (let x = 0; x < fallingRock.size.width; x++) {
+        if (fallingRock.sprite[y - fallingRock.position.y]?.[x]) {
+          row[x + fallingRock.position.x] = true;
+        }
+      }
+      aboveGrid.push(row);
     }
+    result = formatGrid(aboveGrid, {
+      valueFormatter: (v) => v ? '@' : '.',
+      rowPrefix: '|', rowSuffix: '|',
+      columnSuffix: result === '' ? '-' : undefined,
+      outsideCorner: result === '' ? '+' : undefined,
+    }) + (result !== '' ? '\n' + result : '');
   }
-  return false;
+  return result;
 }
