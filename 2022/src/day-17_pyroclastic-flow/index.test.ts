@@ -10,8 +10,10 @@ describe('Day 17', () => {
       processFallingRocks(chamber, 2022);
       expect(chamber.stoppedRocksHeight).toEqual(3068);
     });
-    test.skip('solution is ? for part 2', () => {
-      throw new Error('Not implemented')
+    test('solution is 1514285714288 for part 2', () => {
+      const chamber = createCaveChamber(input);
+      processFallingRocks(chamber, 1000000000000);
+      expect(chamber.stoppedRocksHeight).toEqual(1514285714288);
     });
   });
   describe('solution is', () => {
@@ -21,8 +23,10 @@ describe('Day 17', () => {
       processFallingRocks(chamber, 2022);
       expect(chamber.stoppedRocksHeight).toEqual(3191);
     });
-    test.skip('? for part 2', () => {
-      throw new Error('Not implemented')
+    test('1572093023267 for part 2', () => {
+      const chamber = createCaveChamber(readFile(inputPath));
+      processFallingRocks(chamber, 1000000000000);
+      expect(chamber.stoppedRocksHeight).toEqual(1572093023267);
     });
   });
 
@@ -73,6 +77,73 @@ describe('Day 17', () => {
     })
     test('has height of 17', () => {
       expect(chamber.stoppedRocksHeight).toEqual(17);
+    })
+  })
+  describe('chamber after 11 rocks', () => {
+    const chamber = createCaveChamber('>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>');
+    processFallingRocks(chamber, 11);
+
+    test('looks correct', () => {
+      expect(chamberAsString(chamber)).toEqual(`
+        |...####|
+        |....#..|
+        |....#..|
+        |....##.|
+        |##..##.|
+        |######.|
+        |~~~~~~~|
+      `.trim().split('\n').map((l) => l.trim()).join('\n'));
+    })
+    test('has height of 18', () => {
+      expect(chamber.stoppedRocksHeight).toEqual(18);
+    })
+  })
+  describe('chamber after 35 rocks', () => {
+    const chamber = createCaveChamber('>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>');
+    processFallingRocks(chamber, 35);
+
+    test('looks correct', () => {
+      expect(chamberAsString(chamber)).toEqual(`
+        |....#..|
+        |....#..|
+        |....#..|
+        |....#..|
+        |.##.#..|
+        |.##.#..|
+        |..###..|
+        |....#..|
+        |...###.|
+        |#...#..|
+        |#####..|
+        |#.#....|
+        |#.#....|
+        |####...|
+        |..#####|
+        |~~~~~~~|
+      `.trim().split('\n').map((l) => l.trim()).join('\n'));
+    })
+    test('has height of 60', () => {
+      expect(chamber.stoppedRocksHeight).toEqual(60);
+    })
+  })
+  describe('chamber after 100 rocks', () => {
+    const chamber = createCaveChamber('>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>');
+
+    test('looks correct', () => {
+      processFallingRocks(chamber, 100);
+      expect(chamberAsString(chamber)).toEqual(`
+        |#......|
+        |#......|
+        |#.#....|
+        |#.#....|
+        |####...|
+        |..#####|
+        |~~~~~~~|
+      `.trim().split('\n').map((l) => l.trim()).join('\n'));
+    })
+    test('has height of 157', () => {
+      processFallingRocks(chamber, 100);
+      expect(chamber.stoppedRocksHeight).toEqual(157);
     })
   })
   // endregion
