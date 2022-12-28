@@ -7,8 +7,12 @@ export interface CaveChamber {
   rockPattern: RockType[];
   rockSpawnOffset: Point;
 
+  rockCount: number;
+  jetIndex: number;
   stoppedRocksHeight: number;
   grid: boolean[][];
+  stateCache: Map<string, {rockCount: number, rockHeight: number}>[];
+  cycleFound: boolean;
 }
 
 export enum RockType {
@@ -25,14 +29,6 @@ export class Rock {
   readonly position: Point2D;
   readonly sprite: boolean[][];
   readonly size: {width: number, height: number};
-
-  get topLeft(): Point2D {
-    return this.position.clone();
-  }
-
-  get bottomRight(): Point2D {
-    return this.position.clone().translateBy(this.size.width - 1, this.size.height - 1);
-  }
 
   constructor(type: RockType, position: Point2D) {
     this.type = type;
@@ -78,24 +74,26 @@ export function createCaveChamber(input: string): CaveChamber {
     jetPattern,
     rockPattern: [RockType.Bar, RockType.Cross, RockType.Elbow, RockType.Pillar, RockType.Box],
     rockSpawnOffset: {x: 2, y: -3},
+
+    rockCount: 0,
+    jetIndex: 0,
     stoppedRocksHeight: 0,
     grid: [],
+    stateCache: [new Map()],
+    cycleFound: false,
   }
 }
 
 export function processFallingRocks(chamber: CaveChamber, amount: number) {
   const { jetPattern, rockPattern } = chamber;
 
-  let step = 0;
-  for (let i = 0; i < amount; i++) {
-    // console.log(`Rock ${i+1}/${amount} Step ${step}`);
-    const fallingRock = spawnRock(chamber, rockPattern[i % rockPattern.length]);
-    // console.log(chamberAsString(chamber, fallingRock) + '\n');
+  while (chamber.rockCount < amount) {
+    const fallingRock = spawnRock(chamber, rockPattern[chamber.rockCount % rockPattern.length]);
 
     let isFalling = true;
     while (isFalling) {
-      const jetDirection = jetPattern[step % jetPattern.length];
-      step++;
+      const jetDirection = jetPattern[chamber.jetIndex];
+      chamber.jetIndex = (chamber.jetIndex + 1) % jetPattern.length;
 
       if (canShift(chamber, fallingRock, jetDirection)) {
         fallingRock.position.x += getDirectionDelta(jetDirection).deltaX;
@@ -105,7 +103,8 @@ export function processFallingRocks(chamber: CaveChamber, amount: number) {
         fallingRock.position.y++;
       }
     }
-    stopRock(chamber, fallingRock);
+    stopRock(chamber, fallingRock, amount);
+    chamber.rockCount++;
   }
 }
 
@@ -121,7 +120,7 @@ function canShift(chamber: CaveChamber, rock: Rock, direction: Direction.Left | 
     const caveY = position.y + y;
     const row = grid[caveY];
     if (!row) {
-      continue; // TODO Break instead?
+      break;
     }
 
     for (let x = 0; x < width; x++) {
@@ -148,7 +147,7 @@ function canFall(chamber: CaveChamber, rock: Rock): boolean {
     const caveY = position.y + y + 1;
     const row = grid[caveY];
     if (!row) {
-      continue; // TODO Break instead?
+      break;
     }
 
     for (let x = 0; x < width; x++) {
@@ -171,26 +170,76 @@ function spawnRock(chamber: CaveChamber, type: RockType): Rock {
   return rock;
 }
 
-function stopRock(chamber: CaveChamber, rock: Rock) {
+function stopRock(chamber: CaveChamber, rock: Rock, targetRockCount: number) {
+  const { width: chamberWidth, rockCount, jetIndex, grid, stateCache, cycleFound } = chamber;
   const { position: { x: rockX, y: rockY }, size: { width, height }, sprite } = rock;
   for (let y = rockY + height - 1; y >= rockY; y--) {
-    const row: boolean[] = y >= 0 ? chamber.grid[y] : new Array(chamber.width);
+    const row: boolean[] = y >= 0 ? grid[y] : new Array(chamberWidth);
     for (let x = 0; x < width; x++) {
       if (sprite[y - rockY][x]) {
         row[x + rockX] = true;
       }
     }
     if (y < 0) {
-      chamber.grid.unshift(row);
+      grid.unshift(row);
+      chamber.stoppedRocksHeight++;
     }
   }
 
-  // TODO Update rock height
-  chamber.stoppedRocksHeight = chamber.grid.length;
-  // TODO Reduce cave grid
+  const columnDepth: number[] = new Array(chamberWidth);
+  for (let x = 0; x < chamberWidth; x++) {
+    let hitRock = false;
+    for (let y = 0; y < grid.length; y++) {
+      if (grid[y][x]) {
+        columnDepth[x] = y;
+        hitRock = true;
+        break;
+      }
+    }
+    if (!hitRock) {
+      columnDepth[x] = grid.length - 1;
+    }
+  }
+  const maxY = columnDepth.reduce((m, v) => v > m ? v : m, 0);
+  if (maxY < grid.length - 1) {
+    grid.splice(maxY + 1);
+  }
+
+  if (cycleFound) {
+    return;
+  }
+
+  const currentState = `${rock.type}|${jetIndex}|${columnDepth.join(',')}`;
+  const cacheEntry = stateCache.find((c) => c.has(currentState))?.get(currentState);
+  if (!cacheEntry) {
+    try {
+      stateCache[stateCache.length - 1].set(currentState, {rockCount, rockHeight: chamber.stoppedRocksHeight})
+    } catch (error) {
+      if (!(error instanceof RangeError)) {
+        throw error;
+      }
+      const nextCache = new Map();
+      nextCache.set(currentState, {rockCount, rockHeight: chamber.stoppedRocksHeight});
+      stateCache.push(nextCache);
+    }
+  } else {
+    chamber.cycleFound = true;
+
+    const rocksPerCycle = rockCount - cacheEntry.rockCount;
+    const heightPerCycle = chamber.stoppedRocksHeight - cacheEntry.rockHeight;
+    const remainingRocks = targetRockCount - rockCount;
+
+    const cyclesCount = Math.floor(remainingRocks / rocksPerCycle);
+    const remainingRocksAfterCycles = remainingRocks % rocksPerCycle;
+
+    chamber.stoppedRocksHeight += heightPerCycle * cyclesCount;
+    chamber.rockCount = targetRockCount - remainingRocksAfterCycles;
+    console.log(`Cycle found, skipping from ${rockCount} to ${chamber.rockCount} rocks`);
+  }
 }
 
 export function chamberAsString(chamber: CaveChamber, fallingRock?: Rock): string {
+  const wasReduced = chamber.stoppedRocksHeight > chamber.grid.length;
   let result = formatGrid(chamber.grid, {
     valueFormatter: (isRock, x, y) => {
       if (fallingRock) {
@@ -205,8 +254,8 @@ export function chamberAsString(chamber: CaveChamber, fallingRock?: Rock): strin
       return '.';
     },
     rowPrefix: '|', rowSuffix: '|',
-    columnSuffix: '-',
-    outsideCorner: '+',
+    columnSuffix: wasReduced ? '~' : '-',
+    outsideCorner: wasReduced ? undefined : '+',
   });
   if (fallingRock && fallingRock.position.y < 0) {
     const aboveGrid = [];
