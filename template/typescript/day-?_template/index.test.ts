@@ -1,3 +1,5 @@
+import { readFile } from '@util';
+
 describe('Day ?', () => {
   describe('example input', () => {
     const input = `
@@ -13,6 +15,7 @@ describe('Day ?', () => {
   });
   describe('solution is', () => {
     const inputPath = `${__dirname}/input`;
+    const input = readFile(inputPath);
     test('? for part 1', () => {
       throw new Error('Not implemented')
     });
