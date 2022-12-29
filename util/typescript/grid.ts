@@ -76,3 +76,38 @@ export class ArrayGrid<V> extends AbstractGrid<V> {
     this.data[y][x] = value;
   }
 }
+
+export class SparseArrayGrid<V> extends AbstractGrid<V> {
+  data: V[][];
+  height: number;
+  width: number;
+
+  constructor(width: number, height: number)
+  constructor(data: V[][], width: number, height: number)
+  constructor(dataOrWidth: number | V[][], widthOrHeight: number, height?: number) {
+    super();
+    if (Array.isArray(dataOrWidth)) {
+      this.data = dataOrWidth;
+      this.width = widthOrHeight;
+      this.height = height!;
+    } else {
+      this.data = [];
+      this.width = dataOrWidth;
+      this.height = widthOrHeight;
+    }
+  }
+
+  protected _get(x: number, y: number): V {
+    return this.data[y]?.[x];
+  }
+
+  protected _set(x: number, y: number, value: V) {
+    let row = this.data[y];
+    if (!row) {
+      row = [];
+      this.data[y] = row;
+    }
+    row[x] = value;
+  }
+
+}

@@ -95,7 +95,7 @@ export function containsPoint(rect: RectLike, point: Point): boolean {
     width = rect[0].length;
     height = rect.length;
   } else {
-    ({ width, height } = rect);
+    ({ width: x, height: z } = rect);
     if ('x' in rect && 'y' in rect) {
       rectMinX = rect.x;
       rectMinY = rect.y;
@@ -128,7 +128,7 @@ function asRect(rect: RectLike): Rect {
     width = rect[0].length;
     height = rect.length;
   } else {
-    ({ width, height } = rect);
+    ({ width: x, height: z } = rect);
     if ('x' in rect && 'y' in rect) {
       x = rect.x;
       y = rect.y;
