@@ -1,5 +1,9 @@
 import { readFile } from '@util';
-import { calculateDropletSurfaceArea, parseDroplet } from './index';
+import {
+  calculateDropletSurfaceArea,
+  calculateExposedDropletSurfaceArea, dropletAsString,
+  parseDroplet
+} from './index';
 
 describe('Day 18', () => {
   describe('example input', () => {
@@ -24,8 +28,11 @@ describe('Day 18', () => {
       const surfaceArea = calculateDropletSurfaceArea(droplet);
       expect(surfaceArea).toEqual(64);
     });
-    test.skip('solution is ? for part 2', () => {
-      throw new Error('Not implemented')
+    test('solution is 58 for part 2', () => {
+      const droplet = parseDroplet(input);
+      const surfaceArea = calculateExposedDropletSurfaceArea(droplet);
+      dropletAsString(droplet).forEach((s) => console.log(s));
+      expect(surfaceArea).toEqual(58);
     });
   });
   describe('solution is', () => {
@@ -35,28 +42,13 @@ describe('Day 18', () => {
       const droplet = parseDroplet(input);
       const surfaceArea = calculateDropletSurfaceArea(droplet);
       expect(surfaceArea).toEqual(3432);
+
+      dropletAsString(droplet).forEach((s) => console.log(s));
     });
-    test.skip('? for part 2', () => {
-      throw new Error('Not implemented')
+    test('2042 for part 2', () => {
+      const droplet = parseDroplet(input);
+      const surfaceArea = calculateExposedDropletSurfaceArea(droplet);
+      expect(surfaceArea).toEqual(2042);
     });
   });
-
-  // region Tests for smaller parts
-  describe('test', () => {
-    test('parse droplet with 2 voxel', () => {
-      const input = '1,1,1\n2,1,1';
-      const droplet = parseDroplet(input);
-      expect(droplet).toEqual({
-        voxel: [{x: 1, y: 1, z: 1}, {x: 2, y: 1, z: 1}],
-        isOccupied: [, [, [, true, true] ] ]
-      })
-    })
-    test('droplet with 2 voxel has a surface area of 10', () => {
-      const input = '1,1,1\n2,1,1';
-      const droplet = parseDroplet(input);
-      const surfaceArea = calculateDropletSurfaceArea(droplet);
-      expect(surfaceArea).toEqual(10);
-    })
-  })
-  // endregion
 });
