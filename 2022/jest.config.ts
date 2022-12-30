@@ -12,6 +12,7 @@ const jestConfig: JestConfigWithTsJest = {
   preset: 'ts-jest',
   clearMocks: true,
   collectCoverage: false,
+  setupFilesAfterEnv: ['./test-setup.js'],
 
   roots: ['<rootDir>'],
   modulePaths: [compilerOptions.baseUrl],
