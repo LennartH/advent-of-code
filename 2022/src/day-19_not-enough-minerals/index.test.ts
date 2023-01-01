@@ -24,16 +24,30 @@ describe('Day 19', () => {
       expect(factory).toEqual({
         blueprints: [
           {
-            ore: { ore: 4 },
-            clay: { ore: 2 },
-            obsidian: { ore: 3, clay: 14 },
-            geode: { ore: 2, obsidian: 7 },
+            recipes: {
+              ore: { ore: 4 },
+              clay: { ore: 2 },
+              obsidian: { ore: 3, clay: 14 },
+              geode: { ore: 2, obsidian: 7 },
+            },
+            limits: {
+              ore: 4,
+              clay: 14,
+              obsidian: 7,
+            }
           },
           {
-            ore: { ore: 2 },
-            clay: { ore: 3 },
-            obsidian: { ore: 3, clay: 8 },
-            geode: { ore: 3, obsidian: 12 },
+            recipes: {
+              ore: { ore: 2 },
+              clay: { ore: 3 },
+              obsidian: { ore: 3, clay: 8 },
+              geode: { ore: 3, obsidian: 12 },
+            },
+            limits: {
+              ore: 3,
+              clay: 8,
+              obsidian: 12,
+            }
           },
         ],
       })
@@ -56,7 +70,7 @@ describe('Day 19', () => {
     test('? for part 1', () => {
       const factory = parseRobotFactory(input);
       const quality = calculateFactoryQuality(factory, 24);
-      expect(quality.total).toEqual(33);
+      expect(quality.total).toEqual(33);  // 2084
     });
     test.skip('? for part 2', () => {
       throw new Error('Not implemented')
