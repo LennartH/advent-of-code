@@ -1,5 +1,5 @@
 import { readFile } from '@util';
-import { parseEquations, solveEquations } from './index';
+import { parseEquations, solveEquality, solveEquations } from './index';
 
 describe('Day 21', () => {
   describe('example input', () => {
@@ -26,9 +26,41 @@ describe('Day 21', () => {
       const result = solveEquations(equations);
       expect(result).toEqual(152);
     });
-    test.skip('solution is ? for part 2', () => {
-      throw new Error('Not implemented')
+    test('solution is 301 for part 2', () => {
+      const equations = parseEquations(input);
+      const result = solveEquality(equations);
+      expect(result).toEqual(301);
     });
+    describe('operand order matters', () => {
+      test('swap subtraction order', () => {
+        const equations = parseEquations(input);
+        const equation = equations.openEquations.find((e) => e.name === 'ptdq')!;
+        equation.variables = [equation.variables[1], equation.variables[0]];
+        const result = solveEquality(equations);
+        expect(result).toEqual(-295);
+      })
+      test('swap addition order', () => {
+        const equations = parseEquations(input);
+        const equation = equations.openEquations.find((e) => e.name === 'cczh')!;
+        equation.variables = [equation.variables[1], equation.variables[0]];
+        const result = solveEquality(equations);
+        expect(result).toEqual(301);
+      })
+      test('swap multiplication order', () => {
+        const equations = parseEquations(input);
+        const equation = equations.openEquations.find((e) => e.name === 'lgvd')!;
+        equation.variables = [equation.variables[1], equation.variables[0]];
+        const result = solveEquality(equations);
+        expect(result).toEqual(301);
+      })
+      test('swap division order', () => {
+        const equations = parseEquations(input);
+        const equation = equations.openEquations.find((e) => e.name === 'pppw')!;
+        equation.variables = [equation.variables[1], equation.variables[0]];
+        const result = solveEquality(equations);
+        expect(result).toEqual(1 + (1/75));
+      })
+    })
   });
   describe('solution is', () => {
     const inputPath = `${__dirname}/input`;
@@ -38,8 +70,10 @@ describe('Day 21', () => {
       const result = solveEquations(equations);
       expect(result).toEqual(169525884255464);
     });
-    test.skip('? for part 2', () => {
-      throw new Error('Not implemented')
+    test('3247317268284 for part 2', () => {
+      const equations = parseEquations(input);
+      const result = solveEquality(equations);
+      expect(result).toEqual(3247317268284);
     });
   });
 
