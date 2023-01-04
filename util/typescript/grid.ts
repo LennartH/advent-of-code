@@ -9,6 +9,9 @@ export interface Grid<V> {
 
   set(x: number, y: number, value: V): void;
   set(point: PointLike, value: V): void;
+
+  contains(x: number, y: number): boolean;
+  contains(point: PointLike): boolean;
 }
 
 export abstract class AbstractGrid<V> implements Grid<V> {
@@ -38,6 +41,13 @@ export abstract class AbstractGrid<V> implements Grid<V> {
     return this._set(x, y, v);
   }
   protected abstract _set(x: number, y: number, value: V): void;
+
+  contains(x: number, y: number): boolean
+  contains(point: PointLike): boolean
+  contains(pointOrX: PointLike | number, yValue?: number): boolean {
+    const {x, y} = asPlainPoint(pointOrX, yValue);
+    return x >= 0 && x < this.width && y >= 0 && y < this.height;
+  }
 }
 
 export class ArrayGrid<V> extends AbstractGrid<V> {
