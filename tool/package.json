@@ -1,0 +1,31 @@
+{
+  "name": "advent-of-code_tooling",
+  "version": "0.1.0",
+  "description": "Tooling to streamline solving advent of code puzzles (https://adventofcode.com)",
+  "bin": {
+    "aoc-tool": "./dist/main.js"
+  },
+  "scripts": {
+    "cli": "ts-node src/main.ts",
+    "cli:generate:help": "ts-node src/main.ts generate --help",
+    "cli:generate:day": "ts-node src/main.ts generate day",
+    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "format": "prettier --write .",
+    "test": "jest"
+  },
+  "author": "Lennart Hensler",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.1",
+    "prettier": "^3.1.0",
+    "rimraf": "^5.0.5",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^3.3.0",
+    "commander": "^11.1.0",
+    "handlebars": "^4.7.8",
+    "pino": "^8.16.2"
+  }
+}

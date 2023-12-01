@@ -1,6 +1,6 @@
 import { readFile } from '@util';
 
-describe('Day ?', () => {
+describe('Day {{day}}', () => {
   describe('example input', () => {
     const input = `
     
