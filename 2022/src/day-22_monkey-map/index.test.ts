@@ -1,5 +1,5 @@
 import { formatGrid, readFile } from '@util';
-import { followInstructions, parseTreasureMap } from './index';
+import { Direction, FaceDefinition, followInstructions, parseTreasureMap } from './index';
 
 describe('Day 22', () => {
   describe('example input', () => {
@@ -19,13 +19,76 @@ describe('Day 22', () => {
 
 10R5L5R10L4R5L5`.substring(1);
 
+    const cubeFaces: FaceDefinition[] = [
+      {
+        id: '1',
+        position: { x: 8, y: 0 },
+        size: { width: 4, height: 4 },
+        neighbours: {
+          [Direction.Left]: '3',
+          [Direction.Up]: '2',
+          [Direction.Right]: '6',
+        },
+      },
+
+      {
+        id: '2',
+        position: { x: 0, y: 4 },
+        size: { width: 4, height: 4 },
+        neighbours: {
+          [Direction.Left]: '6',
+          [Direction.Up]: '1',
+          [Direction.Down]: '5',
+        },
+      },
+      {
+        id: '3',
+        position: { x: 4, y: 4 },
+        size: { width: 4, height: 4 },
+        neighbours: {
+          [Direction.Up]: '1',
+          [Direction.Down]: '5',
+        },
+      },
+      {
+        id: '4',
+        position: { x: 8, y: 4 },
+        size: { width: 4, height: 4 },
+        neighbours: {
+          [Direction.Right]: '6',
+        },
+      },
+
+      {
+        id: '5',
+        position: { x: 8, y: 8 },
+        size: { width: 4, height: 4 },
+        neighbours: {
+          [Direction.Left]: '3',
+          [Direction.Down]: '2',
+        },
+      },
+      {
+        id: '6',
+        position: { x: 12, y: 8 },
+        size: { width: 4, height: 4 },
+        neighbours: {
+          [Direction.Up]: '4',
+          [Direction.Right]: '1',
+          [Direction.Down]: '2',
+        },
+      },
+    ]
+
     test('solution is 6032 for part 1', () => {
       const map = parseTreasureMap(input);
       const password = followInstructions(map);
       expect(password).toEqual(6032);
     });
-    test.skip('solution is ? for part 2', () => {
-      throw new Error('Not implemented')
+    test('solution is 5031 for part 2', () => {
+      const map = parseTreasureMap(input);
+      const password = followInstructions(map, cubeFaces);
+      expect(password).toEqual(5031);
     });
   });
   describe('solution is', () => {
@@ -36,8 +99,10 @@ describe('Day 22', () => {
       const password = followInstructions(map);
       expect(password).toEqual(88268);
     });
-    test.skip('? for part 2', () => {
-      throw new Error('Not implemented')
+    test('? for part 2', () => {
+      const map = parseTreasureMap(input);
+      const password = followInstructions(map, []);
+      expect(password).toEqual(5031);
     });
   });
 

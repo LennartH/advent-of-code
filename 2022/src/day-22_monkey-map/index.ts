@@ -1,5 +1,5 @@
 import { Grid, SparseArrayGrid } from '@util/grid';
-import { formatGrid, Point2D } from '@util';
+import { CardinalDirection, Direction2D, formatGrid, PlainRect, Point2D, Rect2D } from '@util';
 
 export enum CellType {
   Floor = '.',
@@ -11,17 +11,15 @@ export enum Rotation {
   Counterclockwise = 'L',
 }
 
-const directions = [
-  {dx: 1, dy: 0},  // Right
-  {dx: 0, dy: 1},  // Down
-  {dx: -1, dy: 0}, // Left
-  {dx: 0, dy: -1}, // Up
-]
-
 export interface TreasureMap {
   start: {x: number, y: number};
   grid: Grid<CellType>;
   instructions: (number | Rotation)[];
+}
+
+export interface FaceDefinition extends PlainRect {
+  id: string;
+  neighbours: Partial<Record<CardinalDirection, string>>;
 }
 
 export function parseTreasureMap(input: string): TreasureMap {
@@ -60,8 +58,13 @@ export function parseTreasureMap(input: string): TreasureMap {
   return { start, grid, instructions }
 }
 
-export function followInstructions(map: TreasureMap): number {
+const directions: Direction2D[] = [
+  Direction2D.East, Direction2D.South, Direction2D.West, Direction2D.North,
+];
+
+export function followInstructions(map: TreasureMap, faceDefinitions?: FaceDefinition[]): number {
   const { grid, instructions } = map;
+  const cubeFaces = createCubeFaces(faceDefinitions)
 
   let directionIndex = 0;
   let direction = directions[directionIndex];
@@ -130,4 +133,79 @@ export function followInstructions(map: TreasureMap): number {
   }))
 
   return ((position.y + 1) * 1000) + ((position.x + 1) * 4) + directionIndex;
+}
+
+function getNeighbour(position: Point2D, directionIndex: number, grid: Grid<CellType>, cubeFaces?: CubeFace[]): [Point2D, CellType, number] {
+  const direction = directions[directionIndex];
+  let nextPosition = position.clone().translateBy(direction);
+  let nextCell = grid.get(nextPosition);
+  if (nextCell === undefined) {
+    if (!cubeFaces) {
+      if (directionIndex === 0) { // Right
+        nextPosition.x = 0;
+      } else if (directionIndex === 1) { // Down
+        nextPosition.y = 0;
+      } else if (directionIndex === 2) { // Left
+        nextPosition.x = grid.width - 1;
+      } else { // Up
+        nextPosition.y = grid.height - 1;
+      }
+      nextCell = grid.get(nextPosition);
+      while (nextCell === undefined) {
+        nextPosition.translateBy(direction);
+        nextCell = grid.get(nextPosition);
+      }
+    } else {
+      const currentFace = cubeFaces.find((f) => f.rect.containsPoint(position))!;
+      ([ nextPosition, directionIndex ] = currentFace.moveToFace(position.clone(), directionIndex));
+      nextCell = grid.get(nextPosition);
+    }
+  }
+  return [nextPosition, nextCell, directionIndex];
+}
+
+class CubeFace {
+  id: string;
+  rect: Rect2D;
+  neighbours: [CardinalDirection, CubeFace][];
+
+  constructor(id: string, rect: PlainRect) {
+    this.id = id;
+    this.rect = new Rect2D(rect);
+    this.neighbours = [];
+  }
+
+  moveToFace(position: Point2D, directionIndex: number): [Point2D, number] {
+    const [, face] = this.neighbours.find(([, { id }]) => id === targetFace) || [];
+    if (!face) {
+      throw new Error(`Neighbour with id ${targetFace} not found`);
+    }
+    const [directionToThis] = face.neighbours.find(([, { id }]) => id === this.id) || [];
+    if (!directionToThis) {
+      throw new Error(`Neighbour does not have the current face (id ${this.id}) as neighbour`);
+    }
+    let directionToTarget = Direction2D.for(directionToThis as never).opposite().cardinal;
+
+    // TODO Transform position
+    // - Global to local face position
+    // - Local face position to target face position
+    // - Target face position to global position
+
+    return [position, directionToTarget];
+  }
+}
+
+function createCubeFaces(faceDefinitions?: FaceDefinition[]): CubeFace[] | undefined {
+  if (faceDefinitions == null) {
+    return undefined;
+  }
+  const cubeFaces = faceDefinitions.map((f) => new CubeFace(f.id, f));
+  for (const { id, neighbours } of faceDefinitions) {
+    const face = cubeFaces.find((f) => f.id === id)!;
+    for (const [direction, neighbourId] of Object.entries(neighbours)) {
+      const neighbour = cubeFaces.find((f) => f.id === neighbourId)!;
+      face.neighbours.push([direction as CardinalDirection, neighbour]);
+    }
+  }
+  return cubeFaces;
 }

@@ -1,4 +1,4 @@
 export * from './point';
-
-// TODO Size
-// TODO Direction
+export * from './size';
+export * from './rectangle';
+export * from './direction';

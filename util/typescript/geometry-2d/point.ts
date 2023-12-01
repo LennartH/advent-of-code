@@ -1,10 +1,18 @@
 import { clamp } from '../number';
+import { PlainSize } from './size';
+
+// TODO Rename to Vector2
+
+export interface PlainPoint {
+  x: number;
+  y: number;
+}
 
 export type PointLike =
-  | { x: number, y: number }
+  | PlainPoint
   | { deltaX: number, deltaY: number }
   | { dx: number, dy: number }
-  | { width: number, height: number }
+  | PlainSize
   | [ number, number ];
 
 export class Point2D {
@@ -88,11 +96,11 @@ export class Point2D {
   }
 }
 
-export function asPlainPoint(scalar: number): { x: number, y: number }
-export function asPlainPoint(x: number, y: number): { x: number, y: number }
-export function asPlainPoint(data: PointLike): { x: number, y: number }
-export function asPlainPoint(scalarOrDataOrX?: number | PointLike, yValue?: number): { x: number, y: number }
-export function asPlainPoint(scalarOrDataOrX?: number | PointLike, yValue?: number): { x: number, y: number } {
+export function asPlainPoint(scalar: number): PlainPoint
+export function asPlainPoint(x: number, y: number): PlainPoint
+export function asPlainPoint(data: PointLike): PlainPoint
+export function asPlainPoint(scalarOrDataOrX?: number | PointLike, yValue?: number): PlainPoint
+export function asPlainPoint(scalarOrDataOrX?: number | PointLike, yValue?: number): PlainPoint {
   if (scalarOrDataOrX instanceof Point2D) {
     return scalarOrDataOrX;
   }
