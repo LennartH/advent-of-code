@@ -1,10 +1,9 @@
 {
-  "name": "advent-of-code-2022",
+  "name": "advent-of-code-2023",
   "version": "0.1.0",
-  "description": "Solutions to advent of code 2022 puzzles https://adventofcode.com/2022",
+  "description": "Solutions to advent of code 2023 puzzles https://adventofcode.com/2023",
   "main": "dist/index.js",
   "scripts": {
-    "exec": "ts-node",
     "build": "rimraf dist && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "format": "prettier --write .",
     "test": "jest"
