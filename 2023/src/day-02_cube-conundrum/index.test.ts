@@ -1,5 +1,5 @@
 import { readFile } from '@util';
-import { solvePart1 } from './index';
+import { solvePart1, solvePart2 } from './index';
 
 describe('Day 2', () => {
   describe('example input', () => {
@@ -15,8 +15,9 @@ describe('Day 2', () => {
       const result = solvePart1(input);
       expect(result).toEqual(8);
     });
-    test.skip('solution is ? for part 2', () => {
-      throw new Error('Not implemented')
+    test('solution is 2286 for part 2', () => {
+      const result = solvePart2(input);
+      expect(result).toEqual(2286);
     });
   });
   describe('solution is', () => {
@@ -26,8 +27,9 @@ describe('Day 2', () => {
       const result = solvePart1(input);
       expect(result).toEqual(1853);
     });
-    test.skip('? for part 2', () => {
-      throw new Error('Not implemented')
+    test('72706 for part 2', () => {
+      const result = solvePart2(input);
+      expect(result).toEqual(72706);
     });
   });
 
