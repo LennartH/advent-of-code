@@ -26,17 +26,15 @@ export function solvePart1(input: string): number {
   return possibleGames.reduce((s, r) => s + r.id, 0);
 }
 
+export function solvePart2(input: string): number {
+  const lines = splitLines(input);
+  const games = lines.map(parseGame);
+  const maxColorValues = games.map(extractMaxColorValues);
+  return maxColorValues.reduce((s, {red, green, blue}) => s + (red * green * blue), 0);
+}
+
 function isGamePossible(record: GameRecord, config: GameConfig): boolean {
-  const maxValues = record.cubeSets.reduce((max, record) => {
-    for (const color of colors) {
-      const colorValue = record[color];
-      const colorMax = max[color];
-      if (colorValue > colorMax) {
-        max[color] = colorValue;
-      }
-    }
-    return max;
-  }, {red: 0, green: 0, blue: 0})
+  const maxValues = extractMaxColorValues(record);
   for (const color of colors) {
     const colorMax = maxValues[color];
     const colorLimit = config[color];
@@ -45,6 +43,19 @@ function isGamePossible(record: GameRecord, config: GameConfig): boolean {
     }
   }
   return true;
+}
+
+function extractMaxColorValues(record: GameRecord) {
+  return record.cubeSets.reduce((max, record) => {
+    for (const color of colors) {
+      const colorValue = record[color];
+      const colorMax = max[color];
+      if (colorValue > colorMax) {
+        max[color] = colorValue;
+      }
+    }
+    return max;
+  }, { red: 0, green: 0, blue: 0 });
 }
 
 function parseGame(line: string): GameRecord {
