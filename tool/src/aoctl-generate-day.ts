@@ -5,7 +5,7 @@ import * as Handlebars from 'handlebars';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
 
-const typescriptDayTemplateSource = path.resolve('../template/typescript/day-{{day}}_{{title}}');
+const typescriptDayTemplateSource = path.resolve(process.env.HOME!, 'projects/advent-of-code/template/typescript/day-{{day}}_{{title}}');
 
 const command = new Command()
   .argument('<output>', 'Path to the output directory')
