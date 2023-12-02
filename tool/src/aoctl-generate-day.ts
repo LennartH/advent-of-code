@@ -5,7 +5,28 @@ import * as Handlebars from 'handlebars';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
 
+const command = new Command()
+  .argument('<output>', 'Path to the output directory')
+  .option('-d, --day <number>', 'Number of the day', parseDayNumber, 'today')
+  .requiredOption('-t, --title <title>', 'Title of the puzzle')
+  .action(generateDayFiles);
+
 const typescriptDayTemplateSource = path.resolve('../template/typescript/day-{{day}}_{{title}}');
+
+function parseDayNumber(value: string): string {
+  if (value === 'today') {
+    return value;
+  }
+
+  const dayNumber = Number(value);
+  if (isNaN(dayNumber)) {
+    throw new InvalidArgumentError('Must be a number.');
+  }
+  if (dayNumber <= 0 || dayNumber > 24) {
+    throw new InvalidArgumentError('Must be between 1 and 24.');
+  }
+  return `${dayNumber}`;
+}
 
 async function generateDayFiles(output: string, options: {day: string, title: string}) {
   if (options.day === 'today') {
@@ -43,36 +64,4 @@ async function generateDayFiles(output: string, options: {day: string, title: st
   console.log(`Files have been generated at ${path.relative(process.cwd(), output)}`);
 }
 
-function parseDayNumber(value: string): string {
-  if (value === 'today') {
-    return value;
-  }
-
-  const dayNumber = Number(value);
-  if (isNaN(dayNumber)) {
-    throw new InvalidArgumentError('Must be a number.');
-  }
-  if (dayNumber <= 0 || dayNumber > 24) {
-    throw new InvalidArgumentError('Must be between 1 and 24.');
-  }
-  return `${dayNumber}`;
-}
-
-const program = new Command();
-program
-  .version('0.1.0')
-  .showHelpAfterError();
-
-const generateCommand = program
-  .command('generate')
-  .description('Generate advent of code elements from template files');
-
-generateCommand
-  .command('day')
-  .description('Generate base files to solve a days puzzle')
-  .argument('<output>', 'Path to the output directory')
-  .option('-d, --day <number>', 'Number of the day', parseDayNumber, 'today')
-  .requiredOption('-t, --title <title>', 'Title of the puzzle')
-  .action(generateDayFiles);
-
-program.parse();
+command.parse();
