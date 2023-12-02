@@ -20,7 +20,7 @@ export function solvePart1(input: string): number {
   const gameConfig = {
     red: 12,
     green: 13,
-    blue: 14,
+    blue: 14
   };
   const possibleGames = games.filter((r) => isGamePossible(r, gameConfig));
   return possibleGames.reduce((s, r) => s + r.id, 0);
@@ -30,7 +30,10 @@ export function solvePart2(input: string): number {
   const lines = splitLines(input);
   const games = lines.map(parseGame);
   const maxColorValues = games.map(extractMaxColorValues);
-  return maxColorValues.reduce((s, {red, green, blue}) => s + (red * green * blue), 0);
+  return maxColorValues.reduce(
+    (s, { red, green, blue }) => s + (red * green * blue),
+    0
+  );
 }
 
 function isGamePossible(record: GameRecord, config: GameConfig): boolean {
@@ -66,10 +69,10 @@ function parseGame(line: string): GameRecord {
   }
   const cubeSets = body.split(';').map((entry) => {
     return entry.split(',').reduce((cubeSet, colorValue) => {
-      const [value, color] = colorValue.trim().split(' ');
-      (cubeSet as Record<string, number>)[color] = Number(value);
+      const [value, color] = colorValue.trim().split(' ') as [string, Color];
+      cubeSet[color] = Number(value);
       return cubeSet;
-    }, {red: 0, green: 0, blue: 0})
+    }, { red: 0, green: 0, blue: 0 });
   });
-  return {id, cubeSets};
+  return { id, cubeSets };
 }
