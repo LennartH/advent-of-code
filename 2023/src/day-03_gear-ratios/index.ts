@@ -11,30 +11,17 @@ interface SchematicSymbol {
 export function solvePart1(input: string): number {
   const schematic = new ArrayGrid(splitLines(input).map((l) => l.split('')));
   const symbols = findSymbols(schematic);
-  return collectNeighbouringNumbers(schematic, symbols).reduce((s, v) => s + v, 0);
+  return symbols.flatMap((s) => collectAdjacentNumbers(schematic, s))
+                .reduce((s, v) => s + v, 0);
 }
 
 export function solvePart2(input: string): number {
   const schematic = new ArrayGrid(splitLines(input).map((l) => l.split('')));
   const gears = findSymbols(schematic).filter(({id}) => id === '*');
-  let result = 0;
-  for (const {position} of gears) {
-    const hits = getNeighbours(schematic, position).filter((p) => isNumeric(schematic.get(p)));
-    if (hits.length < 2) {
-      continue
-    }
-
-    const gearNumbers: number[] = [];
-    const hitsPerLine = groupBy(hits, 'y');
-    for (const y of Object.keys(hitsPerLine).map(Number)) {
-      gearNumbers.push(...collectHitNumbers(schematic, y, hitsPerLine[y]));
-    }
-    if (gearNumbers.length !== 2) {
-      continue;
-    }
-    result += gearNumbers[0] * gearNumbers[1];
-  }
-  return result;
+  return gears.map((s) => collectAdjacentNumbers(schematic, s))
+    .filter((n) => n.length === 2)
+    .map(([a, b]) => a * b)
+    .reduce((s, v) => s + v, 0);
 }
 
 // region Shared Code
@@ -51,15 +38,25 @@ function findSymbols(schematic: Grid<string>): SchematicSymbol[] {
   return symbols;
 }
 
-function collectHitNumbers(schematic: Grid<string>, y: number, lineHits: PlainPoint[]): number[] {
+function collectAdjacentNumbers(schematic: Grid<string>, {position}: SchematicSymbol): number[] {
+  const numbers: number[] = [];
+  const hits = getNeighbours(schematic, position).filter((p) => isNumeric(schematic.get(p)));
+  const hitsPerLine = groupBy(hits, 'y');
+  for (const y of Object.keys(hitsPerLine).map(Number)) {
+    numbers.push(...collectHitLineNumbers(schematic, y, hitsPerLine[y]));
+  }
+  return numbers;
+}
+
+function collectHitLineNumbers(schematic: Grid<string>, lineY: number, hits: PlainPoint[]): number[] {
   const numbers: number[] = [];
   let containsHit = false;
   let digits: string[] = [];
   for (let x = 0; x < schematic.width; x++) {
-    const value = schematic.get(x, y);
-    if (isNumeric(value)) {
-      digits.push(value);
-      containsHit ||= lineHits.some(({ x: hx, y: hy }) => x === hx && y === hy);
+    const cellValue = schematic.get(x, lineY);
+    if (isNumeric(cellValue)) {
+      digits.push(cellValue);
+      containsHit ||= hits.some(({ x: hitX, y: hitY }) => x === hitX && lineY === hitY);
     } else {
       if (containsHit) {
         numbers.push(Number(digits.join('')));
@@ -67,24 +64,6 @@ function collectHitNumbers(schematic: Grid<string>, y: number, lineHits: PlainPo
       digits = [];
       containsHit = false;
     }
-  }
-  return numbers;
-}
-
-function collectNeighbouringNumbers(schematic: Grid<string>, symbols: SchematicSymbol[]): number[] {
-  const numbers: number[] = [];
-  const hits: PlainPoint[] = symbols.flatMap(
-    (s) => getNeighbours(schematic, s.position)
-                                     .filter((p) => isNumeric(schematic.get(p)))
-  )
-  const hitsPerLine = groupBy(hits, 'y');
-  for (let y = 0; y < schematic.height; y++) {
-    const lineHits = hitsPerLine[y];
-    if (lineHits == null) {
-      continue;
-    }
-
-    numbers.push(...collectHitNumbers(schematic, y, lineHits));
   }
   return numbers;
 }
