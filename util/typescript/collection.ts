@@ -8,7 +8,10 @@ export function shuffle<T>(list: T[]): T[] {
   return list;
 }
 
-export function groupBy<T, K extends string | number>(list: T[], key: keyof T | ((e: T) => K)): Record<K, T[]> {
+type AllowedKeyType = string | number;
+// Only keys for properties that are of an allowed type
+type AllowedKeyOf<T> = keyof { [K in keyof T as T[K] extends AllowedKeyType ? K : never]: T[K]; };
+export function groupBy<T, K extends AllowedKeyType>(list: T[], key: AllowedKeyOf<T> | ((e: T) => K)): Record<K, T[]> {
   const getKey = typeof key === 'function' ? key : (e: T) => e[key] as K;
   return list.reduce((groups, item) => {
     const _key = getKey(item);
