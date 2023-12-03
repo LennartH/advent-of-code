@@ -1,6 +1,6 @@
 import { getDirections, groupBy, PlainPoint } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
-import { aggregate, filter, map, pipe, spread } from 'iter-ops';
+import { aggregate, filter, map, pipe } from 'iter-ops';
 
 // region Types and Globals
 interface SchematicSymbol {
@@ -53,10 +53,9 @@ function collectHitLineNumbers(schematic: Grid<string>, lineY: number, hits: Pla
   const numbers: number[] = [];
   let containsHit = false;
   let digits: string[] = [];
-  for (let x = 0; x < schematic.width; x++) {
-    const cellValue = schematic.get(x, lineY);
-    if (isNumeric(cellValue)) {
-      digits.push(cellValue);
+  for (const { position: { x}, value } of schematic.row(lineY)) {
+    if (isNumeric(value)) {
+      digits.push(value);
       containsHit ||= hits.some(({ x: hitX, y: hitY }) => x === hitX && lineY === hitY);
     } else {
       if (containsHit) {
