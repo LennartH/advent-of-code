@@ -1,12 +1,14 @@
-import { groupBy, PlainPoint, splitLines } from '@util';
+import { getDirections, groupBy, PlainPoint } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
-import { filter, pipe, toArray } from 'iter-ops';
+import { filter, pipe } from 'iter-ops';
 
 // region Types and Globals
 interface SchematicSymbol {
   value: string;
   position: PlainPoint;
 }
+
+const directions = getDirections('cardinal', {withDiagonals: true});
 // endregion
 
 export function solvePart1(input: string): number {
@@ -63,19 +65,9 @@ function collectHitLineNumbers(schematic: Grid<string>, lineY: number, hits: Pla
   return numbers;
 }
 
-const directions = [
-  {dx: 0, dy: -1}, // Up
-  {dx: 1, dy: -1}, // Up Right
-  {dx: 1, dy: 0}, // Right
-  {dx: 1, dy: 1}, // Right Down
-  {dx: 0, dy: 1}, // Down
-  {dx: -1, dy: 1}, // Down Left
-  {dx: -1, dy: 0}, // Left
-  {dx: -1, dy: -1}, // Left Up
-]
 function getNeighbours(schematic: Grid<unknown>, {x ,y }: PlainPoint): PlainPoint[] {
   const neighbours: PlainPoint[] = [];
-  for (const {dx, dy} of directions) {
+  for (const {deltaX: dx, deltaY: dy} of directions) {
     if (schematic.contains(x + dx, y + dy)) {
       neighbours.push({x: x + dx, y: y + dy});
     }
