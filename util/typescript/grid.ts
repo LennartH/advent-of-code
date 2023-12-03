@@ -6,6 +6,10 @@ export interface Grid<V> {
   get height(): number;
 
   cells(): Generator<GridCell<V>>;
+  row(y: number): Generator<GridCell<V>>;
+  row(point: PointLike): Generator<GridCell<V>>;
+  column(x: number): Generator<GridCell<V>>;
+  column(point: PointLike): Generator<GridCell<V>>;
 
   get(x: number, y: number): V;
   get(point: PointLike): V;
@@ -48,6 +52,26 @@ export abstract class AbstractGrid<V> implements Grid<V> {
       for (let y = 0; y < height; y++) {
         yield {position: {x, y}, value: this.get(x, y)};
       }
+    }
+  }
+
+  row(y: number): Generator<GridCell<V>>
+  row(point: PointLike): Generator<GridCell<V>>
+  * row(pointOrY: PointLike | number): Generator<GridCell<V>> {
+    const { y } = asPlainPoint(pointOrY);
+    const width = this.width;
+    for (let x = 0; x < width; x++) {
+      yield {position: {x, y}, value: this.get(x, y)};
+    }
+  }
+
+  column(x: number): Generator<GridCell<V>>
+  column(point: PointLike): Generator<GridCell<V>>
+  * column(pointOrX: PointLike | number): Generator<GridCell<V>> {
+    const { x } = asPlainPoint(pointOrX);
+    const height = this.height;
+    for (let y = 0; y < height; y++) {
+      yield {position: {x, y}, value: this.get(x, y)};
     }
   }
 
