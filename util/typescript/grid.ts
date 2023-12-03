@@ -12,6 +12,9 @@ export interface Grid<V> {
 
   contains(x: number, y: number): boolean;
   contains(point: PointLike): boolean;
+
+  // TODO For-Each
+  // TODO Get neighbours / For-Each Neighbour
 }
 
 export abstract class AbstractGrid<V> implements Grid<V> {

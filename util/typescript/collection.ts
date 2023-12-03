@@ -8,6 +8,20 @@ export function shuffle<T>(list: T[]): T[] {
   return list;
 }
 
+export function groupBy<T, K extends string | number>(list: T[], key: keyof T | ((e: T) => K)): Record<K, T[]> {
+  const getKey = typeof key === 'function' ? key : (e: T) => e[key] as K;
+  return list.reduce((groups, item) => {
+    const _key = getKey(item);
+    let group = groups[_key];
+    if (group == null) {
+      group = [];
+      groups[_key] = group;
+    }
+    group.push(item);
+    return groups;
+  }, {} as Record<K, T[]>);
+}
+
 export function* allPermutations<T>(list: T[]): Generator<T[]> {
   const length = list.length;
   const c = new Array(length).fill(0);
