@@ -10,15 +10,31 @@ interface SchematicSymbol {
 
 export function solvePart1(input: string): number {
   const schematic = new ArrayGrid(splitLines(input).map((l) => l.split('')));
-  // TODO Implement solution
   const symbols = findSymbols(schematic);
   return collectNeighbouringNumbers(schematic, symbols).reduce((s, v) => s + v, 0);
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const schematic = new ArrayGrid(splitLines(input).map((l) => l.split('')));
+  const gears = findSymbols(schematic).filter(({id}) => id === '*');
+  let result = 0;
+  for (const {position} of gears) {
+    const hits = getNeighbours(schematic, position).filter((p) => isNumeric(schematic.get(p)));
+    if (hits.length < 2) {
+      continue
+    }
+
+    const gearNumbers: number[] = [];
+    const hitsPerLine = groupBy(hits, 'y');
+    for (const y of Object.keys(hitsPerLine).map(Number)) {
+      gearNumbers.push(...collectHitNumbers(schematic, y, hitsPerLine[y]));
+    }
+    if (gearNumbers.length !== 2) {
+      continue;
+    }
+    result += gearNumbers[0] * gearNumbers[1];
+  }
+  return result;
 }
 
 // region Shared Code
@@ -35,6 +51,26 @@ function findSymbols(schematic: Grid<string>): SchematicSymbol[] {
   return symbols;
 }
 
+function collectHitNumbers(schematic: Grid<string>, y: number, lineHits: PlainPoint[]): number[] {
+  const numbers: number[] = [];
+  let containsHit = false;
+  let digits: string[] = [];
+  for (let x = 0; x < schematic.width; x++) {
+    const value = schematic.get(x, y);
+    if (isNumeric(value)) {
+      digits.push(value);
+      containsHit ||= lineHits.some(({ x: hx, y: hy }) => x === hx && y === hy);
+    } else {
+      if (containsHit) {
+        numbers.push(Number(digits.join('')));
+      }
+      digits = [];
+      containsHit = false;
+    }
+  }
+  return numbers;
+}
+
 function collectNeighbouringNumbers(schematic: Grid<string>, symbols: SchematicSymbol[]): number[] {
   const numbers: number[] = [];
   const hits: PlainPoint[] = symbols.flatMap(
@@ -48,21 +84,7 @@ function collectNeighbouringNumbers(schematic: Grid<string>, symbols: SchematicS
       continue;
     }
 
-    let containsHit = false;
-    let digits: string[] = [];
-    for (let x = 0; x < schematic.width; x++) {
-      const value = schematic.get(x, y);
-      if (isNumeric(value)) {
-        digits.push(value);
-        containsHit ||= lineHits.some(({x: hx, y: hy}) => x === hx && y === hy);
-      } else {
-        if (containsHit) {
-          numbers.push(Number(digits.join('')));
-        }
-        digits = [];
-        containsHit = false;
-      }
-    }
+    numbers.push(...collectHitNumbers(schematic, y, lineHits));
   }
   return numbers;
 }
