@@ -1,5 +1,14 @@
 import { Grid, SparseArrayGrid } from '@util/grid';
-import { CardinalDirection, Direction2D, formatGrid, PlainRect, Point2D, Rect2D } from '@util';
+import {
+  directionFromName,
+  formatGrid,
+  getDirections,
+  oppositeOf,
+  PlainRect,
+  Point2D,
+  Rect2D,
+  StraightCardinalDirectionName
+} from '@util';
 
 export enum CellType {
   Floor = '.',
@@ -19,7 +28,7 @@ export interface TreasureMap {
 
 export interface FaceDefinition extends PlainRect {
   id: string;
-  neighbours: Partial<Record<CardinalDirection, string>>;
+  neighbours: Partial<Record<StraightCardinalDirectionName, string>>;
 }
 
 export function parseTreasureMap(input: string): TreasureMap {
@@ -58,9 +67,7 @@ export function parseTreasureMap(input: string): TreasureMap {
   return { start, grid, instructions }
 }
 
-const directions: Direction2D[] = [
-  Direction2D.East, Direction2D.South, Direction2D.West, Direction2D.North,
-];
+const directions = getDirections('cardinal');
 
 export function followInstructions(map: TreasureMap, faceDefinitions?: FaceDefinition[]): number {
   const { grid, instructions } = map;
@@ -167,7 +174,7 @@ function getNeighbour(position: Point2D, directionIndex: number, grid: Grid<Cell
 class CubeFace {
   id: string;
   rect: Rect2D;
-  neighbours: [CardinalDirection, CubeFace][];
+  neighbours: [StraightCardinalDirectionName, CubeFace][];
 
   constructor(id: string, rect: PlainRect) {
     this.id = id;
@@ -184,7 +191,8 @@ class CubeFace {
     if (!directionToThis) {
       throw new Error(`Neighbour does not have the current face (id ${this.id}) as neighbour`);
     }
-    let directionToTarget = Direction2D.for(directionToThis as never).opposite().cardinal;
+    // let directionToTarget = Direction2D.for(directionToThis as never).opposite().cardinal;
+    let directionToTarget = oppositeOf(directionFromName(directionToThis)).name;
 
     // TODO Transform position
     // - Global to local face position
@@ -204,7 +212,7 @@ function createCubeFaces(faceDefinitions?: FaceDefinition[]): CubeFace[] | undef
     const face = cubeFaces.find((f) => f.id === id)!;
     for (const [direction, neighbourId] of Object.entries(neighbours)) {
       const neighbour = cubeFaces.find((f) => f.id === neighbourId)!;
-      face.neighbours.push([direction as CardinalDirection, neighbour]);
+      face.neighbours.push([direction as StraightCardinalDirectionName, neighbour]);
     }
   }
   return cubeFaces;

@@ -8,8 +8,16 @@ export function shuffle<T>(list: T[]): T[] {
   return list;
 }
 
+export function unique<T>(list: T[], predicate?: (a: T, b: T) => boolean): T[] {
+  if (predicate != null) {
+    return list.filter((a, i) => list.findIndex((b) => predicate(a, b)) === i);
+  } else {
+    return [...new Set(list)];
+  }
+}
+
+// Only keys for properties that are strings or numbers
 type AllowedKeyType = string | number;
-// Only keys for properties that are of an allowed type
 type AllowedKeyOf<T> = keyof { [K in keyof T as T[K] extends AllowedKeyType ? K : never]: T[K]; };
 export function groupBy<T, K extends AllowedKeyType>(list: T[], key: AllowedKeyOf<T> | ((e: T) => K)): Record<K, T[]> {
   const getKey = typeof key === 'function' ? key : (e: T) => e[key] as K;
