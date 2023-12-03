@@ -1,4 +1,4 @@
-import { asPlainPoint, PointLike } from './geometry-2d';
+import { asPlainPoint, PlainPoint, PointLike } from './geometry-2d';
 import { splitLines } from './string';
 
 export interface Grid<V> {
@@ -14,8 +14,13 @@ export interface Grid<V> {
   contains(x: number, y: number): boolean;
   contains(point: PointLike): boolean;
 
-  // TODO For-Each
+  cells(): Generator<GridCell<V>>;
   // TODO Get neighbours / For-Each Neighbour
+}
+
+export interface GridCell<V> {
+  position: PlainPoint;
+  value: V;
 }
 
 export abstract class AbstractGrid<V> implements Grid<V> {
@@ -51,6 +56,16 @@ export abstract class AbstractGrid<V> implements Grid<V> {
   contains(pointOrX: PointLike | number, yValue?: number): boolean {
     const {x, y} = asPlainPoint(pointOrX, yValue);
     return x >= 0 && x < this.width && y >= 0 && y < this.height;
+  }
+
+  * cells(): Generator<GridCell<V>> {
+    const width = this.width;
+    const height = this.height;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        yield {position: {x, y}, value: this.get(x, y)};
+      }
+    }
   }
 }
 
@@ -126,6 +141,19 @@ export class SparseArrayGrid<V> extends AbstractGrid<V> {
       this.data[y] = row;
     }
     row[x] = value;
+  }
+
+  * cells(): Generator<GridCell<V>> {
+    const width = this.width;
+    const height = this.height;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const value = this.get(x, y);
+        if (value != null) {
+          yield {position: {x, y}, value};
+        }
+      }
+    }
   }
 
 }

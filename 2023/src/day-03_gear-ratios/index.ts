@@ -1,9 +1,10 @@
 import { groupBy, PlainPoint, splitLines } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
+import { filter, pipe, toArray } from 'iter-ops';
 
 // region Types and Globals
 interface SchematicSymbol {
-  id: string;
+  value: string;
   position: PlainPoint;
 }
 // endregion
@@ -17,7 +18,7 @@ export function solvePart1(input: string): number {
 
 export function solvePart2(input: string): number {
   const schematic = ArrayGrid.fromInput(input);
-  const gears = findSymbols(schematic).filter(({id}) => id === '*');
+  const gears = findSymbols(schematic).filter(({value}) => value === '*');
   return gears.map((s) => collectAdjacentNumbers(schematic, s))
     .filter((n) => n.length === 2)
     .map(([a, b]) => a * b)
@@ -26,16 +27,10 @@ export function solvePart2(input: string): number {
 
 // region Shared Code
 function findSymbols(schematic: Grid<string>): SchematicSymbol[] {
-  const symbols: SchematicSymbol[] = [];
-  for (let x = 0; x < schematic.width; x++) {
-    for (let y = 0; y < schematic.height; y++) {
-      const value = schematic.get(x, y);
-      if (isSchematicSymbol(value)) {
-        symbols.push({id: value, position: {x, y}});
-      }
-    }
-  }
-  return symbols;
+  return [...pipe(
+    schematic.cells(),
+    filter(({value}) => isSchematicSymbol(value)),
+  )];
 }
 
 function collectAdjacentNumbers(schematic: Grid<string>, {position}: SchematicSymbol): number[] {
