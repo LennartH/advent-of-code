@@ -1,9 +1,11 @@
-import { asPlainPoint, PlainPoint, PointLike } from './geometry-2d';
+import { asPlainPoint, Direction2D, getDirections, PlainPoint, PointLike } from './geometry-2d';
 import { splitLines } from './string';
 
 export interface Grid<V> {
   get width(): number;
   get height(): number;
+
+  cells(): Generator<GridCell<V>>;
 
   get(x: number, y: number): V;
   get(point: PointLike): V;
@@ -14,8 +16,10 @@ export interface Grid<V> {
   contains(x: number, y: number): boolean;
   contains(point: PointLike): boolean;
 
-  cells(): Generator<GridCell<V>>;
-  // TODO Get neighbours / For-Each Neighbour
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
 }
 
 export interface GridCell<V> {
@@ -23,9 +27,29 @@ export interface GridCell<V> {
   value: V;
 }
 
+// TODO Improve typing
+export type AdjacentFromOptions<V> = {
+  withDiagonals?: boolean;
+  onOutOfBounds?: 'drop' | 'keep' | AdjacentOutOfBoundsHandler<V>;
+} | {
+  directions: Direction2D[];
+  onOutOfBounds?: 'drop' | 'keep' | AdjacentOutOfBoundsHandler<V>;
+};
+type AdjacentOutOfBoundsHandler<V> = (position: PlainPoint, grid: Grid<V>) => PlainPoint | 'drop' | 'keep' | boolean;
+
 export abstract class AbstractGrid<V> implements Grid<V> {
   abstract get height(): number;
   abstract get width(): number;
+
+  * cells(): Generator<GridCell<V>> {
+    const width = this.width;
+    const height = this.height;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        yield {position: {x, y}, value: this.get(x, y)};
+      }
+    }
+  }
 
   get(x: number, y: number): V
   get(point: PointLike): V
@@ -58,13 +82,41 @@ export abstract class AbstractGrid<V> implements Grid<V> {
     return x >= 0 && x < this.width && y >= 0 && y < this.height;
   }
 
-  * cells(): Generator<GridCell<V>> {
-    const width = this.width;
-    const height = this.height;
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        yield {position: {x, y}, value: this.get(x, y)};
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
+  * adjacentFrom(
+    pointOrX: PointLike | number,
+    yValueOrOptions?: number | AdjacentFromOptions<V>,
+    options?: AdjacentFromOptions<V>,
+  ): Generator<GridCell<V>> {
+    let x: number;
+    let y: number;
+    if (typeof pointOrX === 'number') {
+      x = pointOrX;
+      y = yValueOrOptions as number;
+    } else {
+      ({x, y} = asPlainPoint(pointOrX));
+      options = yValueOrOptions as never;
+    }
+    options ||= {};
+    const directions = 'directions' in options ? options.directions : getDirections('cardinal', options);
+
+    const onOutOfBounds = options.onOutOfBounds || 'drop';
+    for (const {deltaX, deltaY} of directions) {
+      let position = { x: x + deltaX, y: y + deltaY };
+      if (!this.contains(position)) {
+        const outOfBoundsResponse = typeof onOutOfBounds === 'function' ? onOutOfBounds(position, this) : onOutOfBounds;
+        if (typeof outOfBoundsResponse === 'object') {
+          position = outOfBoundsResponse;
+        } else if (!outOfBoundsResponse || outOfBoundsResponse === 'drop') {
+          continue;
+        }
       }
+
+      const value = this.get(position);
+      yield { position, value };
     }
   }
 }
