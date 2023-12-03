@@ -1,4 +1,5 @@
 import { asPlainPoint, PointLike } from './geometry-2d';
+import { splitLines } from './string';
 
 export interface Grid<V> {
   get width(): number;
@@ -54,6 +55,10 @@ export abstract class AbstractGrid<V> implements Grid<V> {
 }
 
 export class ArrayGrid<V> extends AbstractGrid<V> {
+  static fromInput(input: string): ArrayGrid<string> {
+    return new ArrayGrid(splitLines(input).map((l) => l.split('')));
+  }
+
   data: V[][];
 
   get height(): number {

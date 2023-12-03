@@ -1,9 +1,0 @@
-.gitignore
-package*.json
-tsconfig*.json
-.eslintrc.json
-
-**/.git/
-**/.idea/
-node_modules/
-dist/
