@@ -13,15 +13,16 @@ const directions = getDirections('cardinal', {withDiagonals: true});
 
 export function solvePart1(input: string): number {
   const schematic = ArrayGrid.fromInput(input);
-  const symbols = findSymbols(schematic);
-  return symbols.flatMap((s) => collectAdjacentNumbers(schematic, s))
-                .reduce((s, v) => s + v, 0);
+  return findSymbols(schematic)
+    .flatMap((s) => collectAdjacentNumbers(schematic, s))
+    .reduce((s, v) => s + v, 0);
 }
 
 export function solvePart2(input: string): number {
   const schematic = ArrayGrid.fromInput(input);
-  const gears = findSymbols(schematic).filter(({value}) => value === '*');
-  return gears.map((s) => collectAdjacentNumbers(schematic, s))
+  return findSymbols(schematic)
+    .filter(({value}) => value === '*')
+    .map((s) => collectAdjacentNumbers(schematic, s))
     .filter((n) => n.length === 2)
     .map(([a, b]) => a * b)
     .reduce((s, v) => s + v, 0);
