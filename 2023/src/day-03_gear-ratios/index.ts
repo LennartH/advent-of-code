@@ -1,6 +1,6 @@
 import { getDirections, groupBy, PlainPoint } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
-import { filter, pipe } from 'iter-ops';
+import { aggregate, filter, map, pipe, spread } from 'iter-ops';
 
 // region Types and Globals
 interface SchematicSymbol {
@@ -37,8 +37,12 @@ function findSymbols(schematic: Grid<string>): SchematicSymbol[] {
 
 function collectAdjacentNumbers(schematic: Grid<string>, {position}: SchematicSymbol): number[] {
   const numbers: number[] = [];
-  const hits = getNeighbours(schematic, position).filter((p) => isNumeric(schematic.get(p)));
-  const hitsPerLine = groupBy(hits, 'y');
+  const hitsPerLine = pipe(
+    schematic.adjacentFrom(position, { withDiagonals: true }),
+    filter(({value}) => isNumeric(value)),
+    map(({position}) => position),
+    aggregate((hits) => groupBy(hits, 'y')),
+  ).first!;
   for (const y of Object.keys(hitsPerLine).map(Number)) {
     numbers.push(...collectHitLineNumbers(schematic, y, hitsPerLine[y]));
   }
@@ -63,16 +67,6 @@ function collectHitLineNumbers(schematic: Grid<string>, lineY: number, hits: Pla
     }
   }
   return numbers;
-}
-
-function getNeighbours(schematic: Grid<unknown>, {x ,y }: PlainPoint): PlainPoint[] {
-  const neighbours: PlainPoint[] = [];
-  for (const {deltaX: dx, deltaY: dy} of directions) {
-    if (schematic.contains(x + dx, y + dy)) {
-      neighbours.push({x: x + dx, y: y + dy});
-    }
-  }
-  return neighbours;
 }
 
 function isSchematicSymbol(value: string): boolean {
