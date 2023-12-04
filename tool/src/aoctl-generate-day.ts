@@ -4,6 +4,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import * as Handlebars from 'handlebars';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
+import { kebabCase, startCase } from 'lodash';
 
 const typescriptDayTemplateSource = path.resolve(process.env.HOME!, 'projects/advent-of-code/template/typescript/day-{{day}}_{{title}}');
 
@@ -37,7 +38,12 @@ async function generateDayFiles(output: string, options: {day: string, title: st
     }
     options.day = `${dayNumber}`;
   }
-  const pathOptions = {...options, day: options.day.padStart(2, '0')};
+  options.title = startCase(options.title.toLowerCase());
+  const pathOptions = {
+    ...options,
+    title: kebabCase(options.title),
+    day: options.day.padStart(2, '0')
+  };
 
   const sourceDirectory = typescriptDayTemplateSource;
   output = path.join(path.resolve(output), renderTemplate(path.basename(sourceDirectory), pathOptions));

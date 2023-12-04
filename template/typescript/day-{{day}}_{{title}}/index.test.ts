@@ -1,7 +1,7 @@
 import { readFile } from '@util';
 import { solvePart1, solvePart2 } from './index';
 
-describe('Day {{day}}', () => {
+describe('Day {{day}}: {{title}}', () => {
   describe('example input', () => {
     const input = `
     
