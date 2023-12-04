@@ -8,7 +8,7 @@
   "scripts": {
     "cli": "node -r ts-node/register src/aoctl.ts",
     "cli:test": "rimraf out && node -r ts-node/register src/aoctl.ts generate day out -t test -d 1",
-    "build": "rimraf dist && tsc -p tsconfig.build.json",
+    "build": "rimraf dist && tsc -p tsconfig.build.json && chmod +x dist/aoctl.js",
     "format": "prettier --write .",
     "test": "jest"
   },
