@@ -130,6 +130,7 @@ function cleanOptions(options: GenerateDayOptions): Required<GenerateDayOptions>
   cleaned.title = startCase(title.toLowerCase());
   cleaned.updateReadme = updateReadme === true ? `${new Date().getFullYear()}` : updateReadme;
 
+  cleaned.day = day;
   if (day === 'today') {
     const dayNumber = new Date().getDate();
     if (dayNumber <= 0 || dayNumber > 24) {
