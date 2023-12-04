@@ -7,6 +7,7 @@ import * as fs from 'node:fs/promises';
 import { kebabCase, startCase } from 'lodash';
 
 // TODO Add tests
+// TODO Better logging
 
 // TODO Move templates into tool directory
 // TODO Determine path of this file and make source path relative to this file
@@ -15,6 +16,7 @@ const readmePath = path.resolve('README.md');
 
 // TODO Add option to select template language
 // TODO Add option to load puzzle input from API
+// TODO Add option to dry-run
 const command = new Command()
   .argument('<output>', 'Path to the output directory')
   .option('-d, --day <number>', 'Number of the day', parseDayNumber, 'today')
@@ -88,6 +90,7 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
       directory: outputDirectory,
     }
     await addEntryToReadme(readmePath, readmeOptions);
+    console.log(`Added entry for Day '${contentOptions.day}: ${contentOptions.title}' to readme`);
   }
 }
 
