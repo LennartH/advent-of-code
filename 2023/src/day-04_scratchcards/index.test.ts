@@ -12,13 +12,13 @@ describe('Day 4', () => {
       Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
     `;
     const part1Solution = 13;
-    const part2Solution = null;
+    const part2Solution = 30;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
@@ -28,13 +28,13 @@ describe('Day 4', () => {
     const inputPath = `${__dirname}/input`;
     const input = readFile(inputPath);
     const part1Solution = 21105;
-    const part2Solution = null;
+    const part2Solution = 5329815;
 
     test(`${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`${part2Solution ?? '?'} for part 2`, () => {
+    test(`${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
