@@ -1,4 +1,4 @@
-import { readFile } from '@util';
+import { readFile, readLines } from '@util';
 import { solvePart1, solvePart2 } from './index';
 
 describe('Day 5: Seed Map', () => {
@@ -68,6 +68,29 @@ describe('Day 5: Seed Map', () => {
   });
 
   // region Function Specific Tests
+  describe('seed 2087136879 has location 81956384', () => {
+    const inputPath = `${__dirname}/input`;
+    const lines = readLines(inputPath);
+    lines[0] = `seeds: 2087136879 1`;
+    const adjustedInput = lines.join('\n');
+    test('for part 1', () => {
+      const result = solvePart1(adjustedInput);
+      expect(result).toEqual(81956384);
+    });
+    test('for part 2', () => {
+      const result = solvePart2(adjustedInput);
+      expect(result).toEqual(81956384);
+    });
+  });
 
+  // TODO Investigate here to fix range-wise algorithm
+  test('seed range 1802185716 538526744 has location 81956384', () => {
+    const inputPath = `${__dirname}/input`;
+    const lines = readLines(inputPath);
+    lines[0] = `seeds: 1802185716 538526744`;
+    const adjustedInput = lines.join('\n');
+    const result = solvePart2(adjustedInput);
+    expect(result).toEqual(81956384);
+  });
   // endregion
 });
