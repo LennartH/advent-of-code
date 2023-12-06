@@ -11,31 +11,14 @@ export function solvePart2(input: string): number {
   const {seeds, mappings} = parseInput(input);
   let minLocation = Number.MAX_SAFE_INTEGER;
   for (let i = 0; i < seeds.length; i += 2) {
-    const seedEnd = seeds[i] + seeds[i + 1];
-    for (let seed = seeds[i]; seed < seedEnd; seed++) {
-      const seedMinLocation = mappings.reduce((v, m) => m.toDestination(v), seed);
-      minLocation = Math.min(minLocation, seedMinLocation);
+    const seedRange = new ValueRange(seeds[i], seeds[i] + seeds[i + 1] - 1);
+    let resourceRanges: ValueRange[] = [seedRange];
+    for (const mapping of mappings) {
+      resourceRanges = mapping.toDestinationRanges(resourceRanges);
     }
-    // FIXME Calculating location range-wise works for example, but not for real input
-    // const seedRange = new ValueRange(seeds[i], seeds[i] + seeds[i + 1] - 1);
-    // console.log(`Processing seed range ${seedRange}`)
-    // console.group()
-    // let resourceRanges: ValueRange[] = [seedRange];
-    // for (const mapping of mappings) {
-    //   console.log(`Mapping from ${mapping.sourceName} to ${mapping.destinationName} (${mapping.ranges.map((r) => r.toString()).join(' | ')})`)
-    //   console.group()
-    //   const mappedRanges = mapping.toDestinationRanges(resourceRanges);
-    //   console.log(`${resourceRanges.join(', ')} -> ${mappedRanges.join(', ')}`);
-    //   resourceRanges = mappedRanges;
-    //   console.groupEnd()
-    // }
-    // const seedMinLocation = resourceRanges.map(({start}) => start).reduce((min, v) => Math.min(min, v));
-    // console.log(`=> Min location for seed range ${seedRange} is ${seedMinLocation}`);
-    // minLocation = Math.min(seedMinLocation, minLocation);
-    // console.groupEnd()
-    // console.log();
+    const seedMinLocation = resourceRanges.map(({start}) => start).reduce((min, v) => Math.min(min, v));
+    minLocation = Math.min(seedMinLocation, minLocation);
   }
-  // console.log(`=> Min location for all seed ranges is ${minLocation}`);
   return minLocation;
 }
 
@@ -57,12 +40,16 @@ class ResourceMap {
     });
     this.ranges.sort(({start: a}, {start: b}) => a - b);
 
+    // region Add missing ranges
+    // Having ranges from 0 to "infinity" makes range splitting easier.
     if (this.ranges[0].start > 0) {
+      // Add range from 0 to start of first range
       this.ranges.unshift(new MappingRange(0, 0, this.ranges[0].start));
     }
+    // Add range from end of last range to "infinity"
     const lastRange = this.ranges.at(-1)!;
     this.ranges.push(new MappingRange(lastRange.end + 1, lastRange.end + 1, infinity - lastRange.end));
-
+    // Add ranges missing between existing ranges
     for (let i = 0; i < this.ranges.length - 1; i++) {
       const range = this.ranges[i];
       const nextRange = this.ranges[i + 1];
@@ -73,6 +60,7 @@ class ResourceMap {
         i++;
       }
     }
+    // endregion
   }
 
   toDestination(sourceNumber: number): number {
@@ -105,7 +93,7 @@ interface SimpleRange {
   end: number;
 }
 
-class ValueRange implements SimpleRange {
+export class ValueRange implements SimpleRange {
 
   constructor(
     readonly start: number,
@@ -120,20 +108,26 @@ class ValueRange implements SimpleRange {
     return this.includes(start) && this.includes(end);
   }
 
-  intersectsRange({start, end}: SimpleRange): boolean {
-    return this.includes(start) || this.includes(end);
+  intersectsRange(range: SimpleRange): boolean {
+    const other = range instanceof ValueRange ? range : new ValueRange(range.start, range.end);
+    return this.includes(other.start) || this.includes(other.end) ||
+           other.includes(this.start) || other.includes(this.end);
   }
 
   intersection(range: SimpleRange): ValueRange {
-    if (this.includesRange(range)) {
-      return range instanceof ValueRange ? range : new ValueRange(range.start, range.end);
+    const other = range instanceof ValueRange ? range : new ValueRange(range.start, range.end);
+    if (this.includesRange(other)) {
+      return other;
     }
-    if (!this.intersectsRange(range)) {
+    if (other.includesRange(this)) {
+      return this;
+    }
+    if (!this.intersectsRange(other)) {
       throw new Error(`Range ${this.start}-${this.end} does not intersect with: ${this}`);
     }
     return new ValueRange(
-      Math.max(this.start, range.start),
-      Math.min(this.end, range.end),
+      Math.max(this.start, other.start),
+      Math.min(this.end, other.end),
     )
   }
 
