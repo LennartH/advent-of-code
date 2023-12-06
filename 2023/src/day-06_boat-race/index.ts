@@ -22,9 +22,28 @@ export function solvePart1(input: string): number {
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const races = parseRaces(splitLines(input));
+  const race = squashRaces(races);
+
+  let lowerBound = 0;
+  for (let i = 1; i < race.time; i++) {
+    const distance = i * (race.time - i);
+    if (distance > race.distanceRecord) {
+      lowerBound = i;
+      break;
+    }
+  }
+
+  let upperBound = 0;
+  for (let i = race.time - 1; i > 0; i--) {
+    const distance = i * (race.time - i);
+    if (distance > race.distanceRecord) {
+      upperBound = i;
+      break;
+    }
+  }
+
+  return upperBound - lowerBound + 1;
 }
 
 // region Shared Code
@@ -40,5 +59,14 @@ function parseRaces(lines: string[]): Race[] {
     });
   }
   return races;
+}
+
+function squashRaces(races: Race[]): Race {
+  const squashedTime = races.map((r) => r.time.toString()).join('');
+  const squashedDistanceRecord = races.map((r) => r.distanceRecord.toString()).join('');
+  return {
+    time: Number(squashedTime),
+    distanceRecord: Number(squashedDistanceRecord),
+  };
 }
 // endregion
