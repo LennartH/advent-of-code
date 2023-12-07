@@ -30,43 +30,51 @@ const cardRank: Record<string, number> = {
 
 export function solvePart1(input: string): number {
   const games = parseGames(splitLines(input));
-  games.sort(({hand: a}, {hand: b}) => {
-    if (a.rank !== b.rank) {
-      return a.rank - b.rank;
-    }
-    for (let i = 0; i < 5; i++) {
-      const cardRankA = cardRank[a.cards[i]];
-      const cardRankB = cardRank[b.cards[i]];
-      if (cardRankA === cardRankB) {
-        continue;
-      }
-      return cardRankA - cardRankB;
-    }
-    return 0;
-  });
+  games.sort(compareGames);
   return games
     .map((g, i) => g.bid * (i + 1))
     .reduce((s, v) => s + v, 0);
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const games = parseGames(splitLines(input), 'with jokers');
+  games.sort((a, b) => compareGames(a, b, 'with jokers'));
+  return games
+    .map((g, i) => g.bid * (i + 1))
+    .reduce((s, v) => s + v, 0);
 }
 
 // region Shared Code
-function parseGames(lines: string[]): Game[] {
+function parseGames(lines: string[], withJokers?: 'with jokers'): Game[] {
   return lines.map((line) => {
     const [hand, bid] = line.split(' ');
     return {
-      hand: parseHand(hand),
+      hand: parseHand(hand, withJokers),
       bid: Number(bid),
     }
   });
 }
 
-function parseHand(hand: string): Hand {
+function compareGames({hand: a}: Game, {hand: b}: Game, withJokers?: 'with jokers'): number {
+  if (a.rank !== b.rank) {
+    return a.rank - b.rank;
+  }
+  for (let i = 0; i < 5; i++) {
+    const cardRankA = getCardRank(a.cards[i], withJokers);
+    const cardRankB = getCardRank(b.cards[i], withJokers);
+    if (cardRankA === cardRankB) {
+      continue;
+    }
+    return cardRankA - cardRankB;
+  }
+  return 0;
+}
+
+function getCardRank(cardFace: string, withJokers?: 'with jokers'): number {
+  return withJokers && cardFace === 'J' ? 1 : cardRank[cardFace];
+}
+
+export function parseHand(hand: string, withJokers?: 'with jokers'): Hand {
   const cards = hand.split('');
   const countByFace = cards.reduce((counts, card) => {
     if (counts[card] == null) {
@@ -75,29 +83,38 @@ function parseHand(hand: string): Hand {
     counts[card]++;
     return counts;
   }, {} as Record<string, number>);
+  let numberOfJokers = 0;
+  if (withJokers) {
+    numberOfJokers = countByFace['J'] || 0;
+    countByFace['J'] = 0;
+  }
   const faceCounts = Object.values(countByFace);
+
+  const maxFaceCount = Math.max(...faceCounts) + numberOfJokers;
+  // It's impossible to get two pairs if the hand contains a joker, so we ignore them
+  const isTwoPair = faceCounts.filter((c) => c === 2).length === 2;
 
   // High card
   let handRank = 1;
-  if (faceCounts.some((c) => c === 5)) {
-    // Five of a kind
+  if (maxFaceCount >= 5) {
     handRank = 7;
-  } else if (faceCounts.some((c) => c === 4)) {
-    // Four of a kind
+  } else if (maxFaceCount >= 4) {
     handRank = 6;
-  } else if (faceCounts.some((c) => c === 3) && faceCounts.some((c) => c === 2)) {
-    // Full house
+  } else if (
+    // Natural full house
+    (faceCounts.some((c) => c === 3) && faceCounts.some((c) => c === 2)) ||
+    // Full house with joker
+    (isTwoPair && numberOfJokers === 1)
+  ) {
     handRank = 5;
-  } else if (faceCounts.some((c) => c === 3)) {
-    // Three of a kind
+  } else if (maxFaceCount >= 3) {
     handRank = 4;
-  } else if (faceCounts.filter((c) => c === 2).length === 2) {
-    // Two pair
+  } else if (isTwoPair) {
     handRank = 3;
-  } else if (faceCounts.some((c) => c === 2)) {
-    // One pair
+  } else if (maxFaceCount >= 2) {
     handRank = 2;
   }
+
   return {cards, rank: handRank};
 }
 // endregion
