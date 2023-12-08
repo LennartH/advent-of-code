@@ -5,31 +5,40 @@ import * as Handlebars from 'handlebars';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
 import { kebabCase, startCase } from 'lodash';
+import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // TODO Add tests
 // TODO Better logging
 
 // TODO Move templates into tool directory
 // TODO Determine path of this file and make source path relative to this file
+const aocTokenEnv = 'AOC_TOKEN';
 const typescriptDayTemplateSource = path.resolve(process.env.HOME!, 'projects/advent-of-code/template/typescript/day-{{day}}_{{title}}');
 const readmePath = path.resolve('README.md');
 
 // TODO Add option to select template language
-// TODO Add option to load puzzle input from API
 // TODO Add option to dry-run
 const command = new Command()
   .argument('<output>', 'Path to the output directory')
-  .option('-d, --day <number>', 'Number of the day', parseDayNumber, 'today')
   .requiredOption('-t, --title <title>', 'Title of the puzzle')
-  .option('-u, --update-readme [year]', 'Add entry for the current or given year to the readme', parseYear, true)
+  .option('-d, --day <number>', 'Number of the day', parseDayNumber, 'today')
+  .option('-y, --year <number>', 'Number of the year', parseYear, new Date().getFullYear().toString())
+  .option('-u, --update-readme', 'Add entry for the current or given year to the readme', true)
   .option('--no-update-readme', 'Do not update readme')
+  .option('-i, --load-input', `Load puzzle input using ${aocTokenEnv} as session token`, true)
+  .option('--no-load-input', 'Do not load the puzzle input')
   .action(generateDayFiles);
 command.parse();
 
 interface GenerateDayOptions {
   day: string;
+  year: string;
   title: string;
-  updateReadme: boolean | string;
+  updateReadme: boolean;
+  loadInput: boolean;
 }
 
 function parseDayNumber(value: string): string {
@@ -84,13 +93,24 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
 
   if (contentOptions.updateReadme) {
     const readmeOptions = {
-      year: contentOptions.updateReadme as string,
+      year: contentOptions.year,
       day: contentOptions.day,
       title: contentOptions.title,
       directory: outputDirectory,
     }
     await addEntryToReadme(readmePath, readmeOptions);
     console.log(`Added entry for Day '${contentOptions.day}: ${contentOptions.title}' to readme`);
+  }
+
+  if (contentOptions.loadInput) {
+    if (!process.env[aocTokenEnv]) {
+      console.log(`Error: ${aocTokenEnv} not found`)
+    } else {
+      const {year, day} = contentOptions;
+      const inputFilePath = path.join(outputPath, 'input');
+      await fetchPuzzleInput(year, day, inputFilePath);
+      console.log(`Puzzle input saved to ${path.relative(process.cwd(), inputFilePath)}`);
+    }
   }
 }
 
@@ -126,15 +146,22 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
   await fs.writeFile(readmePath, updatedContent);
 }
 
+async function fetchPuzzleInput(year: number | string, day: number | string, outputPath: string): Promise<void> {
+  const response = await axios.get(`https://adventofcode.com/${year}/day/${day}/input`, {
+    headers: {
+      'Cookie': `session=${process.env[aocTokenEnv]}`
+    }
+  });
+  await fs.writeFile(outputPath, response.data);
+}
+
+// TODO Cleanup
 function cleanOptions(options: GenerateDayOptions): Required<GenerateDayOptions> {
-  const {title, day, updateReadme} = options;
 
-  const cleaned: Required<GenerateDayOptions> = {} as never;
-  cleaned.title = startCase(title.toLowerCase());
-  cleaned.updateReadme = updateReadme === true ? `${new Date().getFullYear()}` : updateReadme;
+  const cleaned: Required<GenerateDayOptions> = {...options} as never;
+  cleaned.title = startCase(options.title.toLowerCase());
 
-  cleaned.day = day;
-  if (day === 'today') {
+  if (options.day === 'today') {
     const dayNumber = new Date().getDate();
     if (dayNumber <= 0 || dayNumber > 24) {
       throw new Error("Can't use 'today' for option --day. Must be between 1 and 24.");

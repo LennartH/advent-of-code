@@ -24,7 +24,9 @@
   },
   "dependencies": {
     "@inquirer/prompts": "^3.3.0",
+    "axios": "^1.6.2",
     "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
     "handlebars": "^4.7.8",
     "lodash": "^4.17.21",
     "pino": "^8.16.2"
