@@ -4,7 +4,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import * as Handlebars from 'handlebars';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
-import { kebabCase, min, startCase } from 'lodash';
+import { kebabCase, startCase } from 'lodash';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
@@ -129,20 +129,35 @@ const readmeListHeader = Handlebars.compile('### {{year}}');
 const readmeEntry = Handlebars.compile('- **Day {{day}}: {{title}}** [Solution]({{solutionUrl}}) / [Puzzle]({{puzzleUrl}})');
 
 async function addEntryToReadme(readmePath: string, options: {year: string, day: string, title: string, directory: string}) {
-  const readmeContent = await fs.readFile(readmePath, 'utf-8');
+  let readmeContent = await fs.readFile(readmePath, 'utf-8');
 
   const listHeader = readmeListHeader(options);
-  const headerIndex = readmeContent.indexOf(listHeader);
+  let headerIndex = readmeContent.indexOf(listHeader);
+  let listStartIndex = readmeContent.indexOf('-', headerIndex);
   if (headerIndex < 0) {
-    // TODO Add list header instead
-    console.log(`Error - Unable to locate list header for year: ${options.year}`);
-    return;
+    const yearValue = Number(options.year);
+    const yearHeaders = readmeContent.match(/### \d{4}/g) || [];
+    const existingYears = yearHeaders?.map((h) => Number(h.split(' ')[1]));
+
+    if (existingYears.length === 0 || yearValue < Math.min(...existingYears)) {
+      readmeContent += `\n${listHeader}\n`;
+    } else {
+      for (let i = 0; i < existingYears.length; i++) {
+        const currentYear = existingYears[i];
+        if (yearValue > currentYear) {
+          const nextHeaderIndex = readmeContent.indexOf(yearHeaders[i]);
+          readmeContent = readmeContent.slice(0, nextHeaderIndex) + `${listHeader}\n\n` + readmeContent.slice(nextHeaderIndex);
+          break;
+        }
+      }
+    }
+
+    headerIndex = readmeContent.indexOf(listHeader);
+    listStartIndex = headerIndex + listHeader.length + 1;
   }
-  const listStartIndex = readmeContent.indexOf('-', headerIndex);
 
   const beforeList = readmeContent.slice(0, listStartIndex);
   const afterList = readmeContent.slice(listStartIndex);
-
   const newEntry = readmeEntry({
     ...options,
     solutionUrl: solutionUrl(options),
