@@ -4,14 +4,13 @@ import { Command, InvalidArgumentError } from 'commander';
 import * as Handlebars from 'handlebars';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
-import { kebabCase, startCase } from 'lodash';
+import { kebabCase, min, startCase } from 'lodash';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 // TODO Add tests
-// TODO Better logging
 
 // TODO Move templates into tool directory
 // TODO Determine path of this file and make source path relative to this file
@@ -19,14 +18,26 @@ const aocTokenEnv = 'AOC_TOKEN';
 const typescriptDayTemplateSource = path.resolve(process.env.HOME!, 'projects/advent-of-code/template/typescript/day-{{day}}_{{title}}');
 const readmePath = path.resolve('README.md');
 
+const now = new Date();
+
+const minDay = 1;
+const maxDay = 25;
+const currentDay = now.getDate();
+const currentDayDefault = currentDay > maxDay ? undefined : currentDay.toString();
+
+const minYear = 2015;
+const currentYear = now.getFullYear();
+const maxYear = now.getMonth() === 11 ? currentYear : currentYear - 1;
+const currentYearDefault = currentYear.toString();
+
 // TODO Add option to select template language
 // TODO Add option to dry-run
 const command = new Command()
   .argument('<output>', 'Path to the output directory')
   .requiredOption('-t, --title <title>', 'Title of the puzzle')
-  .option('-d, --day <number>', 'Number of the day', parseDayNumber, 'today')
-  .option('-y, --year <number>', 'Number of the year', parseYear, new Date().getFullYear().toString())
-  .option('-u, --update-readme', 'Add entry for the current or given year to the readme', true)
+  .requiredOption('-d, --day <number>', `Number of the day [${minDay}-${maxDay}]`, parseDayNumber, currentDayDefault)
+  .option('-y, --year <number>', `Number of the year [${minYear}-${maxYear}]`, parseYear, currentYearDefault)
+  .option('-u, --update-readme', 'Add an entry for the generated file to the readme', true)
   .option('--no-update-readme', 'Do not update readme')
   .option('-i, --load-input', `Load puzzle input using ${aocTokenEnv} as session token`, true)
   .option('--no-load-input', 'Do not load the puzzle input')
@@ -34,41 +45,41 @@ const command = new Command()
 command.parse();
 
 interface GenerateDayOptions {
+  title: string;
   day: string;
   year: string;
-  title: string;
   updateReadme: boolean;
   loadInput: boolean;
 }
 
 function parseDayNumber(value: string): string {
-  if (value === 'today') {
-    return value;
+  if (!value.match(/^\d{1,2}$/)) {
+    throw new InvalidArgumentError(`Must be a number between ${minDay} and ${maxDay}.`)
   }
-
   const dayNumber = Number(value);
-  if (isNaN(dayNumber)) {
-    throw new InvalidArgumentError('Must be a number.');
+  if (dayNumber < minDay || dayNumber > maxDay) {
+    throw new InvalidArgumentError(`Must be a number between ${minDay} and ${maxDay}.`);
   }
-  if (dayNumber <= 0 || dayNumber > 24) {
-    throw new InvalidArgumentError('Must be between 1 and 24.');
-  }
-  return `${dayNumber}`;
+  return dayNumber.toString();
 }
 
 function parseYear(value: string): string | boolean {
   if (!value.match(/^\d{4}$/)) {
-    throw new InvalidArgumentError('Must be a 4 digit number.')
+    throw new InvalidArgumentError(`Must be a number between ${minYear} and ${maxYear}.`)
   }
-  return value;
+  const yearNumber = Number(value);
+  if (yearNumber < minYear || yearNumber > maxYear) {
+    throw new InvalidArgumentError(`Must be a number between ${minYear} and ${maxYear}.`);
+  }
+  return yearNumber.toString();
 }
 
 async function generateDayFiles(output: string, options: GenerateDayOptions) {
-  const contentOptions = cleanOptions(options);
+  options.title = startCase(options.title.toLowerCase());
   const pathOptions = {
-    ...contentOptions,
-    title: kebabCase(contentOptions.title),
-    day: contentOptions.day.padStart(2, '0')
+    ...options,
+    title: kebabCase(options.title),
+    day: options.day.padStart(2, '0')
   };
 
   const sourcePath = typescriptDayTemplateSource;
@@ -86,30 +97,26 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
   const templateFiles = await fs.readdir(sourcePath);
   for (const templateFile of templateFiles) {
     const outputFilename = renderTemplate(templateFile, pathOptions);
-    const outputContent = await renderFile(path.join(sourcePath, templateFile), contentOptions);
+    const outputContent = await renderFile(path.join(sourcePath, templateFile), options);
     await fs.writeFile(path.join(outputPath, outputFilename), outputContent);
   }
   console.log(`Files have been generated at ${path.relative(process.cwd(), outputPath)}`);
 
-  if (contentOptions.updateReadme) {
+  if (options.updateReadme) {
     const readmeOptions = {
-      year: contentOptions.year,
-      day: contentOptions.day,
-      title: contentOptions.title,
+      ...options,
       directory: outputDirectory,
-    }
+    };
     await addEntryToReadme(readmePath, readmeOptions);
-    console.log(`Added entry for Day '${contentOptions.day}: ${contentOptions.title}' to readme`);
   }
 
-  if (contentOptions.loadInput) {
+  if (options.loadInput) {
     if (!process.env[aocTokenEnv]) {
       console.log(`Error: ${aocTokenEnv} not found`)
     } else {
-      const {year, day} = contentOptions;
+      const {year, day} = options;
       const inputFilePath = path.join(outputPath, 'input');
       await fetchPuzzleInput(year, day, inputFilePath);
-      console.log(`Puzzle input saved to ${path.relative(process.cwd(), inputFilePath)}`);
     }
   }
 }
@@ -128,7 +135,7 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
   const headerIndex = readmeContent.indexOf(listHeader);
   if (headerIndex < 0) {
     // TODO Add list header instead
-    console.log(`Error: Unable to locate list header for year ${options.year}`);
+    console.log(`Error - Unable to locate list header for year: ${options.year}`);
     return;
   }
   const listStartIndex = readmeContent.indexOf('-', headerIndex);
@@ -144,32 +151,21 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
   const updatedContent = `${beforeList}${newEntry}\n${afterList}`;
 
   await fs.writeFile(readmePath, updatedContent);
+  console.log(`Added entry for Day '${options.day}: ${options.title}' to readme`);
 }
 
 async function fetchPuzzleInput(year: number | string, day: number | string, outputPath: string): Promise<void> {
-  const response = await axios.get(`https://adventofcode.com/${year}/day/${day}/input`, {
-    headers: {
-      'Cookie': `session=${process.env[aocTokenEnv]}`
-    }
-  });
-  await fs.writeFile(outputPath, response.data);
-}
-
-// TODO Cleanup
-function cleanOptions(options: GenerateDayOptions): Required<GenerateDayOptions> {
-
-  const cleaned: Required<GenerateDayOptions> = {...options} as never;
-  cleaned.title = startCase(options.title.toLowerCase());
-
-  if (options.day === 'today') {
-    const dayNumber = new Date().getDate();
-    if (dayNumber <= 0 || dayNumber > 24) {
-      throw new Error("Can't use 'today' for option --day. Must be between 1 and 24.");
-    }
-    cleaned.day = `${dayNumber}`;
+  try {
+    const response = await axios.get(`https://adventofcode.com/${year}/day/${day}/input`, {
+      headers: {
+        'Cookie': `session=${process.env[aocTokenEnv]}`
+      }
+    });
+    await fs.writeFile(outputPath, response.data);
+    console.log(`Puzzle input saved to ${path.relative(process.cwd(), outputPath)}`);
+  } catch (error) {
+    console.log(`Error fetching puzzle input - ${error}`)
   }
-
-  return cleaned;
 }
 
 async function renderFile<T>(filePath: string, context: T): Promise<string> {
