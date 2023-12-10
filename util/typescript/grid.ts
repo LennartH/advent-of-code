@@ -24,6 +24,8 @@ export interface Grid<V> {
   adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
   adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
   adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
+
+  // TODO find path
 }
 
 export interface GridCell<V> {
