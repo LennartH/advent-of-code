@@ -1,6 +1,5 @@
-import { CardinalDirection2D, directionFromName, formatGrid, getDirections, splitLines } from '@util';
+import { CardinalDirection2D, directionFromName, formatGrid, splitLines } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
-import { filter, map, pipe } from 'iter-ops';
 
 // region Types and Globals
 interface Maze {
@@ -37,16 +36,7 @@ export function solvePart2(input: string): number {
   // Transform every piece of pipe to a 3x3 grid and connect the loop
   const grid = drawLoopToGrid(maze);
   // "Remove" everything outside the loop
-  const outerStack = [{x: 0, y: 0}] // 0,0 of grid can't be inside loop
-  while (outerStack.length > 0) {
-    const position = outerStack.pop()!;
-    grid.set(position, ' ');
-    outerStack.push(...pipe(
-      grid.adjacentFrom(position, {withDiagonals: true}),
-      filter(({value}) => value === '.'),
-      map(({position}) => position),
-    ));
-  }
+  grid.floodFill(0, 0, ' ');
   // Iterate over maze in pipe coordinates and see if the corresponding 3x3 tile is completely empty
   let emptyTilesCount = 0;
   for (let x = 0; x < maze.width; x++) {

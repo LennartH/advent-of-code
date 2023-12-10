@@ -17,6 +17,11 @@ export interface Grid<V> {
   set(x: number, y: number, value: V): void;
   set(point: PointLike, value: V): void;
 
+  floodFill(x: number, y: number, newValue?: V): GridCell<V>[];
+  floodFill(x: number, y: number, options?: FloodFillOptions<V>): GridCell<V>[];
+  floodFill(point: PointLike, newValue?: V): GridCell<V>[];
+  floodFill(point: PointLike, options?: FloodFillOptions<V>): GridCell<V>[];
+
   contains(x: number, y: number): boolean;
   contains(point: PointLike): boolean;
 
@@ -26,8 +31,7 @@ export interface Grid<V> {
   adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
 
   // TODO find path
-  // TODO set rect
-  // TODO flood fill
+  // TODO get/set rect
 }
 
 export interface GridCell<V> {
@@ -35,14 +39,25 @@ export interface GridCell<V> {
   value: V;
 }
 
-// TODO Improve typing
-export type AdjacentFromOptions<V> = {
+export type FloodFillOptions<V> = {
   withDiagonals?: boolean;
+} & (
+  { newValue?: V; newValueForCell?: never } |
+  { newValueForCell?: CellValueMapper<V>; newValue?: never }
+) & (
+  { floodableValues?: V | V[]; isFloodable?: never} |
+  { isFloodable?: CellPredicate<V>; floodableValues?: never}
+);
+
+export type CellPredicate<V> = (cell: GridCell<V>) => boolean;
+export type CellValueMapper<V> = (cell: GridCell<V>) => V | undefined;
+
+export type AdjacentFromOptions<V> = {
   onOutOfBounds?: 'drop' | 'keep' | AdjacentOutOfBoundsHandler<V>;
-} | {
-  directions: Direction2D[];
-  onOutOfBounds?: 'drop' | 'keep' | AdjacentOutOfBoundsHandler<V>;
-};
+} & (
+  { withDiagonals?: boolean; directions?: never } |
+  { directions: Direction2D[]; withDiagonals?: never }
+);
 type AdjacentOutOfBoundsHandler<V> = (position: PlainPoint, grid: Grid<V>) => PlainPoint | 'drop' | 'keep' | boolean;
 
 export abstract class AbstractGrid<V> implements Grid<V> {
@@ -103,6 +118,66 @@ export abstract class AbstractGrid<V> implements Grid<V> {
   }
   protected abstract _set(x: number, y: number, value: V): void;
 
+  floodFill(x: number, y: number, newValue?: V): GridCell<V>[]
+  floodFill(x: number, y: number, options?: FloodFillOptions<V>): GridCell<V>[]
+  floodFill(point: PointLike, newValue?: V): GridCell<V>[]
+  floodFill(point: PointLike, options?: FloodFillOptions<V>): GridCell<V>[]
+  floodFill(...args: (number | PointLike | V | FloodFillOptions<V> | undefined)[]): GridCell<V>[] {
+    // TODO Well, this is a mess...
+    let start: PlainPoint;
+    let newValueOrOptions: V | FloodFillOptions<V> | undefined;
+    if (typeof args[0] === 'number') {
+      start = {x: args[0], y: args[1] as number};
+      newValueOrOptions = args[2] as never;
+    } else {
+      start = asPlainPoint(args[0] as PointLike);
+      newValueOrOptions = args[1] as never;
+    }
+    let options: FloodFillOptions<V> = {};
+    if (typeof newValueOrOptions === 'object' && (['withDiagonals', 'newValue', 'newValueForCell', 'floodableValues', 'isFloodable'].some((v) => v in (newValueOrOptions as object)))) {
+      options = newValueOrOptions;
+    } else if (newValueOrOptions !== undefined) {
+      options.newValue = newValueOrOptions;
+    }
+    const newValueForCell: CellValueMapper<V> = options.newValueForCell || (() => options.newValue);
+    let isFloodable: CellPredicate<V>;
+    if (options.isFloodable != null) {
+      isFloodable = options.isFloodable;
+    } else if (options.floodableValues == null) {
+      const startValue = this.get(start);
+      isFloodable = ({value}) => value === startValue;
+    } else if (Array.isArray(options.floodableValues)) {
+      const floodableValues: V[] = options.floodableValues;
+      isFloodable = ({value}) => floodableValues.includes(value);
+    } else {
+      const floodableValue: V = options.floodableValues;
+      isFloodable = ({value}) => floodableValue === value;
+    }
+
+    let cell: GridCell<V> | undefined = {position: start, value: this.get(start)};
+    if (!isFloodable(cell)) {
+      return [];
+    }
+
+    const stack: GridCell<V>[] = [];
+    const cells: GridCell<V>[] = [];
+    while (cell != null) {
+      const fillValue = newValueForCell(cell);
+      if (fillValue !== undefined) {
+        this.set(cell.position, fillValue);
+      }
+      cells.push(cell);
+
+      for (const adjacentCell of this.adjacentFrom(cell.position, {withDiagonals: true})) {
+        if (isFloodable(adjacentCell)) {
+          stack.push(adjacentCell);
+        }
+      }
+      cell = stack.pop();
+    }
+    return cells;
+  }
+
   contains(x: number, y: number): boolean
   contains(point: PointLike): boolean
   contains(pointOrX: PointLike | number, yValue?: number): boolean {
@@ -129,7 +204,7 @@ export abstract class AbstractGrid<V> implements Grid<V> {
       options = yValueOrOptions as never;
     }
     options ||= {};
-    const directions = 'directions' in options ? options.directions : getDirections('cardinal', options);
+    const directions = options.directions != null ? options.directions : getDirections('cardinal', options);
 
     const onOutOfBounds = options.onOutOfBounds || 'drop';
     for (const {deltaX, deltaY} of directions) {
