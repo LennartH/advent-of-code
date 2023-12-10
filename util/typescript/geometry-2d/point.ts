@@ -2,6 +2,7 @@ import { clamp } from '../number';
 import { PlainSize } from './size';
 
 // TODO Rename to Vector2
+// TODO Utility functions should also work with plain points
 
 export interface PlainPoint {
   x: number;

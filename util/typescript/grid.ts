@@ -26,6 +26,8 @@ export interface Grid<V> {
   adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
 
   // TODO find path
+  // TODO set rect
+  // TODO flood fill
 }
 
 export interface GridCell<V> {
