@@ -29,7 +29,7 @@ const pipeConnections: Record<string, [CardinalDirection2D, CardinalDirection2D]
 
 export function solvePart1(input: string): number {
   const maze = parseMaze(splitLines(input));
-  return getLoopLength(maze) / 2;
+  return findLoop(maze).length / 2;
 }
 
 export function solvePart2(input: string): number {
@@ -52,10 +52,7 @@ export function solvePart2(input: string): number {
   for (let x = 0; x < maze.width; x++) {
     for (let y = 0; y < maze.height; y++) {
       const gridPosition = { x: 1 + (x * 3), y: 1 + (y * 3) };
-      const tileCells = [...grid.adjacentFrom(gridPosition, {withDiagonals: true})].map(({value}) => value);
-      tileCells.push(grid.get(gridPosition));
-      // Everything that's not a . is a pipe or outside the loop
-      if (!tileCells.some((v) => v !== '.')) {
+      if (grid.get(gridPosition) === '.') {
         emptyTilesCount++;
       }
     }
@@ -68,7 +65,7 @@ export function solvePart2(input: string): number {
 
 // region Shared Code
 function parseMaze(lines: string[]): Maze {
-  let start: Node | null = null;
+  let start: Node = null as never;
   const edges: Record<string, Node> = {};
 
   const height = lines.length;
@@ -102,105 +99,50 @@ function parseMaze(lines: string[]): Maze {
   if (start == null) {
     throw new Error('Start not found');
   }
-  // My puzzle input has only 2 valid connections to the starting position.
-  // So we can just add an edge from start to these points and do not have to
-  // determine the actual pipe shape of the starting position.
   const connectedToStart = Object.entries(edges)
-    .filter(([k, n]) => n.next.includes(start!.key))
+    .filter(([_, n]) => n.next.includes(start!.key))
     .map(([k]) => k);
-  start.next = connectedToStart as [string, string];
-  edges[start.key] = start;
-  return {start: start.key, edges, width, height}
-}
-
-function getLoopLength({start, edges}: Maze): number {
-  let stepCount = 1;
-  let currentNode = edges[start].next[0];
-  let previousNode = start;
-  while (currentNode !== start) {
-    const nextNode = edges[currentNode].next.filter((n) => n !== previousNode)[0];
-    previousNode = currentNode;
-    currentNode = nextNode;
-    stepCount++;
-  }
-  return stepCount;
-}
-
-const symbolToPipe: Record<string, string[]> = {
-  '|': [
-    '.#.',
-    '.#.',
-    '.#.',
-  ],
-  '-': [
-    '...',
-    '###',
-    '...',
-  ],
-  'L': [
-    '.#.',
-    '.##',
-    '...',
-  ],
-  'J': [
-    '.#.',
-    '##.',
-    '...',
-  ],
-  '7': [
-    '...',
-    '##.',
-    '.#.',
-  ],
-  'F': [
-    '...',
-    '.##',
-    '.#.',
-  ],
-};
-const directions = getDirections('cardinal');
-
-function drawLoopToGrid(maze: Maze): Grid<string> {
-  // determine start pipe
-  const startNode = maze.edges[maze.start];
   const startPipe = Object.keys(pipeConnections).find((symbol) => {
     const nextIfMatch = pipeConnections[symbol].map(
-      ({deltaX, deltaY}) => `${startNode.position.x + deltaX},${startNode.position.y + deltaY}`
+      ({deltaX, deltaY}) => `${start.position.x + deltaX},${start.position.y + deltaY}`
     );
-    return !startNode.next.some((k) => !nextIfMatch.includes(k));
+    return !connectedToStart.some((k) => !nextIfMatch.includes(k));
   });
   if (startPipe == null) {
     throw new Error('Unable to determine pipe of starting position');
   }
-  startNode.symbol = startPipe;
+  start.symbol = startPipe;
+  start.next = connectedToStart as [string, string];
+  edges[start.key] = start;
 
-  // find nodes in loop
-  const nodesInLoop: Node[] = [maze.edges[maze.start]];
-  let currentNode = maze.edges[maze.start].next[0];
-  let previousNode = maze.start;
-  while (currentNode !== maze.start) {
-    nodesInLoop.push(maze.edges[currentNode]);
-    const nextNode = maze.edges[currentNode].next.filter((n) => n !== previousNode)[0];
-    previousNode = currentNode;
-    currentNode = nextNode;
-  }
+  return {start: start.key, edges, width, height}
+}
 
-  // draw loop to grid
+function drawLoopToGrid(maze: Maze): Grid<string> {
   const grid = new ArrayGrid(maze.width * 3, maze.height * 3, '.');
-  for (const node of nodesInLoop) {
+  for (const node of findLoop(maze)) {
     const gridPosition = {
       x: 1 + (node.position.x * 3),
       y: 1 + (node.position.y * 3),
     };
-    const pipeToDraw = symbolToPipe[node.symbol];
-    for (const {deltaX, deltaY} of directions) {
-      const templatePosition = {x: 1 + deltaX, y: 1 + deltaY};
-      const targetPosition = {x: gridPosition.x + deltaX, y: gridPosition.y + deltaY};
-      grid.set(targetPosition, pipeToDraw[templatePosition.y][templatePosition.x]);
+    grid.set(gridPosition, '#');
+    for (const {deltaX, deltaY} of pipeConnections[node.symbol]) {
+      grid.set(gridPosition.x + deltaX, gridPosition.y + deltaY, '#');
     }
-    grid.set(gridPosition, pipeToDraw[1][1]);
   }
-
   return grid;
+}
+
+function findLoop({start, edges}: Maze): Node[] {
+  const nodesInLoop: Node[] = [edges[start]];
+  let currentNode = edges[start].next[0];
+  let previousNode = start;
+  while (currentNode !== start) {
+    nodesInLoop.push(edges[currentNode]);
+    const nextNode = edges[currentNode].next.filter((n) => n !== previousNode)[0];
+    previousNode = currentNode;
+    currentNode = nextNode;
+  }
+  return nodesInLoop;
 }
 // endregion
