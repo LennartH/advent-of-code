@@ -12,8 +12,7 @@ export function solvePart2(input: string): number {
 
 export function solveWithExpansionFactor(input: string, expansionFactor: number): number {
   const galaxies = galaxiesAfterExpansion(input, expansionFactor);
-  return pipe(
-    allPairs(galaxies),
+  return pipe(allPairs(galaxies),
     map(([from, to]) => manhattanDistance(from, to)),
     reduce((s, v) => s + v, 0)
   ).first || Number.NaN;
@@ -24,27 +23,15 @@ function galaxiesAfterExpansion(input: string, expansionFactor: number): PlainPo
   const rawImage = ArrayGrid.fromInput(input);
   const emptyRows: number[] = [];
   for (let y = 0; y < rawImage.height; y++) {
-    let foundGalaxy = false;
-    for (const {value} of rawImage.row(y)) {
-      if (value !== '.') {
-        foundGalaxy = true;
-        break;
-      }
-    }
-    if (!foundGalaxy) {
+    const row = [...rawImage.row(y)];
+    if (row.every(({value}) => value === '.')) {
       emptyRows.push(y);
     }
   }
   const emptyColumns: number[] = [];
   for (let x = 0; x < rawImage.width; x++) {
-    let foundGalaxy = false;
-    for (const {value} of rawImage.column(x)) {
-      if (value !== '.') {
-        foundGalaxy = true;
-        break;
-      }
-    }
-    if (!foundGalaxy) {
+    const column = [...rawImage.column(x)];
+    if (column.every(({value}) => value === '.')) {
       emptyColumns.push(x);
     }
   }
