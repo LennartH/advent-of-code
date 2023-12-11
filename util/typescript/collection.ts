@@ -55,6 +55,14 @@ export function* allPermutations<T>(list: T[]): Generator<T[]> {
   }
 }
 
+export function* allPairs<T>(list: T[]): Generator<[T, T]> {
+  for (let i = 0; i < list.length; i++) {
+    for (let j = i + 1; j < list.length; j++) {
+      yield [list[i], list[j]];
+    }
+  }
+}
+
 export interface GridFormat<V> {
   valueFormatter?: (v: V, x: number, y: number) => string;
 
