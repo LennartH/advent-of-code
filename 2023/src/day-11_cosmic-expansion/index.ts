@@ -1,13 +1,17 @@
-import { allPairs, PlainPoint, splitLines } from '@util';
-import { ArrayGrid, Grid } from '@util/grid';
+import { allPairs, PlainPoint } from '@util';
+import { ArrayGrid } from '@util/grid';
 import { map, pipe, reduce } from 'iter-ops';
 
-// region Types and Globals
-
-// endregion
-
 export function solvePart1(input: string): number {
-  const {image, galaxies} = imageWithExpansion(input);
+  return solveWithExpansionFactor(input, 2);
+}
+
+export function solvePart2(input: string): number {
+  return solveWithExpansionFactor(input, 1000000);
+}
+
+export function solveWithExpansionFactor(input: string, expansionFactor: number): number {
+  const galaxies = galaxiesAfterExpansion(input, expansionFactor);
   return pipe(
     allPairs(galaxies),
     map(([from, to]) => manhattanDistance(from, to)),
@@ -15,14 +19,8 @@ export function solvePart1(input: string): number {
   ).first || Number.NaN;
 }
 
-export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
-}
-
 // region Shared Code
-export function imageWithExpansion(input: string): {image: Grid<string>, galaxies: PlainPoint[]} {
+function galaxiesAfterExpansion(input: string, expansionFactor: number): PlainPoint[] {
   const rawImage = ArrayGrid.fromInput(input);
   const emptyRows: number[] = [];
   for (let y = 0; y < rawImage.height; y++) {
@@ -57,21 +55,15 @@ export function imageWithExpansion(input: string): {image: Grid<string>, galaxie
     }
   }
 
-  const image = new ArrayGrid(
-    rawImage.width + emptyColumns.length,
-    rawImage.height + emptyRows.length,
-    '.'
-  );
   const galaxies: PlainPoint[] = [];
   for (const {x, y} of rawGalaxies) {
     const galaxy = {
-      x: x + emptyColumns.filter((cx) => cx < x).length,
-      y: y + emptyRows.filter((cy) => cy < y).length,
+      x: x + (emptyColumns.filter((cx) => cx < x).length * (expansionFactor - 1)),
+      y: y + (emptyRows.filter((cy) => cy < y).length * (expansionFactor - 1)),
     }
-    image.set(galaxy, '#');
     galaxies.push(galaxy);
   }
-  return {image, galaxies};
+  return galaxies;
 }
 
 function manhattanDistance(point1: PlainPoint, point2: PlainPoint): number {
