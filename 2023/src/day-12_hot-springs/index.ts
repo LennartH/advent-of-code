@@ -1,4 +1,4 @@
-import { splitLines, unique } from '@util';
+import { splitLines } from '@util';
 
 // region Types and Globals
 interface DamageReport {
@@ -17,9 +17,37 @@ export function solvePart1(input: string): number {
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const reports = splitLines(input).map(parseDamageReport);
+
+  let count = 0;
+  for (const report of reports) {
+    const initialArrangements = findArrangements(report);
+    const initialArrangementsCount = initialArrangements.length;
+    let unfoldedArrangementsCount = 0;
+    if (initialArrangements.some((s) => s.at(-1) === '#')) {
+      const unfoldedReport: DamageReport = {
+        maxNumberOfDamagedSprings: report.maxNumberOfDamagedSprings,
+        damageGroups: [1, ...report.damageGroups],
+        uncertainSprings: `#?${report.uncertainSprings}`,
+      };
+      const unfoldedArrangements = findArrangements(unfoldedReport);
+      unfoldedArrangementsCount += unfoldedArrangements.length;
+    }
+    if (initialArrangements.some((s) => s.at(-1) === '.')) {
+      const unfoldedReport: DamageReport = {
+        maxNumberOfDamagedSprings: report.maxNumberOfDamagedSprings,
+        damageGroups: [...report.damageGroups],
+        uncertainSprings: `?${report.uncertainSprings}`,
+      };
+      const unfoldedArrangements = findArrangements(unfoldedReport);
+      unfoldedArrangementsCount += unfoldedArrangements.length;
+    }
+    const reportCount = initialArrangementsCount * unfoldedArrangementsCount * unfoldedArrangementsCount * unfoldedArrangementsCount * unfoldedArrangementsCount;
+    console.log(report.uncertainSprings, '->', reportCount);
+    count += reportCount;
+  }
+
+  return count;
 }
 
 // region Shared Code
@@ -34,32 +62,32 @@ function parseDamageReport(line: string): DamageReport {
 }
 
 function findArrangements(report: DamageReport): string[] {
-  const uniqueArrangements = unique(collapse(report.uncertainSprings.split('')).map((s) => s.join('')));
   const validArrangements: string[] = [];
-  for (const springs of uniqueArrangements) {
-    const valid = isValid(springs.split(''), report);
-    if (valid) {
-      validArrangements.push(springs);
+  for (const springs of collapse(report.uncertainSprings.split(''))) {
+    if (isValid(springs, report)) {
+      validArrangements.push(springs.join(''));
     }
   }
   return validArrangements;
 }
 
-function collapse(springs: string[]): string[][] {
+function* collapse(springs: string[]): Generator<string[]> {
   if (isCollapsed(springs)) {
-    return [springs];
+    return yield springs;
   }
   // TODO Case if max damaged springs has been reached?
 
   const uncertainSpring = springs.indexOf('?');
   const left = [...springs];
   left[uncertainSpring] = '.';
+  for (const collapsed of collapse(left)) {
+    yield collapsed;
+  }
   const right = [...springs];
   right[uncertainSpring] = '#';
-  return [
-    ...collapse(left),
-    ...collapse(right),
-  ]
+  for (const collapsed of collapse(right)) {
+    yield collapsed;
+  }
 }
 
 function isCollapsed(springs: string[]): boolean {

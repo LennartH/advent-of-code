@@ -12,13 +12,13 @@ describe('Day 12: Hot Springs', () => {
       ?###???????? 3,2,1
     `;
     const part1Solution = 21;
-    const part2Solution = null;
+    const part2Solution = 525152;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
@@ -34,7 +34,7 @@ describe('Day 12: Hot Springs', () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
