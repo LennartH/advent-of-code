@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2023
+- **Day 12: Hot Springs** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-12_hot-springs/index.ts) / [Puzzle](https://adventofcode.com/2023/day/12)
 - **Day 11: Cosmic Expansion** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-11_cosmic-expansion/index.ts) / [Puzzle](https://adventofcode.com/2023/day/11)
 - **Day 10: Pipe Maze** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-10_pipe-maze/index.ts) / [Puzzle](https://adventofcode.com/2023/day/10)
 - **Day 9: Mirage Maintenance** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-09_mirage-maintenance/index.ts) / [Puzzle](https://adventofcode.com/2023/day/9)
