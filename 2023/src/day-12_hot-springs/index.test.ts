@@ -28,7 +28,7 @@ describe('Day 12: Hot Springs', () => {
     const inputPath = `${__dirname}/input`;
     const input = readFile(inputPath);
     const part1Solution = 7344;
-    const part2Solution = null;
+    const part2Solution = 1088006519007;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
@@ -39,10 +39,4 @@ describe('Day 12: Hot Springs', () => {
       expect(result).toEqual(part2Solution);
     });
   });
-
-  // region Function Specific Tests
-  describe.skip('Make sure that', () => {
-    // Add tests if all hope is lost (it's okay to cry)
-  });
-  // endregion
 });
