@@ -10,12 +10,14 @@ export interface Grid<V> {
   row(point: PointLike): Generator<GridCell<V>>;
   column(x: number): Generator<GridCell<V>>;
   column(point: PointLike): Generator<GridCell<V>>;
+  // TODO cell/row/column values
 
   get(x: number, y: number): V;
   get(point: PointLike): V;
 
   set(x: number, y: number, value: V): void;
   set(point: PointLike, value: V): void;
+  // TODO move value
 
   floodFill(x: number, y: number, newValue?: V): GridCell<V>[];
   floodFill(x: number, y: number, options?: FloodFillOptions<V>): GridCell<V>[];
