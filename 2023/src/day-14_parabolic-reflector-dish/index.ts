@@ -31,6 +31,7 @@ export function solvePart2(input: string): number {
         const loopLength = cycleCounter - memory.get(gridString)!;
         const remainingCycles = totalCycles - cycleCounter;
         cycleCounter = totalCycles - (remainingCycles % loopLength);
+        foundLoop = true;
       } else {
         memory.set(gridString, cycleCounter);
       }
