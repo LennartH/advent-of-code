@@ -10,7 +10,12 @@ export interface Grid<V> {
   row(point: PointLike): Generator<GridCell<V>>;
   column(x: number): Generator<GridCell<V>>;
   column(point: PointLike): Generator<GridCell<V>>;
-  // TODO cell/row/column values
+
+  cellValues(): Generator<V>;
+  rowValues(y: number): Generator<V>;
+  rowValues(point: PointLike): Generator<V>;
+  columnValues(x: number): Generator<V>;
+  columnValues(point: PointLike): Generator<V>;
 
   get(x: number, y: number): V;
   get(point: PointLike): V;
@@ -76,6 +81,12 @@ export abstract class AbstractGrid<V> implements Grid<V> {
     }
   }
 
+  * cellValues(): Generator<V> {
+    for (const {value} of this.cells()) {
+      yield value;
+    }
+  }
+
   row(y: number): Generator<GridCell<V>>
   row(point: PointLike): Generator<GridCell<V>>
   * row(pointOrY: PointLike | number): Generator<GridCell<V>> {
@@ -86,6 +97,14 @@ export abstract class AbstractGrid<V> implements Grid<V> {
     }
   }
 
+  rowValues(y: number): Generator<V>
+  rowValues(point: PointLike): Generator<V>
+  * rowValues(pointOrY: PointLike | number): Generator<V> {
+    for (const {value} of this.row(pointOrY as never)) {
+      yield value;
+    }
+  }
+
   column(x: number): Generator<GridCell<V>>
   column(point: PointLike): Generator<GridCell<V>>
   * column(pointOrX: PointLike | number): Generator<GridCell<V>> {
@@ -93,6 +112,14 @@ export abstract class AbstractGrid<V> implements Grid<V> {
     const height = this.height;
     for (let y = 0; y < height; y++) {
       yield {position: {x, y}, value: this.get(x, y)};
+    }
+  }
+
+  columnValues(x: number): Generator<V>
+  columnValues(point: PointLike): Generator<V>
+  * columnValues(pointOrX: PointLike | number): Generator<V> {
+    for (const {value} of this.column(pointOrX as never)) {
+      yield value;
     }
   }
 
@@ -301,15 +328,23 @@ export class SparseArrayGrid<V> extends AbstractGrid<V> {
   }
 
   * cells(): Generator<GridCell<V>> {
-    const width = this.width;
-    const height = this.height;
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        const value = this.get(x, y);
-        if (value != null) {
-          yield {position: {x, y}, value};
-        }
+    for (const y in this.data) {
+      for (const x in this.data[y]) {
+        yield { position: {x: Number(x), y: Number(y)}, value: this.data[y][x] };
       }
+    }
+  }
+  * row(pointOrY: PointLike | number): Generator<GridCell<V>> {
+    const { y } = asPlainPoint(pointOrY);
+    for (const x in this.data[y]) {
+      yield { position: {x: Number(x), y: Number(y)}, value: this.data[y][x] };
+    }
+  }
+
+  * column(pointOrX: PointLike | number): Generator<GridCell<V>> {
+    const { x } = asPlainPoint(pointOrX);
+    for (const y in this.data) {
+      yield { position: {x: Number(x), y: Number(y)}, value: this.data[y][x] };
     }
   }
 
