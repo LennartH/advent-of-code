@@ -1,7 +1,6 @@
 import { clamp } from '../number';
 import { PlainSize } from './size';
 
-// TODO Rename to Vector2
 // TODO Utility functions should also work with plain points
 
 export interface PlainPoint {
@@ -38,6 +37,7 @@ export class Point2D {
   translateBy(x: number, y: number): Point2D
   translateBy(data: PointLike): Point2D
   translateBy(scalarOrDataOrX: number | PointLike, yValue?: number): Point2D {
+
     const { x, y } = asPlainPoint(scalarOrDataOrX, yValue);
     this.x += x;
     this.y += y;
@@ -95,6 +95,31 @@ export class Point2D {
   toString(pretty = false): string {
     return pretty ? `(${this.x}, ${this.y})` : `${this.x},${this.y}`;
   }
+}
+
+
+export function translateBy(point: PointLike, byValue: number): PlainPoint
+export function translateBy(point: PointLike, by: PointLike): PlainPoint
+export function translateBy(point: PointLike, byX: number, byY: number): PlainPoint
+export function translateBy(x: number, y: number, byValue: number): PlainPoint
+export function translateBy(x: number, y: number, by: PointLike): PlainPoint
+export function translateBy(x: number, y: number, byX: number, byY: number): PlainPoint
+export function translateBy(...args: (PointLike | number)[]): PlainPoint {
+  if (args.length === 4) {
+    const [x, y, byX, byY] = args as number[];
+    return { x: x + byX, y: y + byY };
+  }
+  if (typeof args[0] === 'object') {
+    const { x, y } = asPlainPoint(args[0]);
+    const { x: byX, y: byY} = asPlainPoint(args[1], args[2] as never);
+    return { x: x + byX, y: y + byY };
+  }
+  if (typeof args[0] === 'number') {
+    const [x, y] = args as number[];
+    const { x: byX, y: byY} = asPlainPoint(args[2]);
+    return { x: x + byX, y: y + byY };
+  }
+  throw Error(`Unexpected arguments: ${JSON.stringify(args)}`);
 }
 
 export function asPlainPoint(scalar: number): PlainPoint

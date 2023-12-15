@@ -1,132 +1,83 @@
-import { formatGrid, sum } from '@util';
+import { CardinalDirection2D, directionFromName, isHorizontal, oppositeOf, PlainPoint, sum, translateBy } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
 
 export function solvePart1(input: string): number {
-  const grids = input.split(/\n\s*\n/).map((p) => ArrayGrid.fromInput(p));
-  return grids.map(findFoldLineId).reduce(sum);
+  const grids = input.split(/\n\s*\n/).map(ArrayGrid.fromInput);
+  return grids.map((g) => findFoldLineId(g, false)).reduce(sum);
 }
 
 export function solvePart2(input: string): number {
-  const grids = input.split(/\n\s*\n/).map((p) => ArrayGrid.fromInput(p));
-  return grids.map(findFoldLineIdWhenFixingSmudge).reduce(sum);
+  const grids = input.split(/\n\s*\n/).map(ArrayGrid.fromInput);
+  return grids.map((g) => findFoldLineId(g, true)).reduce(sum);
 }
 
 // region Shared Code
-function findFoldLineId(grid: Grid<string>): number {
-  for (let x = 0; x < grid.width - 1; x++) {
-    if (columnsAreEqual(grid, x, x + 1)) {
-      let foundFoldLineIndex = true;
-      for (let x1 = x - 1, x2 = x + 2; x1 >= 0 && x2 < grid.width; x1--, x2++) {
-        if (!columnsAreEqual(grid, x1, x2)) {
-          foundFoldLineIndex = false;
-          break;
-        }
-      }
-      if (foundFoldLineIndex) {
-        return x + 1;
+function findFoldLineId(grid: Grid<string>, fixSmudge: boolean): number {
+  const direction = directionFromName('SE');
+  let line = { x: 0, y: 0 };
+  while (line.x < grid.width - 1 || line.y < grid.height - 1) {
+    const next = translateBy(line, direction);
+    if (line.x < grid.width - 1 && (columnsAreEqual(grid, line, next) || (fixSmudge && columnsAreOffByOne(grid, line, next)))) {
+      if (foldLineIsValid(grid, line, directionFromName('E'), fixSmudge && !columnsAreOffByOne(grid, line, next))) {
+        return line.x + 1;
       }
     }
-  }
-
-  for (let y = 0; y < grid.height - 1; y++) {
-    if (rowsAreEqual(grid, y, y + 1)) {
-      let foundFoldLineIndex = true;
-      for (let y1 = y - 1, y2 = y + 2; y1 >= 0 && y2 < grid.height; y1--, y2++) {
-        if (!rowsAreEqual(grid, y1, y2)) {
-          foundFoldLineIndex = false;
-          break;
-        }
-      }
-      if (foundFoldLineIndex) {
-        return 100 * (y + 1);
+    if (line.y < grid.height - 1 && (rowsAreEqual(grid, line, next) || (fixSmudge && rowsAreOffByOne(grid, line, next)))) {
+      if (foldLineIsValid(grid, line, directionFromName('S'), fixSmudge && !rowsAreOffByOne(grid, line, next))) {
+        return 100 * (line.y + 1);
       }
     }
+    line = next;
   }
-
-  throw new Error(`Unable to find fold line for grid:\n${formatGrid(grid)}`)
+  return 0;
 }
 
-function findFoldLineIdWhenFixingSmudge(grid: Grid<string>): number {
-  for (let x = 0; x < grid.width - 1; x++) {
-    const startingColumnsAreEqual = columnsAreEqual(grid, x, x + 1);
-    const startingColumnsAreOffByOne = columnsAreOffByOne(grid, x, x+1);
-    if (startingColumnsAreEqual || startingColumnsAreOffByOne) {
-      let fixedSmudge = startingColumnsAreOffByOne;
-      let foundFoldLineIndex = true;
-      for (let x1 = x - 1, x2 = x + 2; x1 >= 0 && x2 < grid.width; x1--, x2++) {
-        if (!columnsAreEqual(grid, x1, x2)) {
-          if (!fixedSmudge && columnsAreOffByOne(grid, x1, x2)) {
-            fixedSmudge = true;
-            continue;
-          }
-          foundFoldLineIndex = false;
-          break;
-        }
+function foldLineIsValid(grid: Grid<string>, line: PlainPoint, direction: CardinalDirection2D, fixSmudge: boolean): boolean {
+  let isValid = true;
+  for (
+    let before = translateBy(line, oppositeOf(direction)), after = translateBy(translateBy(line, direction), direction);
+    isHorizontal(direction) ? before.x >= 0 && after.x < grid.width : before.y >= 0 && after.y < grid.height;
+    before = translateBy(before, oppositeOf(direction)), after = translateBy(after, direction)
+  ) {
+    const linesAreEqual = isHorizontal(direction) ? columnsAreEqual(grid, before, after) : rowsAreEqual(grid, before, after);
+    if (!linesAreEqual) {
+      const linesAreOffByOne = isHorizontal(direction) ? columnsAreOffByOne(grid, before, after) : rowsAreOffByOne(grid, before, after);
+      if (fixSmudge && linesAreOffByOne) {
+        fixSmudge = false;
+        continue;
       }
-      if (foundFoldLineIndex && fixedSmudge) {
-        return x + 1;
+      if (!fixSmudge) {
+        isValid = false;
+        break;
       }
     }
   }
-
-  for (let y = 0; y < grid.height - 1; y++) {
-    const startingRowsAreEqual = rowsAreEqual(grid, y, y + 1);
-    const startingRowsAreOffByOne = rowsAreOffByOne(grid, y, y + 1);
-    if (startingRowsAreEqual || startingRowsAreOffByOne) {
-      let fixedSmudge = startingRowsAreOffByOne;
-      let foundFoldLineIndex = true;
-      for (let y1 = y - 1, y2 = y + 2; y1 >= 0 && y2 < grid.height; y1--, y2++) {
-        if (!rowsAreEqual(grid, y1, y2)) {
-          if (!fixedSmudge && rowsAreOffByOne(grid, y1, y2)) {
-            fixedSmudge = true;
-            continue;
-          }
-          foundFoldLineIndex = false;
-          break;
-        }
-      }
-      if (foundFoldLineIndex && fixedSmudge) {
-        return 100 * (y + 1);
-      }
-    }
-  }
-
-  throw new Error(`Unable to find fold line for grid:\n${formatGrid(grid)}`)
+  return isValid && !fixSmudge;
 }
 
-function columnsAreOffByOne(grid: Grid<string>, x1: number, x2: number): boolean {
-  const columnA = [...grid.column(x1)].map(({value}) => value).join('');
-  const columnB = [...grid.column(x2)].map(({value}) => value).join('');
+function columnsAreOffByOne(grid: Grid<string>, line1: PlainPoint, line2: PlainPoint): boolean {
+  return isOffByOne([...grid.columnValues(line1)].join(''), [...grid.columnValues(line2)].join(''));
+}
+
+function rowsAreOffByOne(grid: Grid<string>, line1: PlainPoint, line2: PlainPoint): boolean {
+  return isOffByOne([...grid.rowValues(line1)].join(''), [...grid.rowValues(line2)].join(''));
+}
+
+function isOffByOne(a: string, b: string): boolean {
   let mismatchCount = 0;
-  for (let i = 0; i < columnA.length; i++) {
-    if (columnA[i] !== columnB[i]) {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
       mismatchCount++;
     }
   }
   return mismatchCount === 1;
 }
 
-function rowsAreOffByOne(grid: Grid<string>, y1: number, y2: number): boolean {
-  const rowA = [...grid.row(y1)].map(({value}) => value).join('');
-  const rowB = [...grid.row(y2)].map(({value}) => value).join('');
-  let mismatchCount = 0;
-  for (let i = 0; i < rowA.length; i++) {
-    if (rowA[i] !== rowB[i]) {
-      mismatchCount++;
-    }
-  }
-  return mismatchCount === 1;
+function columnsAreEqual(grid: Grid<string>, line1: PlainPoint, line2: PlainPoint): boolean {
+  return [...grid.columnValues(line1)].join('') === [...grid.columnValues(line2)].join('');
 }
 
-function columnsAreEqual(grid: Grid<string>, x1: number, x2: number): boolean {
-  const columnA = [...grid.column(x1)].map(({value}) => value).join('');
-  const columnB = [...grid.column(x2)].map(({value}) => value).join('');
-  return columnA === columnB;
-}
-
-function rowsAreEqual(grid: Grid<string>, y1: number, y2: number): boolean {
-  const rowA = [...grid.row(y1)].map(({value}) => value).join('');
-  const rowB = [...grid.row(y2)].map(({value}) => value).join('');
-  return rowA === rowB;
+function rowsAreEqual(grid: Grid<string>, line1: PlainPoint, line2: PlainPoint): boolean {
+  return [...grid.rowValues(line1)].join('') === [...grid.rowValues(line2)].join('');
 }
 // endregion
