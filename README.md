@@ -24,7 +24,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 - **Day 18: Boiling Boulders** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-18_boiling-boulders/index.ts) / [Puzzle](https://adventofcode.com/2022/day/18)
 - **Day 17: Pyroclastic Flow** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-17_pyroclastic-flow/index.ts) / [Puzzle](https://adventofcode.com/2022/day/17)
 - **Day 16: Proboscidea Volcanium** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-16_proboscidea-volcanium/index.ts) / [Puzzle](https://adventofcode.com/2022/day/16)
-- **Day 15: Beacon Exclusion Zone** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-15_beacon-exclusion_zone/index.ts) / [Puzzle](https://adventofcode.com/2022/day/15)
+- **Day 15: Beacon Exclusion Zone** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-15_beacon-exclusion-zone/index.ts) / [Puzzle](https://adventofcode.com/2022/day/15)
 - **Day 14: Regolith Reservoir** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-14_regolith-reservoir/index.ts) / [Puzzle](https://adventofcode.com/2022/day/14)
 - **Day 13: Distress Signal** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-13_distress-signal/index.ts) / [Puzzle](https://adventofcode.com/2022/day/13)
 - **Day 12: Hill Climbing Algorithm** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-12_hill-climbing-algorithm/index.ts) / [Puzzle](https://adventofcode.com/2022/day/12)
