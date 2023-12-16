@@ -78,61 +78,56 @@ function parseGrid(input: string): Grid<GridCell> {
   return new ArrayGrid(cells);
 }
 
-function raytrace(grid: Grid<GridCell>, beam: Beam, history?: Set<string>) {
-  if (history == null) {
-    history = new Set<string>();
-  }
-
-  const nextPosition = translateBy(beam.position, beam.direction);
-  if (!grid.contains(nextPosition)) {
-    return;
-  }
-  const nextCell = grid.get(nextPosition);
-  nextCell.isEnergized = true;
-  const symbol = nextCell.symbol;
-
-  const nextBeams: Beam[] = [];
-  if (symbol === '.' || (symbol === '-' && isHorizontal(beam.direction)) || (symbol === '|' && isVertical(beam.direction))) {
-    nextBeams.push({position: nextPosition, direction: beam.direction});
-  } else if (symbol === '-') {
-    nextBeams.push(
-      {position: nextPosition, direction: directionFromName('E')},
-      {position: nextPosition, direction: directionFromName('W')},
-    );
-  } else if (symbol === '|') {
-    nextBeams.push(
-      {position: nextPosition, direction: directionFromName('N')},
-      {position: nextPosition, direction: directionFromName('S')},
-    );
-  } else if (symbol === '/' || symbol === '\\') {
-    let nextDirection = beam.direction;
-    switch (beam.direction.name) {
-      case 'N':
-        nextDirection = directionFromName('E');
-        break;
-      case 'E':
-        nextDirection = directionFromName('N');
-        break;
-      case 'S':
-        nextDirection = directionFromName('W');
-        break;
-      case 'W':
-        nextDirection = directionFromName('S');
-        break;
-    }
-    if (symbol === '\\') {
-      nextDirection = oppositeOf(nextDirection);
-    }
-    nextBeams.push({position: nextPosition, direction: nextDirection});
-  }
-
-  for (const nextBeam of nextBeams) {
-    const key = `${nextBeam.position.x},${nextBeam.position.y}:${nextBeam.direction.name}`;
-    if (history.has(key)) {
+function raytrace(grid: Grid<GridCell>, beam: Beam) {
+  const visited = new Set<string>();
+  const open: Beam[] = [beam];
+  while (open.length > 0) {
+    const {position, direction} = open.pop()!;
+    const nextPosition = translateBy(position, direction);
+    if (!grid.contains(nextPosition)) {
       continue;
     }
-    history.add(key);
-    raytrace(grid, nextBeam, history);
+    const nextCell = grid.get(nextPosition);
+    nextCell.isEnergized = true;
+    const symbol = nextCell.symbol;
+
+    const nextDirections: CardinalDirection2D[] = [];
+    if (symbol === '.' || (symbol === '-' && isHorizontal(direction)) || (symbol === '|' && isVertical(direction))) {
+      nextDirections.push(direction);
+    } else if (symbol === '-') {
+      nextDirections.push(directionFromName('E'), directionFromName('W'));
+    } else if (symbol === '|') {
+      nextDirections.push(directionFromName('N'), directionFromName('S'));
+    } else if (symbol === '/' || symbol === '\\') {
+      let nextDirection = direction;
+      switch (direction.name) {
+        case 'N':
+          nextDirection = directionFromName('E');
+          break;
+        case 'E':
+          nextDirection = directionFromName('N');
+          break;
+        case 'S':
+          nextDirection = directionFromName('W');
+          break;
+        case 'W':
+          nextDirection = directionFromName('S');
+          break;
+      }
+      if (symbol === '\\') {
+        nextDirection = oppositeOf(nextDirection);
+      }
+      nextDirections.push(nextDirection);
+    }
+
+    for (const direction of nextDirections) {
+      const key = `${nextPosition.x},${nextPosition.y}:${direction.name}`;
+      if (visited.has(key)) {
+        continue;
+      }
+      visited.add(key);
+      open.push({position: nextPosition, direction});
+    }
   }
 }
 // endregion
