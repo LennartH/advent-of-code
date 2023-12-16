@@ -4,6 +4,10 @@ export function sum(a: number, b:number): number {
   return a + b;
 }
 
+export function max(a: number, b: number): number {
+  return Math.max(a, b);
+}
+
 export function shuffle<T>(list: T[]): T[] {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
