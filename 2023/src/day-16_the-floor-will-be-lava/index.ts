@@ -10,15 +10,16 @@ import {
   translateBy
 } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
-import { count, map, pipe, reduce } from 'iter-ops';
+import { count, flatMap, pipe, reduce } from 'iter-ops';
 
 // region Types and Globals
 interface GridCell {
   symbol: string;
-  isEnergized: boolean;
+  energizedBy: Record<string, boolean>;
 }
 
 interface Beam {
+  origin: string;
   position: PlainPoint;
   direction: CardinalDirection2D;
 }
@@ -27,44 +28,46 @@ interface Beam {
 export function solvePart1(input: string): number {
   const grid = parseGrid(input);
   const initialBeam: Beam = {
+    origin: 'solo',
     position: {x: -1, y: 0},
     direction: directionFromName('E'),
   };
-  raytrace(grid, initialBeam);
+  raytrace(grid, [initialBeam]);
   return pipe(
     grid.cellValues(),
-    count(({isEnergized}) => isEnergized),
+    count(({energizedBy: {solo: isEnergized}}) => isEnergized),
   ).first!;
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  const width = lines[0].length;
-  const height = lines.length;
+  const grid = parseGrid(input);
+  let beamKey = 0;
   const initialBeams: Beam[] = [];
-  for (let x = 0; x < width; x++) {
+  for (let x = 0; x < grid.width; x++) {
     initialBeams.push(
-      { position: { x, y: -1 }, direction: directionFromName('S') },
-      { position: { x, y: height }, direction: directionFromName('N') },
+      { origin: `${beamKey++}`, position: { x, y: -1 }, direction: directionFromName('S') },
+      { origin: `${beamKey++}`, position: { x, y: grid.height }, direction: directionFromName('N') },
     );
   }
-  for (let y = 0; y < height; y++) {
+  for (let y = 0; y < grid.height; y++) {
     initialBeams.push(
-      { position: { x: -1, y }, direction: directionFromName('E') },
-      { position: { x: width, y }, direction: directionFromName('W') },
+      { origin: `${beamKey++}`, position: { x: -1, y }, direction: directionFromName('E') },
+      { origin: `${beamKey++}`, position: { x: grid.width, y }, direction: directionFromName('W') },
     );
   }
+  raytrace(grid, initialBeams);
   return pipe(
-    initialBeams,
-    map((beam) => {
-      const grid = parseGrid(input);
-      raytrace(grid, beam);
-      return pipe(
-        grid.cellValues(),
-        count(({isEnergized}) => isEnergized),
-      ).first!;
-    }),
-    reduce(max, -Infinity)
+    grid.cellValues(),
+    flatMap(({energizedBy}) => Object.keys(energizedBy)),
+    reduce((counts, origin) => {
+      if (!counts[origin]) {
+        counts[origin] = 0;
+      }
+      counts[origin]++;
+      return counts;
+    }, {} as Record<string, number>),
+    flatMap((counts) => Object.values(counts)),
+    reduce(max),
   ).first!;
 }
 
@@ -73,22 +76,22 @@ function parseGrid(input: string): Grid<GridCell> {
   const cells: GridCell[][] = splitLines(input)
     .map(
       (row) => row.split('')
-        .map((symbol) => ({symbol, isEnergized: false}))
+        .map((symbol) => ({symbol, energizedBy: {}}))
     );
   return new ArrayGrid(cells);
 }
 
-function raytrace(grid: Grid<GridCell>, beam: Beam) {
+function raytrace(grid: Grid<GridCell>, beams: Beam[]) {
   const visited = new Set<string>();
-  const open: Beam[] = [beam];
+  const open: Beam[] = [...beams];
   while (open.length > 0) {
-    const {position, direction} = open.pop()!;
+    const {origin, position, direction} = open.pop()!;
     const nextPosition = translateBy(position, direction);
     if (!grid.contains(nextPosition)) {
       continue;
     }
     const nextCell = grid.get(nextPosition);
-    nextCell.isEnergized = true;
+    nextCell.energizedBy[origin] = true;
     const symbol = nextCell.symbol;
 
     const nextDirections: CardinalDirection2D[] = [];
@@ -121,12 +124,12 @@ function raytrace(grid: Grid<GridCell>, beam: Beam) {
     }
 
     for (const direction of nextDirections) {
-      const key = `${nextPosition.x},${nextPosition.y}:${direction.name}`;
+      const key = `${origin}|${nextPosition.x},${nextPosition.y}:${direction.name}`;
       if (visited.has(key)) {
         continue;
       }
       visited.add(key);
-      open.push({position: nextPosition, direction});
+      open.push({origin, position: nextPosition, direction});
     }
   }
 }
