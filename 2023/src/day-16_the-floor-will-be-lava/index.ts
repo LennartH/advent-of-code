@@ -2,13 +2,15 @@ import {
   CardinalDirection2D,
   directionFromName,
   isHorizontal,
-  isVertical, oppositeOf,
+  isVertical,
+  max,
+  oppositeOf,
   PlainPoint,
   splitLines,
   translateBy
 } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
-import { count, map, pipe } from 'iter-ops';
+import { count, map, pipe, reduce } from 'iter-ops';
 
 // region Types and Globals
 interface GridCell {
@@ -37,8 +39,33 @@ export function solvePart1(input: string): number {
 
 export function solvePart2(input: string): number {
   const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const width = lines[0].length;
+  const height = lines.length;
+  const initialBeams: Beam[] = [];
+  for (let x = 0; x < width; x++) {
+    initialBeams.push(
+      { position: { x, y: -1 }, direction: directionFromName('S') },
+      { position: { x, y: height }, direction: directionFromName('N') },
+    );
+  }
+  for (let y = 0; y < height; y++) {
+    initialBeams.push(
+      { position: { x: -1, y }, direction: directionFromName('E') },
+      { position: { x: width, y }, direction: directionFromName('W') },
+    );
+  }
+  return pipe(
+    initialBeams,
+    map((beam) => {
+      const grid = parseGrid(input);
+      raytrace(grid, beam);
+      return pipe(
+        grid.cellValues(),
+        count(({isEnergized}) => isEnergized),
+      ).first!;
+    }),
+    reduce(max, -Infinity)
+  ).first!;
 }
 
 // region Shared Code
@@ -107,14 +134,5 @@ function raytrace(grid: Grid<GridCell>, beam: Beam, history?: Set<string>) {
     history.add(key);
     raytrace(grid, nextBeam, history);
   }
-}
-
-function isMirror({symbol}: GridCell): boolean {
-  return symbol === '/' || symbol === '\\';
-}
-
-function isSplit({symbol}: GridCell, beam: Beam): boolean {
-  return (symbol === '-' && isHorizontal(beam.direction)) ||
-    (symbol === '|' && isVertical(beam.direction));
 }
 // endregion
