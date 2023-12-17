@@ -9,6 +9,7 @@ import {
   StraightCardinalDirectionName,
   translateBy
 } from '@util';
+import { MinPriorityQueue } from 'datastructures-js';
 
 export function solvePart1(input: string): number {
   const grid = ArrayGrid.fromInput(input, Number);
@@ -33,20 +34,19 @@ function findHeatLossMinimum(grid: Grid<number>, minStraightMoves: number, maxSt
   const start = {x: 0, y: 0};
   const target = {x: grid.width - 1, y: grid.height - 1};
   const visited = new Set<string>();
-  const openNodes: VisitedNode[] = [
-    {
-      position: {x: 1, y: 0},
-      cost: grid.get(1, 0),
-      straightCount: 1,
-      direction: 'E',
-    },
-    {
-      position: {x: 0, y: 1},
-      cost: grid.get(0, 1),
-      straightCount: 1,
-      direction: 'S',
-    }
-  ];
+  const openNodes = new MinPriorityQueue<VisitedNode>(({cost}) => cost);
+  openNodes.push({
+    position: {x: 1, y: 0},
+    cost: grid.get(1, 0),
+    straightCount: 1,
+    direction: 'E',
+  });
+  openNodes.push({
+    position: {x: 0, y: 1},
+    cost: grid.get(0, 1),
+    straightCount: 1,
+    direction: 'S',
+  });
 
   const possibleDirections = getDirections('cardinal', {withDiagonals: false});
   let finalNode: VisitedNode | null = null;
@@ -84,8 +84,7 @@ function findHeatLossMinimum(grid: Grid<number>, minStraightMoves: number, maxSt
       }
       openNodes.push(nextNode);
     }
-    openNodes.sort((n1, n2) => n2.cost - n1.cost);
-  } while (openNodes.length > 0);
+  } while (openNodes.front() !== null);
 
   if (finalNode == null) {
     throw new Error(`Unable to find path from ${pointToString(start)} to ${pointToString(target)}`)
