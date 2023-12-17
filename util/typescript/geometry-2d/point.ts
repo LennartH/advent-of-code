@@ -97,29 +97,84 @@ export class Point2D {
   }
 }
 
-
 export function translateBy(point: PointLike, byValue: number): PlainPoint
 export function translateBy(point: PointLike, by: PointLike): PlainPoint
 export function translateBy(point: PointLike, byX: number, byY: number): PlainPoint
 export function translateBy(x: number, y: number, byValue: number): PlainPoint
 export function translateBy(x: number, y: number, by: PointLike): PlainPoint
 export function translateBy(x: number, y: number, byX: number, byY: number): PlainPoint
-export function translateBy(...args: (PointLike | number)[]): PlainPoint {
+export function translateBy(...args: GenericOperationArgs): PlainPoint {
+  const {a, b: by} = getPointsFromArgs(args);
+  return {
+    x: a.x + by.x,
+    y: a.y + by.y,
+  };
+}
+
+export function manhattanDistance(from: PointLike, to: PointLike): number
+export function manhattanDistance(from: PointLike, toX: number, toY: number): number
+export function manhattanDistance(fromX: number, fromY: number, to: PointLike): number
+export function manhattanDistance(fromX: number, fromY: number, toX: number, toY: number): number
+export function manhattanDistance(...args: GenericOperationArgs): number {
+  const {
+    a: { x: fromX, y: fromY},
+    b: { x: toX, y: toY}
+  } = getPointsFromArgs(args);
+  return Math.abs(toX - fromX) + Math.abs(toY - fromY);
+}
+
+export function pointsEqual(p1: PointLike, p2: PointLike): boolean
+export function pointsEqual(p1: PointLike, x2: number, y2: number): boolean
+export function pointsEqual(x1: number, y1: number, p2: PointLike): boolean
+export function pointsEqual(x1: number, y1: number, x2: number, y2: number): boolean
+export function pointsEqual(...args: GenericOperationArgs): boolean {
+  const {
+    a: { x: x1, y: y1},
+    b: { x: x2, y: y2}
+  } = getPointsFromArgs(args);
+  return x1 === x2 && y1 === y2;
+}
+
+type GenericOperationArgs =
+  [PointLike, number | PointLike] |
+  [PointLike, number, number] |
+  [number, number, number] |
+  [number, number, PointLike] |
+  [number, number, number, number];
+function getPointsFromArgs(args: GenericOperationArgs): {a: PlainPoint, b: PlainPoint} {
   if (args.length === 4) {
-    const [x, y, byX, byY] = args as number[];
-    return { x: x + byX, y: y + byY };
+    const [x1, y1, x2, y2] = args;
+    return {
+      a: {x: x1, y: y1},
+      b: {x: x2, y: y2},
+    }
   }
   if (typeof args[0] === 'object') {
-    const { x, y } = asPlainPoint(args[0]);
-    const { x: byX, y: byY} = asPlainPoint(args[1], args[2] as never);
-    return { x: x + byX, y: y + byY };
+    const { x: x1, y: y1 } = asPlainPoint(args[0]);
+    const { x: x2, y: y2} = asPlainPoint(args[1], args[2] as never);
+    return {
+      a: {x: x1, y: y1},
+      b: {x: x2, y: y2},
+    }
   }
   if (typeof args[0] === 'number') {
-    const [x, y] = args as number[];
-    const { x: byX, y: byY} = asPlainPoint(args[2]);
-    return { x: x + byX, y: y + byY };
+    const [x1, y1] = args as number[];
+    const { x: x2, y: y2} = asPlainPoint(args[2]);
+    return {
+      a: {x: x1, y: y1},
+      b: {x: x2, y: y2},
+    }
   }
   throw Error(`Unexpected arguments: ${JSON.stringify(args)}`);
+}
+
+export function pointToString(scalar: number, pretty?: boolean): string
+export function pointToString(x: number, y: number, pretty?: boolean): string
+export function pointToString(point: PointLike, pretty?: boolean): string
+export function pointToString(scalarOrXOrPoint: number | PointLike, yOrPretty: number | boolean | undefined, pretty?: boolean): string {
+  const { x, y } = typeof yOrPretty === 'boolean' ? asPlainPoint(scalarOrXOrPoint) : asPlainPoint(scalarOrXOrPoint, yOrPretty);
+  pretty = pretty ?? (typeof yOrPretty === 'boolean' ? yOrPretty : false);
+  return pretty ? `(${x}, ${y})` : `${x},${y}`;
 }
 
 export function asPlainPoint(scalar: number): PlainPoint
