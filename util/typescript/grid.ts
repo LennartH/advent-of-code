@@ -32,10 +32,10 @@ export interface Grid<V> {
   contains(x: number, y: number): boolean;
   contains(point: PointLike): boolean;
 
-  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
-  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
-  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
-  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>;
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>;
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>;
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>;
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>;
 
   // TODO find path
   // TODO get/set rect
@@ -44,6 +44,10 @@ export interface Grid<V> {
 export interface GridCell<V> {
   position: PlainPoint;
   value: V;
+}
+
+export interface GridCellNeighbour<V> extends GridCell<V>{
+  direction: Direction2D;
 }
 
 export type FloodFillOptions<V> = {
@@ -214,15 +218,15 @@ export abstract class AbstractGrid<V> implements Grid<V> {
     return x >= 0 && x < this.width && y >= 0 && y < this.height;
   }
 
-  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
-  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
-  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
-  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCell<V>>
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>
+  adjacentFrom(x: number, y: number, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>
+  adjacentFrom(point: PointLike, options?: AdjacentFromOptions<V>): Generator<GridCellNeighbour<V>>
   * adjacentFrom(
     pointOrX: PointLike | number,
     yValueOrOptions?: number | AdjacentFromOptions<V>,
     options?: AdjacentFromOptions<V>,
-  ): Generator<GridCell<V>> {
+  ): Generator<GridCellNeighbour<V>> {
     let x: number;
     let y: number;
     if (typeof pointOrX === 'number') {
@@ -236,7 +240,8 @@ export abstract class AbstractGrid<V> implements Grid<V> {
     const directions = options.directions != null ? options.directions : getDirections('cardinal', options);
 
     const onOutOfBounds = options.onOutOfBounds || 'drop';
-    for (const {deltaX, deltaY} of directions) {
+    for (const direction of directions) {
+      const {deltaX, deltaY} = direction;
       let position = { x: x + deltaX, y: y + deltaY };
       if (!this.contains(position)) {
         const outOfBoundsResponse = typeof onOutOfBounds === 'function' ? onOutOfBounds(position, this) : onOutOfBounds;
@@ -248,14 +253,19 @@ export abstract class AbstractGrid<V> implements Grid<V> {
       }
 
       const value = this.get(position);
-      yield { position, value };
+      yield { position, value, direction };
     }
   }
 }
 
 export class ArrayGrid<V> extends AbstractGrid<V> {
-  static fromInput(input: string): ArrayGrid<string> {
-    return new ArrayGrid(splitLines(input).map((l) => l.split('')));
+  static fromInput(input: string): ArrayGrid<string>
+  static fromInput<V>(input: string, valueParser: (text: string) => V): ArrayGrid<V>
+  static fromInput<V>(input: string, valueParser?: (text: string) => V): ArrayGrid<V> {
+    if (valueParser == null) {
+      valueParser = (t) => t as never;
+    }
+    return new ArrayGrid(splitLines(input).map((l) => l.split('').map(valueParser!)));
   }
 
   data: V[][];
