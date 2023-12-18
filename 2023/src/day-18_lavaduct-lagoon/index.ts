@@ -38,15 +38,15 @@ function polygonArea(instructions: Instruction[]): number {
   let perimeter = 0;
   let position = {x: 0, y: 0};
   for (const {direction, steps} of instructions) {
-    const nextPosition = translateBy(position, scaleBy(directionFromName(direction, 'y'), steps));
-    const cross = crossProduct(position, nextPosition);
-    total += cross;
+    const nextPosition = translateBy(position, scaleBy(directionFromName(direction), steps));
+    total += crossProduct(position, nextPosition);
     perimeter += steps;
     position = nextPosition;
   }
-  const area = Math.abs(total / 2);
   // I have no idea why this works... Probably something about roughly half of the perimeter isn't considered
-  // as part of the polygon when using the shoelace formula. But why +2 I don't know... Works for me at least.
-  return area + ((perimeter + 2) / 2);
+  // as part of the polygon when using the shoelace formula. But why (perimeter / 2) + 1 I don't know...
+  // Answer: Special case of Pick's theorem (see https://www.reddit.com/r/adventofcode/comments/18l2tap/comment/kdv8imu/)
+  const area = Math.abs(total / 2);
+  return area + (perimeter / 2) + 1;
 }
 // endregion
