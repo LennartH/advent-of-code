@@ -20,13 +20,13 @@ describe('Day 18: Lavaduct Lagoon', () => {
       U 2 (#7a21e3)
     `;
     const part1Solution = 62;
-    const part2Solution = null;
+    const part2Solution = 952408144115;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
@@ -36,21 +36,15 @@ describe('Day 18: Lavaduct Lagoon', () => {
     const inputPath = `${__dirname}/input`;
     const input = readFile(inputPath);
     const part1Solution = 50603;
-    const part2Solution = null;
+    const part2Solution = 96556251590677;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
   });
-
-  // region Function Specific Tests
-  describe.skip('Make sure that', () => {
-    // Add tests if all hope is lost (it's okay to cry)
-  });
-  // endregion
 });
