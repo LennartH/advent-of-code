@@ -111,6 +111,20 @@ export function translateBy(...args: GenericOperationArgs): PlainPoint {
   };
 }
 
+export function scaleBy(point: PointLike, byValue: number): PlainPoint
+export function scaleBy(point: PointLike, by: PointLike): PlainPoint
+export function scaleBy(point: PointLike, byX: number, byY: number): PlainPoint
+export function scaleBy(x: number, y: number, byValue: number): PlainPoint
+export function scaleBy(x: number, y: number, by: PointLike): PlainPoint
+export function scaleBy(x: number, y: number, byX: number, byY: number): PlainPoint
+export function scaleBy(...args: GenericOperationArgs): PlainPoint {
+  const {a, b: by} = getPointsFromArgs(args);
+  return {
+    x: a.x * by.x,
+    y: a.y * by.y,
+  };
+}
+
 export function manhattanDistance(from: PointLike, to: PointLike): number
 export function manhattanDistance(from: PointLike, toX: number, toY: number): number
 export function manhattanDistance(fromX: number, fromY: number, to: PointLike): number
@@ -121,6 +135,18 @@ export function manhattanDistance(...args: GenericOperationArgs): number {
     b: { x: toX, y: toY}
   } = getPointsFromArgs(args);
   return Math.abs(toX - fromX) + Math.abs(toY - fromY);
+}
+
+export function crossProduct(p1: PointLike, p2: PointLike): number
+export function crossProduct(p1: PointLike, x2: number, y2: number): number
+export function crossProduct(x1: number, y1: number, p2: PointLike): number
+export function crossProduct(x1: number, y1: number, x2: number, y2: number): number
+export function crossProduct(...args: GenericOperationArgs): number {
+  const {
+    a: { x: x1, y: y1},
+    b: { x: x2, y: y2}
+  } = getPointsFromArgs(args);
+  return (x1 * y2) - (x2 * y1);
 }
 
 export function pointsEqual(p1: PointLike, p2: PointLike): boolean
