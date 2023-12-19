@@ -1,5 +1,7 @@
 import { crossProduct, directionFromName, scaleBy, splitLines, StraightPlainDirectionName, translateBy } from '@util';
 
+// TODO Use Quadtree: https://www.reddit.com/r/adventofcode/comments/18lpoh1/2023_day_18js_i_tried_a_mixed_of_quadtree_and/
+
 // region Types and Globals
 interface Instruction {
   direction: StraightPlainDirectionName;

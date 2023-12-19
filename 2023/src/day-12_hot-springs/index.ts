@@ -1,5 +1,8 @@
 import { splitLines } from '@util';
 
+// TODO Read solution tutorial: https://www.reddit.com/r/adventofcode/comments/18hbbxe/2023_day_12python_stepbystep_tutorial_with_bonus/
+// TODO Solution without memoization: https://www.reddit.com/r/adventofcode/comments/18hbjdi/2023_day_12_part_2_this_image_helped_a_few_people/
+
 // region Types and Globals
 interface DamageReport {
   damageGroups: number[];
