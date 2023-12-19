@@ -23,13 +23,13 @@ describe('Day 19: Aplenty', () => {
       {x=2127,m=1623,a=2188,s=1013}
     `;
     const part1Solution = 19114;
-    const part2Solution = null;
+    const part2Solution = 167409079868000;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
@@ -39,21 +39,16 @@ describe('Day 19: Aplenty', () => {
     const inputPath = `${__dirname}/input`;
     const input = readFile(inputPath);
     const part1Solution = 374873;
-    const part2Solution = null;
+    const part2Solution = 122112157518711;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
-  });
-
-  // region Function Specific Tests
-  describe.skip('Make sure that', () => {
-    // Add tests if all hope is lost (it's okay to cry)
   });
   // endregion
 });
