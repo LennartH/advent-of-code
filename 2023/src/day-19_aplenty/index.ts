@@ -14,15 +14,12 @@ interface Part {
 type Graph = Record<string, Edge[]>;
 
 type Operator = '<' | '<=' | '>' | '>=';
-// TODO Unify types !('key' in edge) everywhere is pretty annoying
-type Edge =
-  { to: string } |
-  {
-    key: keyof Part;
-    operator: Operator;
-    threshold: number;
-    to: string;
-  };
+interface Edge {
+  key?: keyof Part;
+  operator?: Operator;
+  threshold?: number;
+  to: string;
+}
 
 const start = 'in';
 const accepted = 'A';
@@ -98,7 +95,7 @@ function isAccepted(part: Part, graph: Graph): boolean {
 }
 
 function edgeAccepts(edge: Edge, part: Part): boolean {
-  if (!('key' in edge)) {
+  if (edge.key == null || edge.operator == null || edge.threshold == null) {
     // Default rule
     return true;
   }
@@ -137,7 +134,7 @@ function findPathsToAccepted(graph: Graph): Edge[][] {
       while (current.predecessor != null) {
         path.push(current.edge!);
         current.previousEdges?.forEach((edge, i) => {
-          path.push({...edge, operator: invertEdgeOperator(edge), to: current.name + "`".repeat(i + 1)});
+          path.push({...edge, operator: invertOperator(edge.operator!), to: current.name + "`".repeat(i + 1)});
         });
         current = current.predecessor;
       }
@@ -159,22 +156,20 @@ function findPathsToAccepted(graph: Graph): Edge[][] {
   return paths;
 }
 
-function invertEdgeOperator(edge: Edge): Operator {
-  if (!('key' in edge)) {
-    throw new Error('Unable to invert operator of default edge');
-  }
-  if (edge.operator === '<') {
+function invertOperator(operator: Operator): Operator {
+  if (operator === '<') {
     return '>=';
   }
-  if (edge.operator === '>') {
+  if (operator === '>') {
     return '<=';
   }
   throw new Error('Not implemented');
 }
 
 function calculatePossibleCombinationsForPath(path: Edge[]): number {
-  const conditionsByKey = groupBy(path.filter((e) => 'key' in e), 'key' as never);
-  return (['x', 'm', 'a', 's'] as (keyof Part)[]).map((key) => {
+  const conditionsByKey = groupBy(path.filter(({key}) => key != null), ({key}) => key!);
+  return ['x', 'm', 'a', 's'].map((k) => {
+    const key = k as keyof Part;
     const conditions = conditionsByKey[key];
     if (conditions == null) {
       return 4000;
