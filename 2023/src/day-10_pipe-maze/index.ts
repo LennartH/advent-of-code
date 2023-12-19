@@ -1,6 +1,8 @@
 import { CardinalDirection2D, directionFromName, formatGrid, splitLines } from '@util';
 import { ArrayGrid, Grid } from '@util/grid';
 
+// TODO Different solutions described here: https://www.reddit.com/r/adventofcode/comments/18ey1s7/2023_day_10_part_2_stumped_on_how_to_approach_this/
+
 // region Types and Globals
 interface Maze {
   start: string;

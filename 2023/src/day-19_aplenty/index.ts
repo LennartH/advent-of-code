@@ -1,5 +1,8 @@
 import { groupBy, splitLines, sum } from '@util';
 
+// TODO Use Sankey Diagram: https://www.reddit.com/r/adventofcode/comments/18lyvuv/2023_day_19_part_2_sankey_diagrams_are_cool/
+// Additional info (k-d tree): https://www.reddit.com/r/adventofcode/comments/18lwcw2/2023_day_19_an_equivalent_part_2_example_spoilers/
+
 // region Types and Globals
 interface Part {
   x: number;
@@ -11,6 +14,7 @@ interface Part {
 type Graph = Record<string, Edge[]>;
 
 type Operator = '<' | '<=' | '>' | '>=';
+// TODO Unify types !('key' in edge) everywhere is pretty annoying
 type Edge =
   { to: string } |
   {
