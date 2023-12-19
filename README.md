@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2023
+- **Day 19: Aplenty** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-19_aplenty/index.ts) / [Puzzle](https://adventofcode.com/2023/day/19)
 - **Day 18: Lavaduct Lagoon** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-18_lavaduct-lagoon/index.ts) / [Puzzle](https://adventofcode.com/2023/day/18)
 - **Day 17: Clumsy Crucible** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-17_clumsy-crucible/index.ts) / [Puzzle](https://adventofcode.com/2023/day/17)
 - **Day 16: The Floor Will Be Lava** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-16_the-floor-will-be-lava/index.ts) / [Puzzle](https://adventofcode.com/2023/day/16)
