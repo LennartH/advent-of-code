@@ -1,4 +1,4 @@
-import { splitLines } from '@util';
+import { leastCommonMultiple, splitLines } from '@util';
 import { Queue } from 'datastructures-js';
 
 // region Types and Globals
@@ -19,9 +19,7 @@ const flipFlopMarker = '%';
 const conjunctionMarker = '&';
 // endregion
 
-// const part1ButtonPushs = 1;
-// const logLevel: 'v' | 'vv' | null = 'vv';
-const part1ButtonPushs = 1000;
+const part1ButtonPushes = 1000;
 const logLevel: null | '' | 'v' | 'vv' = '';
 
 export function solvePart1(input: string): number {
@@ -30,14 +28,14 @@ export function solvePart1(input: string): number {
   const button = new Button();
   modules[buttonModuleName] = button;
 
-  const buttonPushs = part1ButtonPushs;
-  let pressCounter = 0;
-  while (pressCounter < buttonPushs) {
+  const buttonPushes = part1ButtonPushes;
+  let pushCounter = 0;
+  while (pushCounter < buttonPushes) {
     if (logLevel === 'vv') {
-      console.group(`Button Press #${pressCounter + 1}:`)
+      console.group(`Button Press #${pushCounter + 1}:`)
     }
     const queue = new Queue<Package>();
-    button.press().forEach((signal) => queue.enqueue({from: button.name, ...signal}));
+    button.push().forEach((signal) => queue.enqueue({from: button.name, ...signal}));
     while (!queue.isEmpty()) {
       const {from, pulse, to} = queue.dequeue();
       counter[pulse]++;
@@ -53,18 +51,49 @@ export function solvePart1(input: string): number {
       console.log('Counter:', `low=${counter.low}`, `high=${counter.high}\n`);
     }
     if (logLevel === 'v') {
-      console.log(`Button Press #${pressCounter + 1}:`, `low=${counter.low}`, `high=${counter.high}`);
+      console.log(`Button Press #${pushCounter + 1}:`, `low=${counter.low}`, `high=${counter.high}`);
     }
-    pressCounter++;
+    pushCounter++;
   }
 
   return counter.low * counter.high;
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const modules = parseModules(input);
+  const button = new Button();
+  modules[buttonModuleName] = button;
+
+  const outputModule = 'rx';
+  const outputConjunction = Object.values(modules).find(({destinations}) => destinations.includes(outputModule))?.name;
+  if (outputConjunction == null) {
+    throw new Error(`Unable to find input of final output module ${outputModule}`);
+  }
+  // If all feeder send a high, the final output module will receive a low
+  const outputConjunctionFeeder = Object.values(modules).filter(({destinations}) => destinations.includes(outputConjunction)).map(({name}) => name);
+  // Find cycle length for each feeder and calculate the lcm
+  const cycleLengths: Record<string, number> = {};
+  const cyclesFound: string[] = [];
+
+  let pushCounter = 0;
+  while (cyclesFound.length !== outputConjunctionFeeder.length) {
+    const queue = new Queue<Package>();
+    button.push().forEach((signal) => queue.enqueue({from: button.name, ...signal}));
+    pushCounter++;
+    while (!queue.isEmpty()) {
+      const {from, pulse, to} = queue.dequeue();
+      if (outputConjunctionFeeder.includes(from) && !cyclesFound.includes(from) && pulse === 'high') {
+        cycleLengths[from] = pushCounter;
+        cyclesFound.push(from);
+      }
+
+      const module = modules[to];
+      module.receive(pulse, from);
+      module.process().forEach((signal) => queue.enqueue({from: module.name, ...signal}));
+    }
+  }
+
+  return leastCommonMultiple(Object.values(cycleLengths));
 }
 
 // region Shared Code
@@ -195,7 +224,7 @@ class Button extends Module {
     super(buttonModuleName, [broadcastModuleName]);
   }
 
-  press() {
+  push() {
     return this.process();
   }
 
