@@ -6,6 +6,12 @@ const pulses = ['high', 'low'] as const;
 type Pulse = typeof pulses[number];
 type PulseCounter = Record<Pulse, number>;
 
+interface Package {
+  from: string;
+  pulse: Pulse;
+  to: string;
+}
+
 const buttonModuleName = 'button';
 const broadcastModuleName = 'broadcaster';
 
@@ -16,14 +22,13 @@ const conjunctionMarker = '&';
 // const part1ButtonPushs = 1;
 // const logLevel: 'v' | 'vv' | null = 'vv';
 const part1ButtonPushs = 1000;
-const logLevel: 'v' | 'vv' | null = null;
+const logLevel: null | '' | 'v' | 'vv' = '';
 
 export function solvePart1(input: string): number {
   const counter: PulseCounter = { high: 0, low: 0 };
-  const modules = parseModules(input, counter);
-  const button = new Button(counter);
+  const modules = parseModules(input);
+  const button = new Button();
   modules[buttonModuleName] = button;
-  Object.values(modules).forEach((m) => m.initialize(modules));
 
   const buttonPushs = part1ButtonPushs;
   let pressCounter = 0;
@@ -31,16 +36,17 @@ export function solvePart1(input: string): number {
     if (logLevel === 'vv') {
       console.group(`Button Press #${pressCounter + 1}:`)
     }
-    button.press();
-    const queue = new Queue<Module>();
-    button.destinations.forEach((m) => queue.enqueue(m));
+    const queue = new Queue<Package>();
+    button.press().forEach((signal) => queue.enqueue({from: button.name, ...signal}));
     while (!queue.isEmpty()) {
-      const module = queue.dequeue();
-      if (!module.needsProcessing) {
-        continue;
+      const {from, pulse, to} = queue.dequeue();
+      counter[pulse]++;
+      if (logLevel === 'vv') {
+        console.log(from, `-${pulse}->`, to);
       }
-      module.process();
-      module.destinations.forEach((m) => queue.enqueue(m));
+      const module = modules[to];
+      module.receive(pulse, from);
+      module.process().forEach((signal) => queue.enqueue({from: module.name, ...signal}));
     }
     if (logLevel === 'vv') {
       console.groupEnd();
@@ -62,7 +68,7 @@ export function solvePart2(input: string): number {
 }
 
 // region Shared Code
-function parseModules(input: string, counter: PulseCounter): Record<string, Module> {
+function parseModules(input: string): Record<string, Module> {
   const modules: Record<string, Module> = {};
   for (const line of splitLines(input)) {
     const [moduleDefinition, destinations] = line.split('->').map((v) => v.trim());
@@ -70,84 +76,62 @@ function parseModules(input: string, counter: PulseCounter): Record<string, Modu
 
     let module: Module;
     if (moduleDefinition[0] === flipFlopMarker) {
-      module = new FlipFlop(moduleDefinition.slice(1), destinationNames, counter);
+      module = new FlipFlop(moduleDefinition.slice(1), destinationNames);
     } else if (moduleDefinition[0] === conjunctionMarker) {
-      module = new Conjunction(moduleDefinition.slice(1), destinationNames, counter);
+      module = new Conjunction(moduleDefinition.slice(1), destinationNames);
     } else if (moduleDefinition === broadcastModuleName) {
-      module = new Broadcast(destinationNames, counter);
+      module = new Broadcast(destinationNames);
     } else {
       throw new Error(`Unable to parse module for line: ${line}`)
     }
     modules[module.name] = module;
   }
+
+  Object.values(modules).forEach((module) => {
+    module.destinations.forEach((name) => {
+      let destination = modules[name];
+      if (!destination) {
+        destination = new Receiver(name);
+        modules[name] = destination;
+      }
+      if (destination instanceof Conjunction) {
+        destination.initializeIngress(module.name);
+      }
+    })
+  })
+
   return modules;
 }
 
 abstract class Module {
 
-  public readonly destinations: Module[] = [];
-
   constructor(
     public readonly name: string,
-    private readonly destinationNames: readonly string[],
-    private readonly counter: PulseCounter,
+    public readonly destinations: readonly string[],
   ) {}
 
-  initialize(modules: Record<string, Module>) {
-    this.destinationNames.forEach((name) => {
-      let module = modules[name];
-      if (!module) {
-        module = new Receiver(name, this.counter);
-      }
-      this.destinations.push(module);
-      if (module instanceof Conjunction) {
-        module.initializeIngress(this.name);
-      }
-    })
-  }
-
-  abstract get needsProcessing(): boolean;
   abstract receive(pulse: Pulse, from: string): void;
-  abstract getOutput(): Pulse;
+  abstract getOutput(): Pulse | null;
 
-  process(): void {
-    if (!this.needsProcessing) {
-      throw new Error(`Invalid state of module ${this.name}: No processing necessary`);
-    }
-
+  process(): {to: string, pulse: Pulse}[] {
     const output = this.getOutput();
-    for (const destination of this.destinations) {
-      if (logLevel === 'vv') {
-        console.log(this.name, `-${output}->`, destination.name);
-      }
-      this.counter[output]++;
-      destination.receive(output, this.name);
+    if (output == null) {
+      return [];
     }
-    this.finishedTransmitting();
+    return this.destinations.map((to) => ({to, pulse: output}));
   }
-
-  protected abstract finishedTransmitting(): void;
 }
 
-abstract class SingleInputModule extends Module {
+class Broadcast extends Module {
 
   protected received: Pulse | null = null;
-  get needsProcessing(): boolean {
-    return this.received != null;
+
+  constructor(destinationNames: readonly string[]) {
+    super(broadcastModuleName, destinationNames);
   }
 
   receive(pulse: Pulse) {
     this.received = pulse;
-  }
-
-  protected finishedTransmitting() {
-    this.received = null;
-  }
-}
-
-class Broadcast extends SingleInputModule {
-  constructor(destinationNames: readonly string[], counter: PulseCounter) {
-    super(broadcastModuleName, destinationNames, counter);
   }
 
   getOutput(): Pulse {
@@ -158,23 +142,28 @@ class Broadcast extends SingleInputModule {
   }
 }
 
-class FlipFlop extends SingleInputModule {
+class FlipFlop extends Module {
 
-  private isOn: boolean = false;
+  private sendSignal = false;
+  private isOn = false;
 
-  constructor(name: string, destinationNames: readonly string[], counter: PulseCounter) {
-    super(name, destinationNames, counter);
+  constructor(name: string, destinationNames: readonly string[]) {
+    super(name, destinationNames);
   }
 
   receive(pulse: Pulse) {
     if (pulse === 'high') {
-      return;
+      this.sendSignal = false;
+    } else {
+      this.sendSignal = true;
+      this.isOn = !this.isOn;
     }
-    this.isOn = !this.isOn;
-    super.receive(pulse);
   }
 
-  getOutput(): Pulse {
+  getOutput(): Pulse | null {
+    if (!this.sendSignal) {
+      return null;
+    }
     return this.isOn ? 'high' : 'low';
   }
 }
@@ -183,13 +172,8 @@ class Conjunction extends Module {
 
   private readonly ingress: Record<string, Pulse> = {};
 
-  private receivedPulse = false;
-  get needsProcessing(): boolean {
-    return true;
-  }
-
-  constructor(name: string, destinationNames: readonly string[], counter: PulseCounter) {
-    super(name, destinationNames, counter);
+  constructor(name: string, destinationNames: readonly string[]) {
+    super(name, destinationNames);
   }
 
   initializeIngress(name: string) {
@@ -198,31 +182,20 @@ class Conjunction extends Module {
 
   receive(pulse: Pulse, from: string) {
     this.ingress[from] = pulse;
-    this.receivedPulse = true;
   }
 
   getOutput(): Pulse {
     return Object.values(this.ingress).some((p) => p === 'low') ? 'high' : 'low';
   }
-
-  protected finishedTransmitting() {
-    this.receivedPulse = false;
-  }
 }
 
 class Button extends Module {
 
-  public canBePressed: boolean = true;
-  get needsProcessing(): boolean {
-    return this.canBePressed;
-  }
-
-  constructor(counter: PulseCounter) {
-    super(buttonModuleName, [broadcastModuleName], counter);
+  constructor() {
+    super(buttonModuleName, [broadcastModuleName]);
   }
 
   press() {
-    this.canBePressed = true;
     return this.process();
   }
 
@@ -232,27 +205,17 @@ class Button extends Module {
   getOutput(): Pulse {
     return 'low';
   }
-  protected finishedTransmitting(): void {
-    this.canBePressed = false;
-  }
 }
 
 class Receiver extends Module {
 
-  get needsProcessing(): boolean {
-    return false;
-  }
-
-  constructor(name: string, counter: PulseCounter) {
-    super(name, [], counter);
+  constructor(name: string) {
+    super(name, []);
   }
 
   receive(): void { }
-  getOutput(): Pulse {
-    throw new Error('Method not implemented.');
-  }
-  protected finishedTransmitting(): void {
-    throw new Error('Method not implemented.');
+  getOutput(): Pulse | null {
+    return null;
   }
 }
 // endregion
