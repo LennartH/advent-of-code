@@ -1,0 +1,14 @@
+@startuml
+digraph G {
+"&con" [shape=box]
+
+broadcaster -> a
+a -> "&con", b
+b -> "&con", c
+c -> d
+d -> e
+e -> f
+f -> "&con"
+"&con" -> c, d, e, a, output
+}
+@enduml
