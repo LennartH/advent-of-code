@@ -42,20 +42,26 @@ describe('Day 20: Pulse Propagation', () => {
       expect(result).toEqual(part2Solution);
     });
   });
-  describe.skip('Example input 3', () => {
+  describe('Example input 3', () => {
     const input = `
-      broadcaster -> a
-      %a -> con, b
-      %b -> con, c
-      %c -> d
-      %d -> e
-      %e -> f
-      %f -> con
-      &con -> c, d, e, a, output
+      broadcaster -> a, b
+      %a -> con
+      %b -> con
+      &con -> output
     `;
-    const part1Solution = null;
+    const part1Solution = 12000000;
     const part2Solution = null;
 
+    /*
+    * Should send the following signals with each press:
+    *   button -low-> broadcaster
+    *   broadcaster -low-> a
+    *   broadcaster -low-> b
+    *   a -high-> con
+    *   b -high-> con
+    *   con -high-> output
+    *   con -low-> output
+    * */
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
@@ -69,7 +75,7 @@ describe('Day 20: Pulse Propagation', () => {
   describe('Real input', () => {
     const inputPath = `${__dirname}/input`;
     const input = readFile(inputPath);
-    const part1Solution = null;
+    const part1Solution = 949764474;
     const part2Solution = null;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {

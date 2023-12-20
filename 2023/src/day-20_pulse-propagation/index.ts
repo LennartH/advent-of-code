@@ -13,6 +13,11 @@ const flipFlopMarker = '%';
 const conjunctionMarker = '&';
 // endregion
 
+// const part1ButtonPushs = 1;
+// const logLevel: 'v' | 'vv' | null = 'vv';
+const part1ButtonPushs = 1000;
+const logLevel: 'v' | 'vv' | null = null;
+
 export function solvePart1(input: string): number {
   const counter: PulseCounter = { high: 0, low: 0 };
   const modules = parseModules(input, counter);
@@ -20,11 +25,12 @@ export function solvePart1(input: string): number {
   modules[buttonModuleName] = button;
   Object.values(modules).forEach((m) => m.initialize(modules));
 
-  const buttonPushes = 1000;
-  // const buttonPushes = 4;
+  const buttonPushs = part1ButtonPushs;
   let pressCounter = 0;
-  while (pressCounter < buttonPushes) {
-    // console.group(`Button Press #${pressCounter + 1}:`)
+  while (pressCounter < buttonPushs) {
+    if (logLevel === 'vv') {
+      console.group(`Button Press #${pressCounter + 1}:`)
+    }
     button.press();
     const queue = new Queue<Module>();
     button.destinations.forEach((m) => queue.enqueue(m));
@@ -36,9 +42,13 @@ export function solvePart1(input: string): number {
       module.process();
       module.destinations.forEach((m) => queue.enqueue(m));
     }
-    // console.groupEnd();
-    // console.log('Counter:', `low=${counter.low}`, `high=${counter.high}\n`);
-    // console.log(`Button Press #${pressCounter + 1}:`, `low=${counter.low}`, `high=${counter.high}`);
+    if (logLevel === 'vv') {
+      console.groupEnd();
+      console.log('Counter:', `low=${counter.low}`, `high=${counter.high}\n`);
+    }
+    if (logLevel === 'v') {
+      console.log(`Button Press #${pressCounter + 1}:`, `low=${counter.low}`, `high=${counter.high}`);
+    }
     pressCounter++;
   }
 
@@ -107,7 +117,9 @@ abstract class Module {
 
     const output = this.getOutput();
     for (const destination of this.destinations) {
-      // console.log(this.name, `-${output}->`, destination.name);
+      if (logLevel === 'vv') {
+        console.log(this.name, `-${output}->`, destination.name);
+      }
       this.counter[output]++;
       destination.receive(output, this.name);
     }
@@ -128,13 +140,6 @@ abstract class SingleInputModule extends Module {
     this.received = pulse;
   }
 
-  getOutput(): Pulse {
-    if (this.received == null) {
-      throw new Error(`Invalid state of module ${this.name}: No pulse has been received`)
-    }
-    return this.received;
-  }
-
   protected finishedTransmitting() {
     this.received = null;
   }
@@ -143,6 +148,13 @@ abstract class SingleInputModule extends Module {
 class Broadcast extends SingleInputModule {
   constructor(destinationNames: readonly string[], counter: PulseCounter) {
     super(broadcastModuleName, destinationNames, counter);
+  }
+
+  getOutput(): Pulse {
+    if (this.received == null) {
+      throw new Error(`Invalid state of module ${this.name}: No pulse has been received`)
+    }
+    return this.received;
   }
 }
 
@@ -158,14 +170,12 @@ class FlipFlop extends SingleInputModule {
     if (pulse === 'high') {
       return;
     }
+    this.isOn = !this.isOn;
+    super.receive(pulse);
+  }
 
-    if (this.isOn) {
-      this.isOn = false;
-      super.receive('low');
-    } else {
-      this.isOn = true;
-      super.receive('high');
-    }
+  getOutput(): Pulse {
+    return this.isOn ? 'high' : 'low';
   }
 }
 
@@ -175,7 +185,7 @@ class Conjunction extends Module {
 
   private receivedPulse = false;
   get needsProcessing(): boolean {
-    return this.receivedPulse;
+    return true;
   }
 
   constructor(name: string, destinationNames: readonly string[], counter: PulseCounter) {
@@ -192,9 +202,6 @@ class Conjunction extends Module {
   }
 
   getOutput(): Pulse {
-    if (!this.receivedPulse) {
-      throw new Error(`Invalid state of module ${this.name}: No pulse has been received`)
-    }
     return Object.values(this.ingress).some((p) => p === 'low') ? 'high' : 'low';
   }
 
