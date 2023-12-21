@@ -1,7 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2023
-- **Day 21: Step Counter** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-21_step-counter/index.ts) / [Puzzle](https://adventofcode.com/2023/day/21)
+- **Day 21: Step Counter** (only Part 1) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-21_step-counter/index.ts) / [Puzzle](https://adventofcode.com/2023/day/21)
 - **Day 20: Pulse Propagation** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-20_pulse-propagation/index.ts) / [Puzzle](https://adventofcode.com/2023/day/20)
 - **Day 19: Aplenty** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-19_aplenty/index.ts) / [Puzzle](https://adventofcode.com/2023/day/19)
 - **Day 18: Lavaduct Lagoon** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-18_lavaduct-lagoon/index.ts) / [Puzzle](https://adventofcode.com/2023/day/18)
@@ -26,7 +26,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 ### 2022
 - **Day 21: Monkey Math** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-21_monkey-math/index.ts) / [Puzzle](https://adventofcode.com/2022/day/21)
 - **Day 20: Grove Positioning System** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-20_grove-positioning-system/index.ts) / [Puzzle](https://adventofcode.com/2022/day/20)
-- **Day 19: Not Enough Minerals** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-19_not-enough-minerals/index.ts) (not working) / [Puzzle](https://adventofcode.com/2022/day/19)
+- **Day 19: Not Enough Minerals** (not working) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-19_not-enough-minerals/index.ts) / [Puzzle](https://adventofcode.com/2022/day/19)
 - **Day 18: Boiling Boulders** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-18_boiling-boulders/index.ts) / [Puzzle](https://adventofcode.com/2022/day/18)
 - **Day 17: Pyroclastic Flow** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-17_pyroclastic-flow/index.ts) / [Puzzle](https://adventofcode.com/2022/day/17)
 - **Day 16: Proboscidea Volcanium** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-16_proboscidea-volcanium/index.ts) / [Puzzle](https://adventofcode.com/2022/day/16)
