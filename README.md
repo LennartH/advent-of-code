@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2023
+- **Day 25: Snowverload** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-25_snowverload/index.ts) / [Puzzle](https://adventofcode.com/2023/day/25)
 - **Day 24: Never Tell Me The Odds** (only Part 1) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-24_never-tell-me-the-odds/index.ts) / [Puzzle](https://adventofcode.com/2023/day/24)
 - **Day 21: Step Counter** (only Part 1) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-21_step-counter/index.ts) / [Puzzle](https://adventofcode.com/2023/day/21)
 - **Day 20: Pulse Propagation** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-20_pulse-propagation/index.ts) / [Puzzle](https://adventofcode.com/2023/day/20)
