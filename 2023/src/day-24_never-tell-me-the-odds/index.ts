@@ -1,6 +1,10 @@
 import { allPairs, PlainPoint, splitLines, translateBy } from '@util';
 import { count, pipe } from 'iter-ops';
 
+// Hints for Part 2
+// https://www.reddit.com/r/adventofcode/comments/18pqeul/2023_242_non_solver_solutions/
+// https://www.reddit.com/r/adventofcode/comments/18pptor/comment/keps780/
+
 // region Types and Globals
 interface Vector3 {
   x: number;
