@@ -37,6 +37,7 @@ export function solvePart1(input: string, numberOfSteps: number): number {
   return count;
 }
 
+// TODO https://github.com/villuna/aoc23/wiki/A-Geometric-solution-to-advent-of-code-2023,-day-21
 export function solvePart2(input: string, numberOfSteps: number): number {
   const grid = ArrayGrid.fromInput(input);
   if (grid.height !== grid.width) {
