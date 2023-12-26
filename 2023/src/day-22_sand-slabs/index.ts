@@ -1,4 +1,4 @@
-import { ArrayGrid, max, PlainPoint, pointsEqual, splitLines } from '@util';
+import { ArrayGrid, max, PlainPoint, pointsEqual, splitLines, sum } from '@util';
 
 // region Types and Globals
 interface Vector3 {
@@ -13,51 +13,40 @@ interface Brick {
 
   line: string;
 }
+
+type BrickTree = Record<string, Node>;
+interface Node {
+  above: Node[];
+  brick: Brick;
+  below: Node[];
+}
 // endregion
 
 export function solvePart1(input: string): number {
   const bricks = splitLines(input)
     .map(parseBrick)
     .sort((a, b) => Math.min(a.from.z, a.to.z) - Math.min(b.from.z, b.to.z));
+
   settleBricks(bricks);
+  const tree = buildBrickTree(bricks);
 
-  const bricksByZ = new Array(bricks.map(({to: {z}}) => z).reduce(max) + 2)
-    .fill(0).map<Brick[]>(() => []);
-  bricks.forEach((brick) => {
-    bricksByZ[brick.from.z].push(brick);
-    if (brick.from.z !== brick.to.z) {
-      bricksByZ[brick.to.z].push(brick);
-    }
-  });
-
-  let count = 0;
-  for (const current of bricks) {
-    const supportedBricks = bricksByZ[current.to.z + 1].filter((o) => bricksAreTouching(current, o));
-    if (supportedBricks.length === 0) {
-      count++;
-      continue;
-    }
-
-    let allSupportedBricksHaveSecondSupport = true;
-    for (const supported of supportedBricks) {
-      const supportingBricks = bricksByZ[supported.from.z - 1].filter((o) => bricksAreTouching(supported, o));
-      if (supportingBricks.length <= 1) {
-        allSupportedBricksHaveSecondSupport = false;
-        break;
-      }
-    }
-    if (allSupportedBricksHaveSecondSupport) {
-      count++;
-    }
-  }
-
-  return count;
+  return bricks
+    .map(({line}) => numberOfFallingBricksIfDisintegrated(tree[line]))
+    .filter((n) => n === 0)
+    .length;
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const bricks = splitLines(input)
+    .map(parseBrick)
+    .sort((a, b) => Math.min(a.from.z, a.to.z) - Math.min(b.from.z, b.to.z));
+
+  settleBricks(bricks);
+  const tree = buildBrickTree(bricks);
+
+  return bricks
+    .map(({line}) => numberOfFallingBricksIfDisintegrated(tree[line]))
+    .reduce(sum);
 }
 
 // region Shared Code
@@ -90,6 +79,58 @@ function settleBricks(bricks: Brick[]) {
 
     shadowPoints.forEach((p) => groundLevel.set(p, brick.to.z));
   }
+}
+
+function buildBrickTree(bricks: Brick[]): BrickTree {
+  const tree = Object.fromEntries<Node>(bricks.map((brick) => {
+    return [
+      brick.line,
+      { above: [], brick, below: [], },
+    ]
+  }));
+
+  const bricksByZ = new Array(bricks.map(({to: {z}}) => z).reduce(max) + 2)
+    .fill(0).map<Brick[]>(() => []);
+  bricks.forEach((brick) => {
+    bricksByZ[brick.from.z].push(brick);
+    if (brick.from.z !== brick.to.z) {
+      bricksByZ[brick.to.z].push(brick);
+    }
+  });
+  for (const node of Object.values(tree)) {
+    node.below = bricksByZ[node.brick.from.z - 1]
+      .filter((o) => bricksAreTouching(node.brick, o))
+      .map(({line}) => tree[line]);
+    node.above = bricksByZ[node.brick.to.z + 1]
+      .filter((o) => bricksAreTouching(node.brick, o))
+      .map(({line}) => tree[line]);
+  }
+
+  return tree;
+}
+
+function numberOfFallingBricksIfDisintegrated(node: Node): number {
+  const visited = new Set<string>();
+  const open = node.above.filter(({below}) => below.length === 1);
+  const falling = new Set(open.map(({brick}) => brick.line));
+  while (open.length > 0) {
+    const current = open.pop()!;
+    const key = current.brick.line;
+    if (visited.has(key)) {
+      continue;
+    }
+    visited.add(key);
+
+    for (const next of current.above.filter(({below}) => below.every(({brick}) => falling.has(brick.line)))) {
+      const key = next.brick.line;
+      if (visited.has(key)) {
+        continue;
+      }
+      open.push(next);
+      falling.add(key);
+    }
+  }
+  return falling.size;
 }
 
 function brickShadowPoints(brick: Brick): PlainPoint[] {
