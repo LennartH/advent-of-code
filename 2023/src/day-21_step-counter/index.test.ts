@@ -28,7 +28,7 @@ describe('Day 21: Step Counter', () => {
     const inputPath = `${__dirname}/input`;
     const input = readFile(inputPath);
     const part1Solution = 3572;
-    const part2Solution = null;
+    const part2Solution = 594606492802848;
 
     test(`solution is ${part1Solution ?? '?'} for part 1`, () => {
       const result = solvePart1(input, 64);
