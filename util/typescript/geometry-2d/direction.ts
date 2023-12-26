@@ -10,7 +10,12 @@ export interface PlainDirection2D {
   readonly deltaX: number;
   readonly deltaY: number;
 }
-export type Direction2D = CardinalDirection2D | PlainDirection2D;
+export interface ArrowDirection2D {
+  readonly name: StraightArrowDirectionName;
+  readonly deltaX: number;
+  readonly deltaY: number;
+}
+export type Direction2D = CardinalDirection2D | PlainDirection2D | ArrowDirection2D;
 
 const cardinalDirectionNames = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
 export type CardinalDirectionName = typeof cardinalDirectionNames[number];
@@ -18,6 +23,10 @@ export type StraightCardinalDirectionName = 'N' | 'E' | 'S' | 'W';
 const plainDirectionNames = ['U', 'UR', 'R', 'DR', 'D', 'DL', 'L', 'UL'] as const
 export type PlainDirectionName = typeof plainDirectionNames[number];
 export type StraightPlainDirectionName = 'U' | 'R' | 'D' | 'L';
+const arrowDirectionNames = ['^', '>', 'v', '<'] as const;
+export type StraightArrowDirectionName = typeof arrowDirectionNames[number];
+
+type DirectionFlavor = 'cardinal' | 'plain' | 'arrow';
 
 // region Factory Methods
 interface DirectionsFactoryOptions {
@@ -27,13 +36,17 @@ interface DirectionsFactoryOptions {
 
 export function getDirections(names: CardinalDirectionName[], invertAxis?: AxesString | Axes): CardinalDirection2D[]
 export function getDirections(names: PlainDirectionName[], invertAxis?: AxesString | Axes): PlainDirection2D[]
+export function getDirections(names: StraightArrowDirectionName[], invertAxis?: AxesString | Axes): PlainDirection2D[]
 export function getDirections(flavor: 'cardinal', options?: DirectionsFactoryOptions): CardinalDirection2D[]
 export function getDirections(flavor: 'plain', options?: DirectionsFactoryOptions): PlainDirection2D[]
-export function getDirections(namesOrFlavor: DirectionName[] | 'cardinal' | 'plain', invertAxisOrOptions?: AxesString | Axes | DirectionsFactoryOptions): PlainDirection2D[] {
+export function getDirections(flavor: 'arrow', options?: DirectionsFactoryOptions): PlainDirection2D[]
+export function getDirections(namesOrFlavor: DirectionName[] | DirectionFlavor, invertAxisOrOptions?: AxesString | Axes | DirectionsFactoryOptions): PlainDirection2D[] {
   let names: readonly DirectionName[];
   let invertAxis: undefined | AxesString | Axes = undefined;
   if (typeof namesOrFlavor === 'string') {
-    names = namesOrFlavor === 'cardinal' ? cardinalDirectionNames : plainDirectionNames;
+    names = namesOrFlavor === 'cardinal' ? cardinalDirectionNames :
+            namesOrFlavor === 'plain' ? plainDirectionNames :
+                                        arrowDirectionNames;
     const options = invertAxisOrOptions as DirectionsFactoryOptions;
     if (!options?.withDiagonals) {
       names = names.filter(isStraight);
@@ -133,23 +146,31 @@ export function isPlainDirection(direction: Direction2D): direction is PlainDire
 function isPlainDirectionName(name: DirectionName): name is PlainDirectionName {
   return plainDirectionNames.includes(name as never);
 }
+
+export function isArrowDirection(direction: Direction2D): direction is ArrowDirection2D {
+  return isArrowDirectionName(direction.name);
+}
+
+function isArrowDirectionName(name: DirectionName): name is StraightArrowDirectionName {
+  return arrowDirectionNames.includes(name as never);
+}
 // endregion
 
 // region Local Utilities
-type DirectionName = CardinalDirectionName | PlainDirectionName;
-type StraightDirectionName = StraightCardinalDirectionName | StraightPlainDirectionName;
+type DirectionName = CardinalDirectionName | PlainDirectionName | StraightArrowDirectionName;
+type StraightDirectionName = StraightCardinalDirectionName | StraightPlainDirectionName | StraightArrowDirectionName;
 
 type AxesString = 'x' | 'y' | 'xy' | 'yx';
 type Axes = ('x' | 'y')[];
-const horizontalDirections: readonly string[] = ['E', 'R', 'W', 'L'];
-const verticalDirections: readonly string[] = ['N', 'U', 'S', 'D'];
+const horizontalDirections: readonly string[] = ['E', 'R', 'W', 'L', '<', '>'];
+const verticalDirections: readonly string[] = ['N', 'U', 'S', 'D', '^', 'v'];
 const straightDirections: readonly string[] = [...horizontalDirections, ...verticalDirections]
 
 const directionDelta: Record<StraightDirectionName, number> = {
-  N: -1,   U: -1,
-  E:  1,   R:  1,
-  S:  1,   D:  1,
-  W: -1,   L: -1,
+  N: -1, U: -1, '^': -1,
+  E:  1, R:  1, '>':  1,
+  S:  1, D:  1, 'v':  1,
+  W: -1, L: -1, '<': -1,
 };
 
 function splitDirectionName(name: DirectionName): StraightDirectionName[] {
