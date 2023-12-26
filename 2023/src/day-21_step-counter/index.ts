@@ -1,4 +1,4 @@
-import { ArrayGrid, PlainPoint, pointToString } from '@util';
+import { ArrayGrid, manhattanDistance, PlainPoint, pointToString } from '@util';
 import { first, pipe } from 'iter-ops';
 import { MinPriorityQueue } from 'datastructures-js';
 
@@ -33,7 +33,6 @@ export function solvePart1(input: string, numberOfSteps: number): number {
   return count;
 }
 
-// TODO https://github.com/villuna/aoc23/wiki/A-Geometric-solution-to-advent-of-code-2023,-day-21
 export function solvePart2(input: string, numberOfSteps: number): number {
   const grid = ArrayGrid.fromInput(input);
   if (grid.height !== grid.width) {
@@ -74,8 +73,8 @@ export function solvePart2(input: string, numberOfSteps: number): number {
 
   const evenPlots = distances.filter(({length}) => length % 2 === 0).length;
   const oddPlots = distances.filter(({length}) => length % 2 === 1).length;
-  const evenCornerPlots = distances.filter(({length}) => length > 65 && length % 2 === 0).length;
-  const oddCornerPlots = distances.filter(({length}) => length > 65 && length % 2 === 1).length;
+  const evenCornerPlots = distances.filter(({position, length}) => manhattanDistance(position, start) > 65 && length % 2 === 0).length;
+  const oddCornerPlots = distances.filter(({position, length}) => manhattanDistance(position, start) > 65 && length % 2 === 1).length;
 
   const fullGridSteps = Math.floor((numberOfSteps - start.x) / gridLength);
   const remainingSteps = (numberOfSteps - start.x) % (gridLength);
@@ -86,10 +85,8 @@ export function solvePart2(input: string, numberOfSteps: number): number {
     throw new Error('Only works if the steps are just enough to reach the end of a grid');
   }
 
-  console.log(fullGridSteps);
   const fullEvenGrids = fullGridSteps * fullGridSteps;
   const fullOddGrids = (fullGridSteps + 1) * (fullGridSteps + 1);
-
   return (fullOddGrids * oddPlots)
        + (fullEvenGrids * evenPlots)
        - ((fullGridSteps + 1) * oddCornerPlots)
