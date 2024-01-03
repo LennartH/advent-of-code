@@ -61,6 +61,7 @@ export function getDirections(namesOrFlavor: DirectionName[] | DirectionFlavor, 
 
 export function directionFromName(name: CardinalDirectionName, invertAxis?: AxesString | Axes): CardinalDirection2D
 export function directionFromName(name: PlainDirectionName, invertAxis?: AxesString | Axes): PlainDirection2D
+export function directionFromName(name: StraightArrowDirectionName, invertAxis?: AxesString | Axes): ArrowDirection2D
 export function directionFromName(name: DirectionName, invertAxis?: AxesString | Axes): Direction2D {
   let deltaX = 0;
   let deltaY = 0;
