@@ -1,26 +1,17 @@
 import {
   ArrayGrid,
   directionFromName,
-  formatGrid,
   getDirections,
+  Grid,
   PlainPoint,
   pointsEqual,
   pointToString,
-  splitLines
+  StraightArrowDirectionName
 } from '@util';
 import { first, pipe } from 'iter-ops';
-import { MinPriorityQueue } from 'datastructures-js';
 
 // region Types and Globals
 const cardinalDirections = getDirections('cardinal', {withDiagonals: false});
-
-interface VisitedNode {
-  position: PlainPoint;
-  steps: number;
-
-  pathLength?: number;
-  previous?: VisitedNode;
-}
 // endregion
 
 export function solvePart1(input: string): number {
@@ -39,82 +30,70 @@ export function solvePart1(input: string): number {
   if (exit == null) {
     throw new Error('Start could not be found');
   }
-
-  let maxLength = 0;
-  const visited = new Map<string, VisitedNode>();
-  const open = new MinPriorityQueue<VisitedNode>(({steps}) => -steps);
-  open.push({position: start, steps: 0});
-  while (open.size()) {
-    const current = open.pop();
-    const {position, steps} = current;
-    if (pointsEqual(position, exit)) {
-      const copy = ArrayGrid.fromInput(input);
-
-      const pathLength = steps;
-      let previous = current.previous;
-      while (previous != null) {
-        copy.set(previous.position, 'O');
-
-        if (previous.pathLength == null || previous.pathLength < pathLength) {
-          previous.pathLength = pathLength;
-        }
-        previous = previous.previous;
-      }
-      if (maxLength < pathLength) {
-        maxLength = pathLength;
-      }
-      console.log(pathLength);
-      // console.log(formatGrid(copy));
-      // console.log()
-      continue;
-    }
-    const key = pointToString(position);
-    if (visited.has(key)) {
-      continue;
-    }
-    visited.set(key, current);
-
-    const cellValue = grid.get(position);
-    const directions = cellValue !== '.' ? [directionFromName(cellValue as never)] : cardinalDirections;
-    for (const {position: next, value} of grid.adjacentFrom(position, {directions})) {
-      if (value === '#') {
-        continue;
-      }
-      const known = visited.get(pointToString(next));
-      if (known != null) {
-        if (known.pathLength != null) {
-          const currentPath = new Set<string>();
-          let foo: VisitedNode | undefined = current;
-          while (foo != null) {
-            currentPath.add(pointToString(foo.position));
-            foo = foo.previous;
-          }
-          const knownPath = new Set<string>();
-          foo = known;
-          while (foo != null) {
-            knownPath.add(pointToString(foo.position));
-            foo = foo.previous;
-          }
-          if (![...currentPath].some((k) => knownPath.has(k))) {
-            const remainingSteps = known.pathLength - known.steps;
-            open.push({position: exit, steps: steps + 1 + remainingSteps, previous: current});
-          }
-        }
-        continue;
-      }
-      open.push({position: next, steps: steps + 1, previous: current});
-    }
-  }
-
-  return maxLength;
+  return longestPath(start, exit, grid);
 }
 
 export function solvePart2(input: string): number {
-  const lines = splitLines(input);
-  // TODO Implement solution
-  return Number.NaN;
+  const withoutSlopes = input.replace(/[<>^v]/g, '.');
+  const grid = ArrayGrid.fromInput(withoutSlopes);
+  const start = pipe(
+    grid.row(0),
+    first(({value}) => value === '.'),
+  ).first?.position;
+  if (start == null) {
+    throw new Error('Start could not be found');
+  }
+  const exit = pipe(
+    grid.row(grid.height - 1),
+    first(({value}) => value === '.'),
+  ).first?.position;
+  if (exit == null) {
+    throw new Error('Start could not be found');
+  }
+  return longestPath(start, exit, grid);
 }
 
 // region Shared Code
+interface VisitedNode {
+  position: PlainPoint;
+  distance: number;
+  visited: Set<string>;
+}
 
+function longestPath(from: PlainPoint, to: PlainPoint, grid: Grid<string>): number {
+  // const distances = new Map<string, number>();
+  const open: VisitedNode[] = [{position: from, distance: 0, visited: new Set()}];
+
+  let maxLength = 0;
+  while (open.length > 0) {
+    const current = open.pop()!;
+    const visited = current.visited;
+    const key = pointToString(current.position);
+    if (visited.has(key)) { // || (distances.get(key) || -1) >= current.distance) {
+      continue;
+    }
+    if (pointsEqual(current.position, to)) {
+      maxLength = Math.max(current.distance, maxLength);
+      continue;
+    }
+    visited.add(key);
+    // distances.set(key, current.distance);
+
+    const cellValue = grid.get(current.position);
+    const directions = cellValue === '.' ? cardinalDirections : [directionFromName(cellValue as StraightArrowDirectionName)];
+    const nextCells = [...grid.adjacentFrom(current.position, {directions})].filter((next) => {
+      const nextKey = pointToString(next.position);
+      return next.value !== '#' && !visited.has(nextKey); // && (distances.get(nextKey) || -1) < current.distance + 1;
+    });
+    const branch = nextCells.length > 1;
+    for (const next of nextCells) {
+      open.push({
+        position: next.position,
+        distance: current.distance + 1,
+        visited: branch ? new Set(visited) : visited,
+      });
+    }
+  }
+  return maxLength;
+}
 // endregion
