@@ -35,7 +35,7 @@ describe('Day 23: A Long Walk', () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
@@ -57,7 +57,7 @@ describe('Day 23: A Long Walk', () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
@@ -73,7 +73,7 @@ describe('Day 23: A Long Walk', () => {
       const result = solvePart1(input);
       expect(result).toEqual(part1Solution);
     });
-    test.skip(`solution is ${part2Solution ?? '?'} for part 2`, () => {
+    test(`solution is ${part2Solution ?? '?'} for part 2`, () => {
       const result = solvePart2(input);
       expect(result).toEqual(part2Solution);
     });
