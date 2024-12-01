@@ -14,7 +14,7 @@ CREATE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line
 FROM read_text('input');
 SET VARIABLE solution1 = 1873376;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 18997088;
 
 SET VARIABLE mode = 'input'; -- example or input
 SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
