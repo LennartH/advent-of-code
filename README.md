@@ -1,7 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024
-- **Day 1: Historian Hysteria** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/src/day-01_historian-hysteria/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/1)
+- **Day 1: Historian Hysteria** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-01_historian-hysteria/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/1)
 
 ### 2023
 - **Day 25: Snowverload** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-25_snowverload/index.ts) / [Puzzle](https://adventofcode.com/2023/day/25)
