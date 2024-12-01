@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Command, InvalidArgumentError } from 'commander';
+import { Command, InvalidArgumentError, Option } from 'commander';
 import * as Handlebars from 'handlebars';
 import * as path from 'path';
 import * as fs from 'node:fs/promises';
@@ -15,7 +15,6 @@ dotenv.config();
 // TODO Move templates into tool directory
 // TODO Determine path of this file and make source path relative to this file
 const aocTokenEnv = 'AOC_TOKEN';
-const typescriptDayTemplateSource = path.resolve(process.env.HOME!, 'projects/advent-of-code/template/typescript/day-{{day}}_{{title}}');
 const readmePath = path.resolve('README.md');
 
 const now = new Date();
@@ -30,10 +29,11 @@ const currentYear = now.getFullYear();
 const maxYear = now.getMonth() === 11 ? currentYear : currentYear - 1;
 const currentYearDefault = currentYear.toString();
 
-// TODO Add option to select template language
+// TODO Infer language choices from templates directory
 // TODO Add option to dry-run
 const command = new Command()
   .argument('<output>', 'Path to the output directory')
+  .addOption(new Option('-l, --language <language>', 'Template language to use').choices(['typescript', 'duckdb']).default('typescript').makeOptionMandatory())
   .requiredOption('-t, --title <title>', 'Title of the puzzle')
   .requiredOption('-d, --day <number>', `Number of the day [${minDay}-${maxDay}]`, parseDayNumber, currentDayDefault)
   .option('-y, --year <number>', `Number of the year [${minYear}-${maxYear}]`, parseYear, currentYearDefault)
@@ -45,6 +45,7 @@ const command = new Command()
 command.parse();
 
 interface GenerateDayOptions {
+  language: string;
   title: string;
   day: string;
   year: string;
@@ -82,7 +83,7 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
     day: options.day.padStart(2, '0')
   };
 
-  const sourcePath = typescriptDayTemplateSource;
+  const sourcePath = path.resolve(process.env.HOME!, `projects/advent-of-code/template/${options.language}/day-{{day}}_{{title}}`);
   const outputDirectory = renderTemplate(path.basename(sourcePath), pathOptions);
   const outputPath = path.join(path.resolve(output), outputDirectory);
   const outputExists = await fs.access(outputPath, fs.constants.F_OK)
@@ -123,12 +124,15 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
 
 
 // TODO Determine repository URL from git remote
-const solutionUrl = Handlebars.compile('https://github.com/LennartH/advent-of-code/blob/main/{{year}}/src/{{directory}}/index.ts');
+const solutionUrl: Record<string, ReturnType<typeof Handlebars.compile>> = {
+  typescript: Handlebars.compile('https://github.com/LennartH/advent-of-code/blob/main/{{year}}/src/{{directory}}/index.ts'),
+  duckdb: Handlebars.compile('https://github.com/LennartH/advent-of-code/blob/main/{{year}}/src/{{directory}}/solution.sql')
+}
 const puzzleUrl = Handlebars.compile('https://adventofcode.com/{{year}}/day/{{day}}');
 const readmeListHeader = Handlebars.compile('### {{year}}');
 const readmeEntry = Handlebars.compile('- **Day {{day}}: {{title}}** [Solution]({{solutionUrl}}) / [Puzzle]({{puzzleUrl}})');
 
-async function addEntryToReadme(readmePath: string, options: {year: string, day: string, title: string, directory: string}) {
+async function addEntryToReadme(readmePath: string, options: {year: string, day: string, title: string, directory: string, language: string}) {
   let readmeContent = await fs.readFile(readmePath, 'utf-8');
 
   const listHeader = readmeListHeader(options);
@@ -160,7 +164,7 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
   const afterList = readmeContent.slice(listStartIndex);
   const newEntry = readmeEntry({
     ...options,
-    solutionUrl: solutionUrl(options),
+    solutionUrl: solutionUrl[options.language](options),
     puzzleUrl: puzzleUrl(options),
   });
   const updatedContent = `${beforeList}${newEntry}\n${afterList}`;
