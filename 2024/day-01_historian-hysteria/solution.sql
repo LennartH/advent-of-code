@@ -8,7 +8,7 @@ SET VARIABLE example = '
 ';
 CREATE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 11;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 31;
 
 CREATE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line
@@ -49,6 +49,21 @@ WITH
         FROM ordered_location_ids_a 
         JOIN ordered_location_ids_b USING (idx)
         ORDER BY idx
+    ),
+    location_b_count AS (
+        SELECT
+            location_id_b,
+            count() as count
+        FROM location_ids
+        GROUP BY location_id_b
+    ),
+     similarity AS (
+        SELECT
+            location_id_a,
+            count,
+            location_id_a * count as score
+        FROM location_ids
+        LEFT JOIN location_b_count ON location_ids.location_id_a = location_b_count.location_id_b
     )
 
 SELECT 
@@ -60,7 +75,7 @@ FROM location_id_distance
 UNION
 SELECT 
     'Part 2' as part,
-    NULL as solution,
+    sum(score) as solution,
     getvariable('expected2') as expected,
     solution = expected as correct
-FROM location_id_distance;
+FROM similarity;
