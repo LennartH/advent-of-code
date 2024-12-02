@@ -17,24 +17,32 @@ SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampl
 
 SELECT * FROM query_table(getvariable('mode'));
 
+.timer on
 WITH
     parser AS (
         SELECT
-            'TODO' as prop
+            row_number() OVER () as idx,
+            regexp_split_to_array(line, ' ') as parts,
+            cast(regexp_split_to_array(line, ' ') as INTEGER[]) as values
         FROM query_table(getvariable('mode'))
+    ),
+    solution AS (
+        SELECT
+            NULL as part1,
+            NULL as part2
     )
 
 
 SELECT 
     'Part 1' as part,
-    NULL as solution,
+    part1 as solution,
     getvariable('expected1') as expected,
     solution = expected as correct
-FROM parser
+FROM solution
 UNION
 SELECT 
     'Part 2' as part,
-    NULL as solution,
+    part2 as solution,
     getvariable('expected2') as expected,
     solution = expected as correct
-FROM parser;
+FROM solution;
