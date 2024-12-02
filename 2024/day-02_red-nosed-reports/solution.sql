@@ -22,6 +22,7 @@ SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampl
 
 SELECT * FROM query_table(getvariable('mode'));
 
+.timer on
 WITH
     reports AS (
         SELECT
