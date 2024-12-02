@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024
+- **Day 2: Red-Nosed Reports** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/src/day-02_red-nosed-reports/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/2)
 - **Day 1: Historian Hysteria** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-01_historian-hysteria/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/1)
 
 ### 2023
