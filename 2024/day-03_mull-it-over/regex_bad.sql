@@ -81,8 +81,8 @@ WITH
                     slice[comma+1:close-1] as b
                 FROM slices
                 WHERE slice ^@ 'mul(' AND comma > 5 AND close > 7 AND close - comma > 1
+                  AND a IN cast(range(1, 1000) AS varchar[]) AND b IN cast(range(1, 1000) AS varchar[])
             )
-            INNER JOIN (SELECT unnest(range(1, 1000))::varchar as n) ON a = n or b = n
         )
     ),
     solution AS (
