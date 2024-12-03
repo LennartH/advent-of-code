@@ -83,7 +83,8 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
     day: options.day.padStart(2, '0')
   };
 
-  const sourcePath = path.resolve(process.env.HOME!, `projects/advent-of-code/template/${options.language}/day-{{day}}_{{title}}`);
+  // FIXME static path breaks execution on different devices
+  const sourcePath = path.resolve(process.env.HOME!, `projects/private/advent-of-code/template/${options.language}/day-{{day}}_{{title}}`);
   const outputDirectory = renderTemplate(path.basename(sourcePath), pathOptions);
   const outputPath = path.join(path.resolve(output), outputDirectory);
   const outputExists = await fs.access(outputPath, fs.constants.F_OK)
