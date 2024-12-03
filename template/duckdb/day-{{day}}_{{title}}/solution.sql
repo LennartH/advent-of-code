@@ -35,14 +35,14 @@ WITH
 
 SELECT 
     'Part 1' as part,
-    part1 as solution,
+    part1 as result,
     getvariable('expected1') as expected,
-    solution = expected as correct
+    result = expected as correct
 FROM solution
 UNION
 SELECT 
     'Part 2' as part,
-    part2 as solution,
+    part2 as result,
     getvariable('expected2') as expected,
-    solution = expected as correct
+    result = expected as correct
 FROM solution;
