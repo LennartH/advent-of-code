@@ -47,49 +47,18 @@ WITH
         SELECT
             idx,
             idy,
-            string_agg(token, '') OVER (PARTITION BY idy ORDER BY idx asc ROWS 3 PRECEDING) as slice
-        FROM tokens
-        UNION ALL
-        SELECT
-            idx,
-            idy,
-            string_agg(token, '') OVER (PARTITION BY idy ORDER BY idx desc ROWS 3 PRECEDING) as slice
-        FROM tokens
-        UNION ALL
-        SELECT
-            idx,
-            idy,
-            string_agg(token, '') OVER (PARTITION BY idx ORDER BY idy asc ROWS 3 PRECEDING) as slice
-        FROM tokens
-        UNION ALL
-        SELECT
-            idx,
-            idy,
-            string_agg(token, '') OVER (PARTITION BY idx ORDER BY idy desc ROWS 3 PRECEDING) as slice
-        FROM tokens
-        UNION ALL
-        SELECT
-            idx,
-            idy,
-            string_agg(token, '') OVER (PARTITION BY d1 ORDER BY pos asc ROWS 3 PRECEDING) as slice
-        FROM tokens
-        UNION ALL
-        SELECT
-            idx,
-            idy,
-            string_agg(token, '') OVER (PARTITION BY d1 ORDER BY pos desc ROWS 3 PRECEDING) as slice
-        FROM tokens
-        UNION ALL
-        SELECT
-            idx,
-            idy,
-            string_agg(token, '') OVER (PARTITION BY d2 ORDER BY pos asc ROWS 3 PRECEDING) as slice
-        FROM tokens
-        UNION ALL
-        SELECT
-            idx,
-            idy,
-            string_agg(token, '') OVER (PARTITION BY d2 ORDER BY pos desc ROWS 3 PRECEDING) as slice
+            unnest([
+                -- horizontal & vertical
+                string_agg(token, '') OVER (PARTITION BY idy ORDER BY idx asc ROWS 3 PRECEDING),
+                string_agg(token, '') OVER (PARTITION BY idy ORDER BY idx desc ROWS 3 PRECEDING),
+                string_agg(token, '') OVER (PARTITION BY idx ORDER BY idy asc ROWS 3 PRECEDING),
+                string_agg(token, '') OVER (PARTITION BY idx ORDER BY idy desc ROWS 3 PRECEDING),
+                -- diagonal
+                string_agg(token, '') OVER (PARTITION BY d1 ORDER BY pos asc ROWS 3 PRECEDING),
+                string_agg(token, '') OVER (PARTITION BY d1 ORDER BY pos desc ROWS 3 PRECEDING),
+                string_agg(token, '') OVER (PARTITION BY d2 ORDER BY pos asc ROWS 3 PRECEDING),
+                string_agg(token, '') OVER (PARTITION BY d2 ORDER BY pos desc ROWS 3 PRECEDING)
+            ]) as slice
         FROM tokens
     ),
     boxes AS (
@@ -108,14 +77,7 @@ WITH
     solution AS (
         SELECT
             (SELECT count() FILTER (slice = 'XMAS') FROM slices) as part1,
-            (SELECT
-                count() FILTER (
-                    box LIKE 'M_M_A_S_S' OR
-                    box LIKE 'M_S_A_M_S' OR
-                    box LIKE 'S_S_A_M_M' OR
-                    box LIKE 'S_M_A_S_M'
-                )
-            FROM boxes) as part2
+            (SELECT count() FILTER (box SIMILAR TO 'M.M.A.S.S|M.S.A.M.S|S.S.A.M.M|S.M.A.S.M') FROM boxes) as part2
     )
 
 SELECT 
