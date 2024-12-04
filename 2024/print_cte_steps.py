@@ -25,6 +25,6 @@ for name, query in zip([first_name] + parts[1::2], parts[::2]):
     '''
     replacements.append(dedent(replacement))
 
-replacement = f'{''.join(replacements)}\n\n{select}'
+replacement = f'{"".join(replacements)}\n\n{select}'
 transformed = content[:match.start()] + replacement + content[match.end():]
 print(transformed)
