@@ -12,12 +12,12 @@ SET VARIABLE example = '
 ';
 CREATE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 18;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 9;
 
 CREATE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 2633;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 1936;
 
 SET VARIABLE mode = 'input'; -- example or input
 SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
@@ -92,11 +92,30 @@ WITH
             string_agg(token, '') OVER (PARTITION BY d2 ORDER BY pos desc ROWS 3 PRECEDING) as slice
         FROM tokens
     ),
+    boxes AS (
+        SELECT
+            idx,
+            idy,
+            string_agg(slice, '') OVER (PARTITION BY idx ORDER BY idy asc ROWS 2 PRECEDING) as box
+        FROM (
+            SELECT
+                idx,
+                idy,
+                string_agg(token, '') OVER (PARTITION BY idy ORDER BY idx asc ROWS 2 PRECEDING) as slice
+            FROM tokens
+        )
+    ),
     solution AS (
         SELECT
-            count() FILTER (slice = 'XMAS') as part1,
-            NULL as part2
-        FROM slices
+            (SELECT count() FILTER (slice = 'XMAS') FROM slices) as part1,
+            (SELECT
+                count() FILTER (
+                    box LIKE 'M_M_A_S_S' OR
+                    box LIKE 'M_S_A_M_S' OR
+                    box LIKE 'S_S_A_M_M' OR
+                    box LIKE 'S_M_A_S_M'
+                )
+            FROM boxes) as part2
     )
 
 SELECT 
