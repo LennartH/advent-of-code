@@ -90,25 +90,33 @@ WITH RECURSIVE
         JOIN rules r ON list_has_all(pages, [r.before, r.after])
     ),
     invalid_job_reconstruction AS (
-        SELECT
-            idx,
-            [before, after] as acc
-        FROM rules_for_invalid_jobs j
-        WHERE before NOT IN (SELECT DISTINCT after FROM rules_for_invalid_jobs jj WHERE j.idx = jj.idx)
+        SELECT idx, [page] as acc FROM (
+            SELECT DISTINCT idx, after as page FROM rules_for_invalid_jobs
+            EXCEPT ALL
+            SELECT DISTINCT idx, before as page FROM rules_for_invalid_jobs
+        )
         UNION ALL
         SELECT
-            l.idx,
-            list_append(l.acc, r.after) as acc
-        FROM invalid_job_reconstruction l
-        JOIN rules_for_invalid_jobs r ON l.idx = r.idx AND l.acc[-1] = r.before
+            t.idx,
+            list_prepend(before, t.acc) as acc
+        FROM invalid_job_reconstruction t
+        JOIN rules_for_invalid_jobs USING (idx)
+        WHERE after = t.acc[1] AND before = (
+            SELECT DISTINCT after as page FROM rules_for_invalid_jobs j WHERE j.idx = t.idx AND j.after NOT IN acc
+            EXCEPT ALL
+            SELECT DISTINCT before as page FROM rules_for_invalid_jobs j WHERE j.idx = t.idx AND j.after NOT IN acc
+        )
     ),
     repaired_jobs AS (
         SELECT
             idx,
-            acc as pages,
-        FROM invalid_jobs
-        JOIN invalid_job_reconstruction USING (idx)
-        WHERE len(pages) = len(acc)
+            max_by(list_prepend((
+                SELECT DISTINCT before as page FROM rules_for_invalid_jobs j WHERE j.idx = t.idx
+                EXCEPT ALL
+                SELECT DISTINCT after as page FROM rules_for_invalid_jobs j WHERE j.idx = t.idx
+            ), acc), len(acc)) as pages
+        FROM invalid_job_reconstruction t
+        GROUP BY idx
     ),
     solution AS (
         SELECT
