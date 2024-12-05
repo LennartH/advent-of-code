@@ -30,33 +30,31 @@ SET VARIABLE example = '
 ';
 CREATE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 143;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 123;
 
 CREATE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 5588;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 5331;
 
 SET VARIABLE mode = 'input'; -- example or input
 SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
 SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2'));
 
 
-SELECT * FROM query_table(getvariable('mode'));
-
 .timer on
-WITH
+WITH RECURSIVE
     rules AS (
         SELECT
             unnest(regexp_extract(line, '(\d+)\|(\d+)', ['before', 'after'])::STRUCT(before INTEGER, after INTEGER))
         FROM query_table(getvariable('mode'))
         WHERE '|' IN line
+        ORDER BY line
     ),
     jobs AS (
         SELECT
             row_number() OVER () as idx,
             string_split(line, ',')::INTEGER[] as pages,
-            pages[len(pages) // 2 + 1] as middle,
         FROM query_table(getvariable('mode'))
         WHERE ',' IN line
     ),
@@ -76,18 +74,47 @@ WITH
     valid_jobs AS (
         SELECT * FROM jobs
         WHERE idx NOT IN (
-            SELECT
-                DISTINCT idx
-            FROM pages
+            SELECT DISTINCT idx FROM pages
             ANTI JOIN rules USING (before, after)
         )
     ),
+    invalid_jobs AS (
+        SELECT * FROM jobs
+        WHERE idx NOT IN (SELECT DISTINCT idx FROM valid_jobs)
+    ),
+    rules_for_invalid_jobs AS (
+        SELECT DISTINCT
+            idx,
+            r.*,
+        FROM invalid_jobs j
+        JOIN rules r ON list_has_all(pages, [r.before, r.after])
+    ),
+    invalid_job_reconstruction AS (
+        SELECT
+            idx,
+            [before, after] as acc
+        FROM rules_for_invalid_jobs j
+        WHERE before NOT IN (SELECT DISTINCT after FROM rules_for_invalid_jobs jj WHERE j.idx = jj.idx)
+        UNION ALL
+        SELECT
+            l.idx,
+            list_append(l.acc, r.after) as acc
+        FROM invalid_job_reconstruction l
+        JOIN rules_for_invalid_jobs r ON l.idx = r.idx AND l.acc[-1] = r.before
+    ),
+    repaired_jobs AS (
+        SELECT
+            idx,
+            acc as pages,
+        FROM invalid_jobs
+        JOIN invalid_job_reconstruction USING (idx)
+        WHERE len(pages) = len(acc)
+    ),
     solution AS (
         SELECT
-            (SELECT sum(middle) FROM valid_jobs) as part1,
-            NULL as part2
+            (SELECT sum(pages[len(pages) // 2 + 1]) FROM valid_jobs) as part1,
+            (SELECT sum(pages[len(pages) // 2 + 1]) FROM repaired_jobs) as part2
     )
-
 
 SELECT 
     'Part 1' as part,
