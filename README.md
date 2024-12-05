@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024
+- **Day 5: Print Queue** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-05_print-queue/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/5)
 - **Day 4: Ceres Search** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-04_ceres-search/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/4)
 - **Day 3: Mull It Over** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-03_mull-it-over/solution.sql) ([without regex](https://github.com/LennartH/advent-of-code/blob/main/2024/day-03_mull-it-over/regex_bad.sql)) / [Puzzle](https://adventofcode.com/2024/day/3)
 - **Day 2: Red-Nosed Reports** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-02_red-nosed-reports/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/2)
