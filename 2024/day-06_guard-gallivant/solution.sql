@@ -33,7 +33,7 @@ CREATE OR REPLACE VIEW cells AS (
     )
 );
 
-CREATE OR REPLACE TABLE directions AS (
+CREATE OR REPLACE VIEW directions AS (
     FROM (VALUES 
         ('^', '>',  0, -1, NULL, 0),
         ('>', 'v',  1,  0, (SELECT max(idx) FROM cells) + 1, NULL),
@@ -57,7 +57,7 @@ WITH RECURSIVE
             m.move + 1 as move,
             c.idx - d.dx as idx,
             c.idy - d.dy as idy,
-            CASE WHEN edge THEN NULL ELSE d.next END as dir,
+            CASE WHEN edge THEN NULL ELSE d.next END as dir, -- this breaks the recursion
         FROM moves m, (SELECT
             c.idx, c.idy,
             abs(c.idx - m.idx) + abs(c.idy - m.idy) as distance,
@@ -117,7 +117,6 @@ CREATE OR REPLACE VIEW solution AS (
 
 SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
 SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2'));
-.timer on
 SELECT 
     'Part 1' as part,
     part1 as result,
