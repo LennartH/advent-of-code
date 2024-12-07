@@ -10,13 +10,39 @@ SET VARIABLE example = '
     #.........
     ......#...
 ';
+-- -- Loop when placing obstacle on visited cell
+-- SET VARIABLE example = '
+--     .#............
+--     .............#
+--     .^...........#
+--     .....#........
+--     ............#.
+-- ';
+-- -- Loop between 2 points
+-- SET VARIABLE example = '
+--    ......
+--    .#..#.
+--    .....#
+--    .^#...
+--    ....#.
+-- ';
+-- -- Loop outside of original path
+-- SET VARIABLE example = '
+--    ............
+--    ......#.....
+--    .........#..
+--    .....#......
+--    ........#...
+--    ..^.........
+--    ............
+-- ';
 CREATE OR REPLACE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 41;
 SET VARIABLE exampleSolution2 = 6;
 
 CREATE OR REPLACE TABLE input AS SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 4433;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 1516;
 
 SET VARIABLE mode = 'input';
 
@@ -94,6 +120,7 @@ WITH RECURSIVE
     )
 SELECT * FROM moves);
 
+-- Using a VIEW instead of TABLE causes wrong result for part 2 (1510 instead 1516)
 CREATE OR REPLACE TABLE visited AS (
     SELECT
         idm,
@@ -101,6 +128,7 @@ CREATE OR REPLACE TABLE visited AS (
         if(d.dx != 0, unnest(steps), idx) as idx,
         if(d.dy != 0, unnest(steps), idy) as idy,
         d.dir,
+        ids = 1 as first,
         ids = len(steps) as last,
     FROM moves m
     JOIN directions d ON d.dir = m.prev_dir
@@ -109,27 +137,45 @@ CREATE OR REPLACE TABLE visited AS (
 CREATE OR REPLACE MACRO step_id(idx, idy, dir) AS idx || '|' || idy || '|' || dir;
 CREATE OR REPLACE TABLE loops AS (
 WITH RECURSIVE
+    obstacles AS (
+        SELECT
+            * EXCLUDE(rank)
+        FROM (
+            SELECT
+                *,
+                row_number() OVER (PARTITION BY ox, oy) as rank,
+            FROM (
+                SELECT
+                    idm, ids,
+                    idx + dx as ox,
+                    idy + dy as oy,
+                    idx, idy,
+                    next as dir,
+                    [step_id(idx, idy, d.dir)] as path,
+                FROM visited v
+                JOIN directions d USING (dir)
+                WHERE NOT last
+            )
+        )
+        WHERE rank = 1
+    ),
     loops AS (
         SELECT
-            idm,
-            ids,
+            idm, ids,
             0 as idl,
-            v.idx + d.dx as ox,
-            v.idy + d.dy as oy,
-            v.idx as idx,
-            v.idy as idy,
-            d.next as dir,
+            ox, oy,
+            idx, idy,
+            dir,
             false as cycle,
-            [step_id(idx, idy, dir)] as path,
-        FROM visited v
+            path,
+        FROM obstacles o
         JOIN directions d USING (dir)
-        WHERE NOT v.last
         UNION ALL
         SELECT
             idm, ids, idl,
             ox, oy, idx, idy, dir,
-            list_contains(path, step_id(idx, idy, dir)) as cycle,
-            list_append(path, step_id(idx, idy, dir)) as path,
+            list_contains(path, step_id(idx, idy, prev_dir)) as cycle,
+            list_append(path, step_id(idx, idy, prev_dir)) as path,
         FROM (
             SELECT
                 idm, ids,
@@ -138,6 +184,7 @@ WITH RECURSIVE
                 c.idx - if(c.value = '#' OR (c.idx = l.ox AND c.idy = l.oy), d.dx, 0) as idx,
                 c.idy - if(c.value = '#' OR (c.idx = l.ox AND c.idy = l.oy), d.dy, 0) as idy,
                 d.next as dir,
+                d.dir as prev_dir,
                 path,
             FROM 
                 loops l,
@@ -180,3 +227,110 @@ SELECT
     getvariable('expected2') as expected,
     result = expected as correct
 FROM solution;
+
+-- region Troubleshooting Utils
+PREPARE print_visited AS
+WITH
+    visited AS (
+        SELECT
+            idx, idy,
+            CASE
+                WHEN count() > 1 THEN '+'
+                WHEN any_value(dir) IN ('^', 'v') THEN '|'
+                ELSE '―'
+            END as symbol,
+        FROM main.visited
+        WHERE $1 <= 0 OR idm <= $1
+        GROUP BY idx, idy
+    )
+SELECT
+    idy,
+    string_agg(value, ' ' ORDER BY idx) as line
+FROM (
+    SELECT
+        idx,
+        idy,
+        CASE
+            WHEN value IN ('^', '>', 'v', '<') THEN 'S'
+            WHEN symbol NOT NULL AND value = '#' THEN 'X'
+            WHEN symbol NOT NULL THEN symbol
+            ELSE value
+        END as value,
+    FROM cells c
+    LEFT JOIN visited v USING (idx, idy)
+)
+GROUP BY idy
+ORDER BY idy;
+
+PREPARE print_obstacled AS
+WITH
+    steps AS (
+        SELECT
+            idm, ids,
+            NULL as idl,
+            NULL as idls,
+            idx, idy, dir,
+            false as obstacled,
+        FROM main.visited
+        WHERE idm < $3 OR (idm = $3 AND ids < (SELECT distinct ids FROM loops WHERE ox = $1 AND oy = $2 AND idm = $3))
+        UNION ALL
+        SELECT
+            idm, ids, idl,
+            generate_subscripts(steps, 1) as idls,
+            if(dx != 0, unnest(steps), idx) as idx,
+            if(dy != 0, unnest(steps), idy) as idy,
+            prev_dir as dir,
+            true as obstacled,
+        FROM (
+            SELECT
+                *,
+                CASE WHEN dx = 0 
+                    THEN generate_series(prev_y, idy, dy)
+                    ELSE generate_series(prev_x, idx, dx)
+                END as steps,
+            FROM (
+                SELECT
+                    idm, ids, idl,
+                    ox, oy,
+                    idx, idy, l.dir,
+                    lag(idx) OVER (PARTITION BY idm, ids ORDER BY idl) as prev_x,
+                    lag(idy) OVER (PARTITION BY idm, ids ORDER BY idl) as prev_y,
+                    lag(l.dir) OVER (PARTITION BY idm, ids ORDER BY idl) as prev_dir,
+                    d.dx, d.dy
+                FROM loops l
+                JOIN directions d ON d.next = l.dir
+                WHERE ox = $1 AND oy = $2 AND idm = $3
+            )
+        )
+    ),
+    visited AS (
+        SELECT
+            idx, idy,
+            CASE
+                WHEN count() > 1 THEN '+'
+                WHEN any_value(dir) IN ('^', 'v') THEN '|'
+                ELSE '―'
+            END as symbol,
+        FROM steps
+        GROUP BY idx, idy
+    )
+SELECT
+    idy,
+    string_agg(value, ' ' ORDER BY idx) as line
+FROM (
+    SELECT
+        idx,
+        idy,
+        CASE
+            WHEN c.idx = $1 AND c.idy = $2 THEN 'O'
+            WHEN value IN ('^', '>', 'v', '<') THEN 'S'
+            WHEN symbol NOT NULL AND value = '#' THEN 'X'
+            WHEN symbol NOT NULL THEN symbol
+            ELSE value
+        END as value,
+    FROM cells c
+    LEFT JOIN visited v USING (idx, idy)
+)
+GROUP BY idy
+ORDER BY idy;
+-- endregion
