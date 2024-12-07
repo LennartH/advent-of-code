@@ -35,137 +35,134 @@ CREATE OR REPLACE TABLE cells AS (
 
 CREATE OR REPLACE TABLE directions AS (
     FROM (VALUES 
-        ('^', '>', '<',  0, -1, NULL, 0),
-        ('>', 'v', '^',  1,  0, (SELECT max(idx) FROM cells) + 1, NULL),
-        ('v', '<', '>',  0,  1, NULL, (SELECT max(idy) FROM cells) + 1),
-        ('<', '^', 'v', -1,  0, 0, NULL)
+        ('^', '>', '<',  0, -1, NULL, 1),
+        ('>', 'v', '^',  1,  0, (SELECT max(idx) FROM cells), NULL),
+        ('v', '<', '>',  0,  1, NULL, (SELECT max(idy) FROM cells)),
+        ('<', '^', 'v', -1,  0, 1, NULL)
     ) directions(dir, next, prev, dx, dy, edge_x, edge_y)
 );
 
-CREATE OR REPLACE TABLE visited AS (
+CREATE OR REPLACE TABLE moves AS (
 WITH RECURSIVE
-    visited AS (
+    moves AS (
         SELECT
             0 as idm,
             idx,
             idy,
             dir,
-            [idx||','||idy||dir] as path,
+            NULL::INTEGER[] as steps,
+            NULL::varchar as prev_dir,
+            false as final,
         FROM cells
         JOIN directions d ON d.dir = value
         UNION ALL
-        SELECT 
-            * EXCLUDE (path),
-            list_append(path, idx||','||idy||dir) as path
+        SELECT
+            idm, idx, idy, dir,
+            CASE WHEN dx = 0 
+                THEN generate_series(prev_y, idy, dy)
+                ELSE generate_series(prev_x, idx, dx)
+            END as steps,
+            prev_dir,
+            final,
         FROM (
             SELECT
                 idm + 1 as idm,
-                -- v.idx + if(value = '#', dd.dx, d.dx) as idx,
-                -- v.idy + if(value = '#', dd.dy, d.dy) as idy,
-                -- if(value = '#', dd.dir, d.dir) as dir,
-                v.idx + if(value = '#', 0, d.dx) as idx,
-                v.idy + if(value = '#', 0, d.dy) as idy,
-                if(value = '#', d.next, d.dir) as dir,
-                path,
-            FROM visited v
-            JOIN directions d USING (dir)
-            -- JOIN directions dd ON dd.dir = d.next
-            JOIN cells c ON c.idx = v.idx + d.dx AND c.idy = v.idy + d.dy
+                c.idx - if(value = '#', d.dx, 0) as idx,
+                c.idy - if(value = '#', d.dy, 0) as idy,
+                if(value = '#', d.next, NULL) as dir,
+                d.dir as prev_dir,
+                v.idx as prev_x,
+                v.idy as prev_y,
+                d.dx,
+                d.dy,
+                value != '#' as final,
+            FROM 
+                moves v,
+                (FROM directions d WHERE d.dir = v.dir) d,
+                (
+                    FROM cells c
+                    WHERE 
+                        (c.value = '#' OR c.idx = d.edge_x OR c.idy = d.edge_y) AND 
+                        CASE WHEN d.dx = 0
+                            THEN c.idx = v.idx AND c.idy * d.dy > v.idy * d.dy
+                            ELSE c.idy = v.idy AND c.idx * d.dx > v.idx * d.dx
+                        END
+                    ORDER BY abs(c.idx - v.idx) + abs(c.idy - v.idy)
+                    LIMIT 1
+                ) c
         )
     )
-SELECT * FROM visited);
+SELECT * FROM moves);
 
-CREATE OR REPLACE VIEW obstacles AS (
+CREATE OR REPLACE TABLE visited AS (
+    SELECT
+        idm,
+        generate_subscripts(steps, 1) as ids,
+        if(d.dx != 0, unnest(steps), idx) as idx,
+        if(d.dy != 0, unnest(steps), idy) as idy,
+        d.dir,
+        ids = len(steps) as last,
+    FROM moves m
+    JOIN directions d ON d.dir = m.prev_dir
+);
+
+CREATE OR REPLACE MACRO step_id(idx, idy, dir) AS idx || '|' || idy || '|' || dir;
+CREATE OR REPLACE TABLE loops AS (
 WITH RECURSIVE
-    obstacles AS (
+    loops AS (
         SELECT
             idm,
-            idm as ido,
-            v.idx as ox,
-            v.idy as oy,
-            v.idx - d.dx as idx,
-            v.idy - d.dy as idy,
+            ids,
+            0 as idl,
+            v.idx + d.dx as ox,
+            v.idy + d.dy as oy,
+            v.idx as idx,
+            v.idy as idy,
             d.next as dir,
-            false as seen,
-            false as loop,
-            path[:-2] as path,
+            false as cycle,
+            [step_id(idx, idy, dir)] as path,
         FROM visited v
         JOIN directions d USING (dir)
-        WHERE idm > 0
+        WHERE NOT v.last
         UNION ALL
         SELECT
-            * EXCLUDE path,
-            EXISTS(FROM visited v WHERE v.idx = p.idx AND v.idy = p.idy AND v.dir = p.dir) as seen,
-            list_contains(p.path, idx||','||idy||dir) as loop,
-            list_append(p.path, idx||','||idy||dir) as path,
+            idm, ids, idl,
+            ox, oy, idx, idy, dir,
+            list_contains(path, step_id(idx, idy, dir)) as cycle,
+            list_append(path, step_id(idx, idy, dir)) as path,
         FROM (
             SELECT
-                p.idm,
-                p.ido + 1 as ido,
-                p.ox,
-                p.oy,
-                -- p.idx + if(value = '#' OR (c.idx = p.ox AND c.idy = p.oy), dd.dx, d.dx) as idx,
-                -- p.idy + if(value = '#' OR (c.idx = p.ox AND c.idy = p.oy), dd.dy, d.dy) as idy,
-                -- if(value = '#' OR (c.idx = p.ox AND c.idy = p.oy), dd.dir, d.dir) as dir,
-                p.idx + if(value = '#' OR (c.idx = p.ox AND c.idy = p.oy), 0, d.dx) as idx,
-                p.idy + if(value = '#' OR (c.idx = p.ox AND c.idy = p.oy), 0, d.dy) as idy,
-                if(value = '#' OR (c.idx = p.ox AND c.idy = p.oy), d.next, d.dir) as dir,
+                idm, ids,
+                idl + 1 as idl,
+                ox, oy,
+                c.idx - if(c.value = '#' OR (c.idx = l.ox AND c.idy = l.oy), d.dx, 0) as idx,
+                c.idy - if(c.value = '#' OR (c.idx = l.ox AND c.idy = l.oy), d.dy, 0) as idy,
+                d.next as dir,
                 path,
-            FROM obstacles p
-            JOIN directions d USING (dir)
-            -- JOIN directions dd ON dd.dir = d.next
-            JOIN cells c ON c.idx = p.idx + d.dx AND c.idy = p.idy + d.dy
-            WHERE NOT p.seen AND NOT p.loop
-        ) p
+            FROM 
+                loops l,
+                (FROM directions d WHERE d.dir = l.dir) d,
+                (
+                    FROM cells c
+                    WHERE 
+                        (c.value = '#' OR (c.idx = l.ox AND c.idy = l.oy)) AND 
+                        CASE WHEN d.dx = 0
+                            THEN c.idx = l.idx AND c.idy * d.dy > l.idy * d.dy
+                            ELSE c.idy = l.idy AND c.idx * d.dx > l.idx * d.dx
+                        END
+                    ORDER BY abs(c.idx - l.idx) + abs(c.idy - l.idy)
+                    LIMIT 1
+                ) c
+            WHERE NOT l.cycle
+        )
     )
-SELECT idm, ox as idx, oy as idy, loop, path FROM obstacles);
-
--- CREATE OR REPLACE VIEW obstacles AS (
---     SELECT
---         idm,
---         p.idx as idx,
---         p.idy as idy,
---         p.dir as dir,
---         (SELECT count() FROM visited v 
---          WHERE v.idx = c.idx - d.dx 
---            AND v.idy = c.idy - d.dy 
---         --    AND v.idm < p.idm
---         ) != 0 as visited
---     FROM (
---             SELECT 
---                 v.idm,
---                 v.idx,
---                 v.idy,
---                 d.next as dir,
---             FROM visited v 
---             JOIN moves m USING (idm)
---             JOIN directions d ON m.prev_dir = d.dir
---             WHERE NOT last
---         ) p,
---         (
---             SELECT
---                 c.idx, c.idy,
---                 abs(c.idx - p.idx) + abs(c.idy - p.idy) as distance
---             FROM cells c
---             WHERE c.value = '#' AND (CASE
---                 WHEN p.dir = '^' THEN c.idy < p.idy AND c.idx = p.idx
---                 WHEN p.dir = '>' THEN c.idx > p.idx AND c.idy = p.idy
---                 WHEN p.dir = 'v' THEN c.idy > p.idy AND c.idx = p.idx
---                 WHEN p.dir = '<' THEN c.idx < p.idx AND c.idy = p.idy
---             END)
---             ORDER BY distance asc
---             LIMIT 1
---         ) c,
---         (FROM directions d WHERE d.dir = p.dir) d
---     -- WHERE visited
--- );
+FROM loops);
 
 
 CREATE OR REPLACE VIEW solution AS (
     SELECT
         (SELECT count() FROM (SELECT distinct idx, idy FROM visited)) as part1,
-        -- (SELECT count() FROM (SELECT distinct idx, idy FROM obstacles WHERE loop)) as part2
-        NULL as part2
+        (SELECT count() FROM (SELECT distinct ox, oy FROM loops WHERE cycle)) as part2
 );
 
 SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
