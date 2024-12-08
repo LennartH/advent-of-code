@@ -11,12 +11,12 @@ SET VARIABLE example = '
 ';
 CREATE OR REPLACE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 3749;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 11387;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 21572148763543;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 581941094529163;
 
 SET VARIABLE mode = 'input'; -- example or input
 
@@ -34,7 +34,7 @@ CREATE OR REPLACE VIEW calibrations AS (
     )
 );
 
-CREATE OR REPLACE VIEW calculations AS (
+CREATE OR REPLACE TABLE calculations AS (
 WITH RECURSIVE
     calculations AS (
         SELECT
@@ -54,15 +54,17 @@ WITH RECURSIVE
             operands,
             unnest([
                 array_append(operators, '+'),
-                array_append(operators, '*')
+                array_append(operators, '*'),
+                array_append(operators, '||')
             ]) as operators,
             unnest([
                 result + operands[ido],
-                result * operands[ido]
+                result * operands[ido],
+                (result || operands[ido])::BIGINT
             ]) as result,
             ido = len(operands) as finished,
         FROM calculations
-        WHERE ido <= len(operands)
+        WHERE ido <= len(operands) AND result <= expected
     )
 SELECT
     * EXCLUDE (ido, finished),
@@ -72,8 +74,8 @@ WHERE finished);
 
 CREATE OR REPLACE VIEW solution AS (
     SELECT
-        (SELECT sum(DISTINCT result) FROM calculations WHERE correct) as part1,
-        NULL as part2
+        (SELECT sum(DISTINCT result) FROM calculations WHERE correct AND '||' NOT IN operators) as part1,
+        (SELECT sum(DISTINCT result) FROM calculations WHERE correct) as part2,
 );
 
 SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
