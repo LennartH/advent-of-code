@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024
+- **Day 8: Resonant Collinearity** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-08_resonant-collinearity/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/8)
 - **Day 7: Bridge Repair** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-07_bridge-repair/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/7)
 - **Day 6: Guard Gallivant** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-06_guard-gallivant/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/6)
 - **Day 5: Print Queue** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-05_print-queue/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/5)
