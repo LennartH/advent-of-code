@@ -1,7 +1,7 @@
 SET VARIABLE example = '
 
 ';
-CREATE OR REPLACE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
+CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = NULL;
 SET VARIABLE exampleSolution2 = NULL;
 
@@ -22,25 +22,23 @@ CREATE OR REPLACE VIEW parser AS (
 
 -- Do stuff
 
-
 CREATE OR REPLACE VIEW solution AS (
     SELECT
         NULL as part1,
         NULL as part2
 );
 
-SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
-SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2'));
+
 SELECT 
     'Part 1' as part,
     part1 as result,
-    getvariable('expected1') as expected,
+    if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
     result = expected as correct
 FROM solution
 UNION
 SELECT 
     'Part 2' as part,
     part2 as result,
-    getvariable('expected2') as expected,
+    if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
     result = expected as correct
 FROM solution;

@@ -12,14 +12,14 @@ SET VARIABLE example = '
     ............
     ............
 ';
-CREATE OR REPLACE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
+CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 14;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 34;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 256;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 1005;
 
 SET VARIABLE mode = 'input'; -- example or input
 
@@ -47,12 +47,6 @@ SELECT
 FROM grid
 WHERE symbol != '.');
 
-SET VARIABLE max_x = (SELECT max(idx) FROM grid);
-SET VARIABLE max_y = (SELECT max(idy) FROM grid);
-CREATE OR REPLACE MACRO in_area(x, y) AS
-    x BETWEEN 1 AND getvariable('max_x') AND
-    y BETWEEN 1 AND getvariable('max_y');
-
 CREATE OR REPLACE VIEW antinodes AS (
 WITH
     pairs AS (
@@ -66,34 +60,51 @@ WITH
             a1y - a2y as dy,
         FROM antennas a1
         JOIN antennas a2 USING (frequency)
-        WHERE a1x != a2x AND a1y != a2y
+        WHERE a1x != a2x OR a1y != a2y
+    ),
+    rays AS (
+        SELECT
+            frequency,
+            a2x, a2y,
+            a1x, a1y,
+            dx, dy,
+            generate_series(a1x, if(dx > 0, getvariable('max_x'), 1), dx) as ray_x,
+            generate_series(a1y, if(dy > 0, getvariable('max_y'), 1), dy) as ray_y,
+        FROM pairs
+    ),
+    ray_points AS (
+        SELECT
+            frequency,
+            a2x, a2y,
+            a1x, a1y,
+            dx, dy,
+            generate_subscripts(if(len(ray_x) > len(ray_y), ray_x, ray_y), 1) as pos,
+            unnest(ray_x) as idx,
+            unnest(ray_y) as idy,
+        FROM rays
     )
-SELECT
-    frequency,
-    a1x + dx as idx,
-    a1y + dy as idy,
-FROM pairs
-WHERE in_area(idx, idy));
+FROM ray_points
+WHERE idx NOT NULL AND idy NOT NULL);
 
 CREATE OR REPLACE VIEW solution AS (
     SELECT
-        (SELECT count(DISTINCT (idx, idy)) FROM antinodes) as part1,
-        NULL as part2
+        count(DISTINCT (idx, idy)) FILTER (pos = 2) as part1,
+        count(DISTINCT (idx, idy)) as part2
+    FROM antinodes
 );
 
-SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
-SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2'));
+
 SELECT 
     'Part 1' as part,
     part1 as result,
-    getvariable('expected1') as expected,
+    if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
     result = expected as correct
 FROM solution
 UNION
 SELECT 
     'Part 2' as part,
     part2 as result,
-    getvariable('expected2') as expected,
+    if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
     result = expected as correct
 FROM solution;
 
@@ -101,7 +112,7 @@ FROM solution;
 PREPARE print_antinodes AS
 WITH
     distinct_antinodes AS (
-        SELECT DISTINCT idx, idy FROM antinodes
+        SELECT DISTINCT idx, idy FROM antinodes WHERE $1 != 'part1' OR pos = 2
     ),
     symbols AS (
         SELECT
