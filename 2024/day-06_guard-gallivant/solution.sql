@@ -120,7 +120,6 @@ WITH RECURSIVE
     )
 SELECT * FROM moves);
 
--- Using a VIEW instead of TABLE causes wrong result for part 2 (1510 instead 1516)
 CREATE OR REPLACE TABLE visited AS (
     SELECT
         idm,
@@ -143,7 +142,7 @@ WITH RECURSIVE
         FROM (
             SELECT
                 *,
-                row_number() OVER (PARTITION BY ox, oy) as rank,
+                row_number() OVER (PARTITION BY ox, oy ORDER BY idm, ids) as rank,
             FROM (
                 SELECT
                     idm, ids,
