@@ -42,4 +42,5 @@ SELECT
     part2 as result,
     if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
     result = expected as correct
-FROM solution;
+FROM solution
+ORDER BY part;
