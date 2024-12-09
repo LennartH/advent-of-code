@@ -41,9 +41,10 @@ SET VARIABLE exampleSolution2 = 2858;
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 6435922584968;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 6469636832766;
 
-SET VARIABLE mode = 'input'; -- example or input
+-- SET VARIABLE mode = 'example';
+SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE TABLE disk_map AS (
     SELECT
@@ -112,29 +113,34 @@ POSITIONAL JOIN empty_blocks e
 );
 
 
-CREATE OR REPLACE MACRO used_size(history, pos) AS 
-coalesce(
-    list_sum(
-        list_transform(
-            list_filter(history, x -> x.pos = pos),
-            x -> x.size
+CREATE OR REPLACE MACRO add_size(history, pos, size) AS 
+CASE
+    WHEN map_contains(history, pos) THEN
+        map_from_entries(
+            list_transform(
+                map_entries(history),
+                x -> if(x.key != pos, x, {'key': x.key, 'value': x.value + size})
+            )
         )
-    ),
-    0
-);
+    ELSE
+        map_from_entries(list_append(
+            map_entries(history),
+            {'key': pos, 'value': size}
+        ))
+END;
+CREATE OR REPLACE MACRO used_size(history, pos) AS coalesce(history[pos][1], 0);
 CREATE OR REPLACE TABLE defragmented_chunks AS (
 WITH RECURSIVE
-    file_chunks AS MATERIALIZED (FROM chunks WHERE id NOT NULL ORDER BY pos desc),
-    empty_chunks AS MATERIALIZED (FROM chunks WHERE id IS NULL ORDER BY pos),
-    stepper AS MATERIALIZED (
+    file_chunks AS (FROM chunks WHERE id NOT NULL),
+    empty_chunks AS (FROM chunks WHERE id IS NULL),
+    file_stepper AS (
         SELECT
             (SELECT max(id) FROM file_chunks) as cursor,
             NULL as id,
             NULL as from_pos,
             NULL as to_pos,
             NULL as chunk_size,
-            -- NULL as empty_size,
-            []::STRUCT(pos INTEGER, size INTEGER)[] as history,
+            map()::MAP(BIGINT, INTEGER) as history,
         UNION ALL
         FROM (
             SELECT
@@ -143,13 +149,8 @@ WITH RECURSIVE
                 c.pos as from_pos,
                 e.pos as to_pos,
                 c.size as chunk_size,
-                -- e.size as empty_size,
-                if(
-                    e.pos NOT NULL,
-                    list_append(s.history, (e.pos::INTEGER, c.size)),
-                    s.history
-                ) as history,
-            FROM stepper s
+                if(e.pos IS NULL, history, add_size(history, e.pos, c.size)) as history
+            FROM file_stepper s
             JOIN file_chunks c ON c.id = cursor
             LEFT JOIN empty_chunks e ON e.pos < c.pos AND e.size >= c.size + used_size(history, e.pos)
             LIMIT 1
@@ -161,7 +162,7 @@ WITH RECURSIVE
             cursor,
             id,
             chunk_size as size,
-        FROM stepper
+        FROM file_stepper
         WHERE from_pos NOT NULL
         UNION ALL
         SELECT
@@ -169,7 +170,7 @@ WITH RECURSIVE
             cursor,
             NULL as id,
             chunk_size as size
-        FROM stepper
+        FROM file_stepper
         WHERE to_pos NOT NULL
     ),
     merged_chunks AS (
@@ -459,6 +460,5 @@ SELECT
     pos,
     repeat(coalesce(id::VARCHAR, '.'), size) as blocks
 FROM query_table(?)
--- FROM mawp
 ORDER BY pos);
 -- endregion

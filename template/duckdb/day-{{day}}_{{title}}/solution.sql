@@ -10,7 +10,8 @@ SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text
 SET VARIABLE solution1 = NULL;
 SET VARIABLE solution2 = NULL;
 
-SET VARIABLE mode = 'example'; -- example or input
+SET VARIABLE mode = 'example';
+-- SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE VIEW parser AS (
     SELECT
