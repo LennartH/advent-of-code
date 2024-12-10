@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import { Command, InvalidArgumentError, Option } from 'commander';
-import * as Handlebars from 'handlebars';
-import * as path from 'path';
-import * as fs from 'node:fs/promises';
-import { kebabCase, startCase } from 'lodash';
 import axios from 'axios';
+import { Command, InvalidArgumentError, Option } from 'commander';
 import dotenv from 'dotenv';
+import * as Handlebars from 'handlebars';
+import { kebabCase, startCase } from 'lodash';
+import * as fs from 'node:fs/promises';
+import * as path from 'path';
 
 dotenv.config();
 
@@ -83,13 +83,13 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
     day: options.day.padStart(2, '0')
   };
 
-  // FIXME static path breaks execution on different devices
-  const sourcePath = path.resolve(process.env.HOME!, `projects/private/advent-of-code/template/${options.language}/day-{{day}}_{{title}}`);
+  const sourcePath = path.resolve(__dirname, `../../template/${options.language}/day-{{day}}_{{title}}`);
   const outputDirectory = renderTemplate(path.basename(sourcePath), pathOptions);
   const outputPath = path.join(path.resolve(output), outputDirectory);
   const outputExists = await fs.access(outputPath, fs.constants.F_OK)
     .then(() => true)
     .catch((error) => error.code === 'ENOENT' ? false : Promise.reject(error));
+  // TODO Do not abort if directory exists, print warning, skip existing files (with warning/error)
   if (outputExists) {
     console.log(`Error - Output directory already exists: ${path.relative(process.cwd(), outputPath)}`);
     return;
