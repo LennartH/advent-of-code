@@ -10,7 +10,7 @@ SET VARIABLE example = '
 ';
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 36;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 81;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
@@ -63,10 +63,19 @@ CREATE OR REPLACE TABLE trail_scores AS (
     GROUP BY trailhead
 );
 
+CREATE OR REPLACE TABLE trail_ratings AS (
+    SELECT
+        trailhead,
+        count() as rating,
+    FROM trails
+    WHERE height = 9
+    GROUP BY trailhead
+);
+
 CREATE OR REPLACE VIEW solution AS (
     SELECT
         (SELECT sum(score) FROM trail_scores) as part1,
-        NULL as part2
+        (SELECT sum(rating) FROM trail_ratings) as part2
 );
 
 
