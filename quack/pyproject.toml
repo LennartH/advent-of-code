@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "quack"
+description = "Some tooling for SQL/DuckDB"
+version = "0.1.0"
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.12"
+sqlglot = {extras = ["rs"], version = "^25.34.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
