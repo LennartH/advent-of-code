@@ -1,0 +1,342 @@
+┌─────────────────────────────────────┐
+│┌───────────────────────────────────┐│
+││    Query Profiling Information    ││
+│└───────────────────────────────────┘│
+└─────────────────────────────────────┘
+EXPLAIN ANALYZE CREATE OR REPLACE TABLE defragmented_chunks AS ( WITH RECURSIVE     file_chunks AS (FROM chunks WHERE id NOT NULL),     empty_chunks AS (FROM chunks WHERE id IS NULL),     file_stepper AS (         SELECT             (SELECT max(id) FROM file_chunks) as cursor,             NULL as id,             NULL as from_pos,             NULL as to_pos,             NULL as chunk_size,             map()::MAP(BIGINT, INTEGER) as history,         UNION ALL         FROM (             SELECT                 cursor - 1 as cursor,                 c.id as id,                 c.pos as from_pos,                 e.pos as to_pos,                 c.size as chunk_size,                 if(e.pos IS NULL, history, add_size(history, e.pos, c.size)) as history             FROM file_stepper s             JOIN file_chunks c ON c.id = cursor             LEFT JOIN empty_chunks e ON e.pos < c.pos AND e.size >= c.size + used_size(history, e.pos)             LIMIT 1         ) s     ),     moved_chunks AS (         SELECT             coalesce(to_pos, from_pos) as pos,             cursor,             id,             chunk_size as size,         FROM file_stepper         WHERE from_pos NOT NULL         UNION ALL         SELECT             from_pos as pos,             cursor,             NULL as id,             chunk_size as size         FROM file_stepper         WHERE to_pos NOT NULL     ),     merged_chunks AS (         SELECT             *         FROM moved_chunks         UNION ALL         SELECT             pos,             NULL as cursor,             id,             size         FROM empty_chunks     ),     defragmented_chunks AS (         SELECT             pos, cursor, id,             size - if(id NOT NULL, 0, coalesce(total_size, 0)) as size,         FROM (             SELECT                 *,                 sum(size) OVER (PARTITION BY pos ORDER BY cursor desc ROWS UNBOUNDED PRECEDING EXCLUDE CURRENT ROW) as total_size,             FROM merged_chunks         ) c     )  FROM defragmented_chunks WHERE size != 0);
+┌────────────────────────────────────────────────┐
+│┌──────────────────────────────────────────────┐│
+││              Total Time: 43.26s              ││
+│└──────────────────────────────────────────────┘│
+└────────────────────────────────────────────────┘
+┌───────────────────────┐
+│         QUERY         │
+└───────────┬───────────┘
+┌───────────┴───────────┐
+│    EXPLAIN_ANALYZE    │
+│    ────────────────   │
+│         0 Rows        │
+│        (0.00s)        │
+└───────────┬───────────┘
+┌───────────┴───────────┐
+│    CREATE_TABLE_AS    │
+│    ────────────────   │
+│         1 Rows        │
+│        (0.01s)        │
+└───────────┬───────────┘
+┌───────────┴───────────┐
+│       PROJECTION      │
+│    ────────────────   │
+│          pos          │
+│         cursor        │
+│           id          │
+│          size         │
+│                       │
+│       19469 Rows      │
+│        (0.00s)        │
+└───────────┬───────────┘
+┌───────────┴───────────┐
+│         FILTER        │
+│    ────────────────   │
+│ ((CAST(size AS HUGEINT│
+│ ) - CASE  WHEN ((id IS│
+│   NOT NULL)) THEN (0) │
+│      ELSE COALESCE    │
+│ (total_size, 0) END) !│
+│          = 0)         │
+│                       │
+│       19469 Rows      │
+│        (0.00s)        │
+└───────────┬───────────┘
+┌───────────┴───────────┐
+│       PROJECTION      │
+│    ────────────────   │
+│           #0          │
+│           #1          │
+│           #2          │
+│           #3          │
+│           #4          │
+│                       │
+│       24933 Rows      │
+│        (0.00s)        │
+└───────────┬───────────┘
+┌───────────┴───────────┐
+│         WINDOW        │
+│    ────────────────   │
+│      Projections:     │
+│    sum(size) OVER     │
+│   (PARTITION BY pos   │
+│  ORDER BY cursor DESC │
+│     NULLS LAST ROWS   │
+│    BETWEEN UNBOUNDED  │
+│  PRECEDING AND CURRENT│
+│   ROW EXCLUDE CURRENT │
+│          ROW)         │
+│                       │
+│       24933 Rows      │
+│        (0.18s)        │
+└───────────┬───────────┘
+┌───────────┴───────────┐
+│         UNION         │
+│    ────────────────   │
+│         0 Rows        ├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│        (0.00s)        │                                                                                                                                                                                           │
+└───────────┬───────────┘                                                                                                                                                                                           │
+┌───────────┴───────────┐                                                                                                                                                                               ┌───────────┴───────────┐
+│         UNION         │                                                                                                                                                                               │       PROJECTION      │
+│    ────────────────   │                                                                                                                                                                               │    ────────────────   │
+│                       │                                                                                                                                                                               │          pos          │
+│                       │                                                                                                                                                                               │          NULL         │
+│                       ├───────────────────────────────────────────────────────────────────────────────────────┐                                                                                       │           id          │
+│                       │                                                                                       │                                                                                       │          size         │
+│                       │                                                                                       │                                                                                       │                       │
+│         0 Rows        │                                                                                       │                                                                                       │       9999 Rows       │
+│        (0.00s)        │                                                                                       │                                                                                       │        (0.00s)        │
+└───────────┬───────────┘                                                                                       │                                                                                       └───────────┬───────────┘
+┌───────────┴───────────┐                                                                           ┌───────────┴───────────┐                                                                           ┌───────────┴───────────┐
+│       PROJECTION      │                                                                           │       PROJECTION      │                                                                           │       PROJECTION      │
+│    ────────────────   │                                                                           │    ────────────────   │                                                                           │    ────────────────   │
+│          pos          │                                                                           │          pos          │                                                                           │          pos          │
+│         cursor        │                                                                           │         cursor        │                                                                           │           id          │
+│           id          │                                                                           │          NULL         │                                                                           │          size         │
+│          size         │                                                                           │          size         │                                                                           │                       │
+│                       │                                                                           │                       │                                                                           │                       │
+│       10000 Rows      │                                                                           │       4934 Rows       │                                                                           │       9999 Rows       │
+│        (0.04s)        │                                                                           │        (0.00s)        │                                                                           │        (0.00s)        │
+└───────────┬───────────┘                                                                           └───────────┬───────────┘                                                                           └───────────┬───────────┘
+┌───────────┴───────────┐                                                                           ┌───────────┴───────────┐                                                                           ┌───────────┴───────────┐
+│       PROJECTION      │                                                                           │       PROJECTION      │                                                                           │         FILTER        │
+│    ────────────────   │                                                                           │    ────────────────   │                                                                           │    ────────────────   │
+│           #0          │                                                                           │           #0          │                                                                           │      (id IS NULL)     │
+│           #1          │                                                                           │           #2          │                                                                           │                       │
+│           #2          │                                                                           │           #3          │                                                                           │                       │
+│           #3          │                                                                           │           #4          │                                                                           │                       │
+│           #4          │                                                                           │                       │                                                                           │                       │
+│                       │                                                                           │                       │                                                                           │                       │
+│       10000 Rows      │                                                                           │       4934 Rows       │                                                                           │       9999 Rows       │
+│        (0.01s)        │                                                                           │        (0.00s)        │                                                                           │        (0.00s)        │
+└───────────┬───────────┘                                                                           └───────────┬───────────┘                                                                           └───────────┬───────────┘
+┌───────────┴───────────┐                                                                           ┌───────────┴───────────┐                                                                           ┌───────────┴───────────┐
+│         FILTER        │                                                                           │         FILTER        │                                                                           │       TABLE_SCAN      │
+│    ────────────────   │                                                                           │    ────────────────   │                                                                           │    ────────────────   │
+│ (from_pos IS NOT NULL)│                                                                           │  (to_pos IS NOT NULL) │                                                                           │         chunks        │
+│                       │                                                                           │                       │                                                                           │                       │
+│                       │                                                                           │                       │                                                                           │      Projections:     │
+│                       │                                                                           │                       │                                                                           │           id          │
+│                       │                                                                           │                       │                                                                           │          pos          │
+│                       │                                                                           │                       │                                                                           │          size         │
+│                       │                                                                           │                       │                                                                           │                       │
+│       10000 Rows      │                                                                           │       4934 Rows       │                                                                           │       19999 Rows      │
+│        (0.01s)        │                                                                           │        (0.02s)        │                                                                           │        (0.00s)        │
+└───────────┬───────────┘                                                                           └───────────┬───────────┘                                                                           └───────────────────────┘
+┌───────────┴───────────┐                                                                           ┌───────────┴───────────┐
+│     RECURSIVE_CTE     │                                                                           │     RECURSIVE_CTE     │
+│    ────────────────   │                                                                           │    ────────────────   │
+│       CTE Name:       │                                                                           │       CTE Name:       │
+│      file_stepper     │                                                                           │      file_stepper     │
+│                       ├────────────┐                                                              │                       ├────────────┐
+│     Table Index: 2    │            │                                                              │    Table Index: 56    │            │
+│                       │            │                                                              │                       │            │
+│       10001 Rows      │            │                                                              │       10001 Rows      │            │
+│        (43.44s)       │            │                                                              │        (43.24s)       │            │
+└───────────┬───────────┘            │                                                              └───────────┬───────────┘            │
+┌───────────┴───────────┐┌───────────┴───────────┐                                                  ┌───────────┴───────────┐┌───────────┴───────────┐
+│       PROJECTION      ││       PROJECTION      │                                                  │       PROJECTION      ││       PROJECTION      │
+│    ────────────────   ││    ────────────────   │                                                  │    ────────────────   ││    ────────────────   │
+│         cursor        ││         cursor        │                                                  │         cursor        ││         cursor        │
+│          NULL         ││           id          │                                                  │          NULL         ││           id          │
+│          NULL         ││        from_pos       │                                                  │          NULL         ││        from_pos       │
+│          NULL         ││         to_pos        │                                                  │          NULL         ││         to_pos        │
+│          NULL         ││       chunk_size      │                                                  │          NULL         ││       chunk_size      │
+│           {}          ││        history        │                                                  │           {}          ││        history        │
+│                       ││                       │                                                  │                       ││                       │
+│         1 Rows        ││       10000 Rows      │                                                  │         1 Rows        ││       10000 Rows      │
+│        (0.00s)        ││        (0.02s)        │                                                  │        (0.00s)        ││        (0.02s)        │
+└───────────┬───────────┘└───────────┬───────────┘                                                  └───────────┬───────────┘└───────────┬───────────┘
+┌───────────┴───────────┐┌───────────┴───────────┐                                                  ┌───────────┴───────────┐┌───────────┴───────────┐
+│       PROJECTION      ││       PROJECTION      │                                                  │       PROJECTION      ││       PROJECTION      │
+│    ────────────────   ││    ────────────────   │                                                  │    ────────────────   ││    ────────────────   │
+│ CASE  WHEN ((#1 > 1)) ││         cursor        │                                                  │ CASE  WHEN ((#1 > 1)) ││         cursor        │
+│    THEN (error('More  ││           id          │                                                  │    THEN (error('More  ││           id          │
+│  than one row returned││        from_pos       │                                                  │  than one row returned││        from_pos       │
+│  by a subquery used as││         to_pos        │                                                  │  by a subquery used as││         to_pos        │
+│     an expression -   ││       chunk_size      │                                                  │     an expression -   ││       chunk_size      │
+│  scalar subqueries can││        history        │                                                  │  scalar subqueries can││        history        │
+│  only return a single ││                       │                                                  │  only return a single ││                       │
+│          row.         ││                       │                                                  │          row.         ││                       │
+│        Use "SET       ││                       │                                                  │        Use "SET       ││                       │
+│ scalar_subquery_error_││                       │                                                  │ scalar_subquery_error_││                       │
+│ on_multiple_rows=false││                       │                                                  │ on_multiple_rows=false││                       │
+│     " to revert to    ││                       │                                                  │     " to revert to    ││                       │
+│  previous behavior of ││                       │                                                  │  previous behavior of ││                       │
+│   returning a random  ││                       │                                                  │   returning a random  ││                       │
+│   row.')) ELSE #0 END ││                       │                                                  │   row.')) ELSE #0 END ││                       │
+│                       ││                       │                                                  │                       ││                       │
+│         1 Rows        ││       10000 Rows      │                                                  │         1 Rows        ││       10000 Rows      │
+│        (0.00s)        ││        (5.60s)        │                                                  │        (0.00s)        ││        (5.61s)        │
+└───────────┬───────────┘└───────────┬───────────┘                                                  └───────────┬───────────┘└───────────┬───────────┘
+┌───────────┴───────────┐┌───────────┴───────────┐                                                  ┌───────────┴───────────┐┌───────────┴───────────┐
+│  UNGROUPED_AGGREGATE  ││    STREAMING_LIMIT    │                                                  │  UNGROUPED_AGGREGATE  ││    STREAMING_LIMIT    │
+│    ────────────────   ││    ────────────────   │                                                  │    ────────────────   ││    ────────────────   │
+│      Aggregates:      ││                       │                                                  │      Aggregates:      ││                       │
+│      "first"(#0)      ││                       │                                                  │      "first"(#0)      ││                       │
+│      count_star()     ││                       │                                                  │      count_star()     ││                       │
+│                       ││                       │                                                  │                       ││                       │
+│         1 Rows        ││       10000 Rows      │                                                  │         1 Rows        ││       10000 Rows      │
+│        (0.00s)        ││        (0.01s)        │                                                  │        (0.00s)        ││        (0.01s)        │
+└───────────┬───────────┘└───────────┬───────────┘                                                  └───────────┬───────────┘└───────────┬───────────┘
+┌───────────┴───────────┐┌───────────┴───────────┐                                                  ┌───────────┴───────────┐┌───────────┴───────────┐
+│       PROJECTION      ││   BLOCKWISE_NL_JOIN   │                                                  │       PROJECTION      ││   BLOCKWISE_NL_JOIN   │
+│    ────────────────   ││    ────────────────   │                                                  │    ────────────────   ││    ────────────────   │
+│           #0          ││    Join Type: LEFT    │                                                  │           #0          ││    Join Type: LEFT    │
+│                       ││                       │                                                  │                       ││                       │
+│                       ││       Condition:      │                                                  │                       ││       Condition:      │
+│                       ││ ((pos > pos) AND (size│                                                  │                       ││ ((pos > pos) AND (size│
+│                       ││   >= (size + COALESCE ├─────────────────────────────────────┐            │                       ││   >= (size + COALESCE ├─────────────────────────────────────┐
+│                       ││     (array_extract    │                                     │            │                       ││     (array_extract    │                                     │
+│                       ││ (map_extract(history, │                                     │            │                       ││ (map_extract(history, │                                     │
+│                       ││     pos), 1), 0))))   │                                     │            │                       ││     pos), 1), 0))))   │                                     │
+│                       ││                       │                                     │            │                       ││                       │                                     │
+│         1 Rows        ││      5833760 Rows     │                                     │            │         1 Rows        ││      5833760 Rows     │                                     │
+│        (0.00s)        ││        (28.36s)       │                                     │            │        (0.00s)        ││        (28.24s)       │                                     │
+└───────────┬───────────┘└───────────┬───────────┘                                     │            └───────────┬───────────┘└───────────┬───────────┘                                     │
+┌───────────┴───────────┐┌───────────┴───────────┐                         ┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐                         ┌───────────┴───────────┐
+│  UNGROUPED_AGGREGATE  ││       HASH_JOIN       │                         │       PROJECTION      ││  UNGROUPED_AGGREGATE  ││       HASH_JOIN       │                         │       PROJECTION      │
+│    ────────────────   ││    ────────────────   │                         │    ────────────────   ││    ────────────────   ││    ────────────────   │                         │    ────────────────   │
+│      Aggregates:      ││    Join Type: INNER   │                         │          pos          ││      Aggregates:      ││    Join Type: INNER   │                         │          pos          │
+│        max(#0)        ││                       │                         │           id          ││        max(#0)        ││                       │                         │           id          │
+│                       ││      Conditions:      ├────────────┐            │          size         ││                       ││      Conditions:      ├────────────┐            │          size         │
+│                       ││      id = cursor      │            │            │                       ││                       ││      id = cursor      │            │            │                       │
+│                       ││                       │            │            │                       ││                       ││                       │            │            │                       │
+│         1 Rows        ││       10000 Rows      │            │            │     99999999 Rows     ││         1 Rows        ││       10000 Rows      │            │            │     99999999 Rows     │
+│        (0.00s)        ││        (0.92s)        │            │            │        (0.01s)        ││        (0.00s)        ││        (0.93s)        │            │            │        (0.01s)        │
+└───────────┬───────────┘└───────────┬───────────┘            │            └───────────┬───────────┘└───────────┬───────────┘└───────────┬───────────┘            │            └───────────┬───────────┘
+┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐
+│       PROJECTION      ││       PROJECTION      ││   RECURSIVE_CTE_SCAN  ││         FILTER        ││       PROJECTION      ││       PROJECTION      ││   RECURSIVE_CTE_SCAN  ││         FILTER        │
+│    ────────────────   ││    ────────────────   ││    ────────────────   ││    ────────────────   ││    ────────────────   ││    ────────────────   ││    ────────────────   ││    ────────────────   │
+│           id          ││          pos          ││      CTE Index: 2     ││      (id IS NULL)     ││           id          ││          pos          ││     CTE Index: 56     ││      (id IS NULL)     │
+│                       ││           id          ││                       ││                       ││                       ││           id          ││                       ││                       │
+│                       ││          size         ││                       ││                       ││                       ││          size         ││                       ││                       │
+│                       ││                       ││                       ││                       ││                       ││                       ││                       ││                       │
+│       10000 Rows      ││       10000 Rows      ││       10001 Rows      ││     99999999 Rows     ││       10000 Rows      ││       10000 Rows      ││       10001 Rows      ││     99999999 Rows     │
+│        (0.00s)        ││        (0.00s)        ││        (0.09s)        ││        (0.39s)        ││        (0.00s)        ││        (0.00s)        ││        (0.10s)        ││        (0.39s)        │
+└───────────┬───────────┘└───────────┬───────────┘└───────────────────────┘└───────────┬───────────┘└───────────┬───────────┘└───────────┬───────────┘└───────────────────────┘└───────────┬───────────┘
+┌───────────┴───────────┐┌───────────┴───────────┐                         ┌───────────┴───────────┐┌───────────┴───────────┐┌───────────┴───────────┐                         ┌───────────┴───────────┐
+│         FILTER        ││         FILTER        │                         │       TABLE_SCAN      ││         FILTER        ││         FILTER        │                         │       TABLE_SCAN      │
+│    ────────────────   ││    ────────────────   │                         │    ────────────────   ││    ────────────────   ││    ────────────────   │                         │    ────────────────   │
+│    (id IS NOT NULL)   ││    (id IS NOT NULL)   │                         │         chunks        ││    (id IS NOT NULL)   ││    (id IS NOT NULL)   │                         │         chunks        │
+│                       ││                       │                         │                       ││                       ││                       │                         │                       │
+│                       ││                       │                         │      Projections:     ││                       ││                       │                         │      Projections:     │
+│                       ││                       │                         │           id          ││                       ││                       │                         │           id          │
+│                       ││                       │                         │          pos          ││                       ││                       │                         │          pos          │
+│                       ││                       │                         │          size         ││                       ││                       │                         │          size         │
+│                       ││                       │                         │                       ││                       ││                       │                         │                       │
+│       10000 Rows      ││       10000 Rows      │                         │     200009999 Rows    ││       10000 Rows      ││       10000 Rows      │                         │     200009999 Rows    │
+│        (0.00s)        ││        (0.07s)        │                         │        (0.27s)        ││        (0.00s)        ││        (0.07s)        │                         │        (0.27s)        │
+└───────────┬───────────┘└───────────┬───────────┘                         └───────────────────────┘└───────────┬───────────┘└───────────┬───────────┘                         └───────────────────────┘
+┌───────────┴───────────┐┌───────────┴───────────┐                                                  ┌───────────┴───────────┐┌───────────┴───────────┐
+│       TABLE_SCAN      ││       TABLE_SCAN      │                                                  │       TABLE_SCAN      ││       TABLE_SCAN      │
+│    ────────────────   ││    ────────────────   │                                                  │    ────────────────   ││    ────────────────   │
+│         chunks        ││         chunks        │                                                  │         chunks        ││         chunks        │
+│                       ││                       │                                                  │                       ││                       │
+│    Projections: id    ││      Projections:     │                                                  │    Projections: id    ││      Projections:     │
+│                       ││           id          │                                                  │                       ││           id          │
+│                       ││          pos          │                                                  │                       ││          pos          │
+│                       ││          size         │                                                  │                       ││          size         │
+│                       ││                       │                                                  │                       ││                       │
+│       19999 Rows      ││       10000 Rows      │                                                  │       19999 Rows      ││       10000 Rows      │
+│        (0.00s)        ││        (0.35s)        │                                                  │        (0.00s)        ││        (0.35s)        │
+└───────────────────────┘└───────────────────────┘                                                  └───────────────────────┘└───────────────────────┘
+
+
+==============================================
+
+
+┌─────────────────────────────────────┐
+│┌───────────────────────────────────┐│
+││    Query Profiling Information    ││
+│└───────────────────────────────────┘│
+└─────────────────────────────────────┘
+EXPLAIN ANALYZE CREATE OR REPLACE TABLE defragmented_blocks AS (     SELECT         pos,         row_number() OVER (ORDER BY pos, cursor desc) - 1 as block,         id,     FROM (         SELECT             pos,             cursor,             unnest(list_resize([]::INTEGER[], size, id)) as id,         FROM defragmented_chunks     ) );
+┌────────────────────────────────────────────────┐
+│┌──────────────────────────────────────────────┐│
+││              Total Time: 0.0845s             ││
+│└──────────────────────────────────────────────┘│
+└────────────────────────────────────────────────┘
+┌───────────────────────────┐
+│           QUERY           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│      EXPLAIN_ANALYZE      │
+│    ────────────────────   │
+│           0 Rows          │
+│          (0.00s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│   BATCH_CREATE_TABLE_AS   │
+│    ────────────────────   │
+│           1 Rows          │
+│          (0.00s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│            pos            │
+│           block           │
+│             id            │
+│                           │
+│         95702 Rows        │
+│          (0.00s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│             #0            │
+│             #1            │
+│             #2            │
+│             #3            │
+│                           │
+│         95702 Rows        │
+│          (0.00s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│           WINDOW          │
+│    ────────────────────   │
+│        Projections:       │
+│  ROW_NUMBER() OVER (ORDER │
+│   BY pos ASC NULLS LAST,  │
+│   cursor DESC NULLS LAST) │
+│                           │
+│         95702 Rows        │
+│          (0.08s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         PROJECTION        │
+│    ────────────────────   │
+│            pos            │
+│           cursor          │
+│             id            │
+│                           │
+│         95702 Rows        │
+│          (0.00s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│           UNNEST          │
+│    ────────────────────   │
+│         95702 Rows        │
+│          (0.02s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│         TABLE_SCAN        │
+│    ────────────────────   │
+│    defragmented_chunks    │
+│                           │
+│        Projections:       │
+│            pos            │
+│           cursor          │
+│            size           │
+│             id            │
+│                           │
+│         19469 Rows        │
+│          (0.00s)          │
+└───────────────────────────┘
