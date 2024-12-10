@@ -8,12 +8,12 @@ SET VARIABLE example = '
     01329801
     10456732
 ';
-CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
+CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 36;
 SET VARIABLE exampleSolution2 = 81;
 
 CREATE OR REPLACE TABLE input AS
-SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
+SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 841;
 SET VARIABLE solution2 = 1875;
 
