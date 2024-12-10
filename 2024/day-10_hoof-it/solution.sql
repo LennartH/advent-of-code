@@ -15,7 +15,7 @@ SET VARIABLE exampleSolution2 = 81;
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 841;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 1875;
 
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
