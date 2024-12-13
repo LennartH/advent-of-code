@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024
+- **Day 12: Garden Groups** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-12_garden-groups/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/12)
 - **Day 11: Plutonian Pebbles** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-11_plutonian-pebbles/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/11)
 - **Day 10: Hoof It** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-10_hoof-it/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/10)
 - **Day 9: Disk Fragmenter** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-09_disk-fragmenter/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/9)
