@@ -49,6 +49,36 @@ CREATE OR REPLACE VIEW region AS (
     FROM query_table(getvariable('mode'))
 );
 
+
+CREATE OR REPLACE VIEW plots AS (
+    WITH
+        hlines AS (
+            SELECT 
+                r1.plant,
+                r1.idy,
+                -- list(DISTINCT (r1.idy, coalesce(r2.idx, r1.idx))) as points, -- bad
+                list(DISTINCT (r1.idy, r2.idx)) as points, -- also bad, but less
+            FROM region r1 
+            LEFT JOIN region r2 ON r1.plant = r2.plant AND r1.idy = r2.idy AND abs(r1.idx - r2.idx) = 1
+            GROUP BY r1.plant, r1.idy
+            -- delete me
+            ORDER BY r1.plant, r1.idy
+        ),
+        plots AS (
+            SELECT
+                h1.plant,
+                -- flatten(list(h2.points)) as plot,
+                h1.points,
+                h2.points,
+            FROM hlines h1
+            JOIN hlines h2 ON h1.plant = h2.plant AND abs(h1.idy - h2.idy) = 1
+            -- GROUP BY h1.plant
+        )
+    FROM plots
+    ORDER BY plant
+);
+
+
 -- CREATE OR REPLACE VIEW plots AS (
 --     WITH
 --         hlines AS (
