@@ -73,121 +73,183 @@ CREATE OR REPLACE VIEW region AS (
     )
 );
 
--- Attempt at using simple graph contraction
-
 
 CREATE OR REPLACE TABLE vertices AS (
-    SELECT unnest(generate_series(1, 10)) as id
+    -- SELECT unnest(generate_series(1, 10)) as id
+    SELECT unnest(generate_series(1, 15)) as id
 );
 
-CREATE OR REPLACE TABLE edges AS FROM (VALUES
-    (1, 5),
-    (1, 10),
-    (2, 4),
-    (2, 9),
-    (3, 8),
-    (3, 10),
-    (4, 9),
-    (5, 6),
-    (5, 7),
-    (6, 10),
-) e(v, w);
+CREATE OR REPLACE TABLE edges AS FROM (
+    WITH 
+        edges AS (
+            FROM (VALUES
+                (1, 5),
+                (1, 10),
+                (2, 4),
+                (2, 9),
+                (3, 8),
+                (3, 10),
+                (4, 9),
+                (5, 6),
+                (5, 7),
+                (6, 10),
 
-CREATE OR REPLACE TABLE closed_neighbourhoods AS (
+                (7, 11),
+                (7, 12),
+                (11, 13),
+                (12, 13),
+                (12, 14),
+                (14, 15),
+            ) e(v, w)
+        )
+    
+    SELECT v, w FROM edges
+    UNION ALL
+    SELECT w, v FROM edges
+);
+
+-- Adjusted basic contraction terminating "naturally", vertex substitutions need to be reverted afterwards
+CREATE OR REPLACE TABLE components AS (
+    WITH RECURSIVE
+        substitutions AS (
+            -- Recursion state is mapping from vertex to its representative
+            -- starting with representatives for initial closed neighbourhoods
+            SELECT
+                0 as it,
+                v,
+                least(v, min(w)) as r
+            FROM edges
+            GROUP BY v
+            UNION ALL
+            -- Updated subset of representatives
+            SELECT
+                any_value(it) + 1 as it,
+                v,
+                least(v, min(w)) as r
+            FROM (
+                -- Contract graph by building reduced set of edges from representatives
+                -- Eliminating duplicates and loop edges eventually terminates recursion
+                SELECT DISTINCT
+                    v.it as it,
+                    v.r as v,
+                    w.r as w,
+                FROM edges e, substitutions v, substitutions w
+                WHERE e.v = v.v AND e.w = w.v AND v.r != w.r
+            )
+            GROUP BY v
+        ),
+        -- Second recursive CTE to backtrack representative substitutions
+        explode AS (
+            FROM substitutions
+            WHERE it = 0
+            UNION ALL
+            SELECT
+                r.it as it,
+                l.v as v,
+                coalesce(r.r, l.r) as r,
+            FROM explode l
+            JOIN substitutions r ON l.it + 1 = r.it AND l.r = r.v
+        )
+
     SELECT
-        r.id as id,
-        list_sort(list_distinct(list_prepend(r.id, list_concat(list(e.v), list(e.w))))) as n,
-    FROM vertices r
-    JOIN edges e ON r.id = e.v OR r.id = e.w
-    GROUP BY r.id
+        max_by(r, it) as component,
+        v,
+    FROM explode
+    GROUP BY v
+);
+
+-- Basic contraction keeping representatives up to date
+CREATE OR REPLACE TABLE components AS (
+    WITH RECURSIVE
+        contraction AS (
+            -- Recursion state is mapping from vertex to its representative
+            -- starting with representatives for initial closed neighbourhoods
+            SELECT
+                v,
+                least(v, min(w)) as r,
+                false as terminate,
+            FROM edges
+            GROUP BY v
+            UNION ALL (
+                WITH
+                    -- Contract graph by building reduced set of edges from representatives
+                    -- Eliminating duplicates and loop edges eventually terminates recursion
+                    reduced_edges AS (
+                        SELECT DISTINCT
+                            v.r as v,
+                            w.r as w,
+                        FROM edges e, contraction v, contraction w
+                        WHERE e.v = v.v AND e.w = w.v AND v.r != w.r
+                    ),
+                    -- Representatives for current iteration
+                    representatives AS (
+                        SELECT
+                            v,
+                            least(v, min(w)) as r
+                        FROM reduced_edges
+                        GROUP BY v
+                    )
+                -- Update representatives, old values are kept
+                -- After termination every component will have the same representative
+                SELECT
+                    l.v as v,
+                    coalesce(r.r, l.r) as r,
+                    (SELECT count() FROM reduced_edges) = 0 as terminate,
+                FROM contraction l
+                LEFT OUTER JOIN representatives r ON l.r = r.v
+                WHERE NOT terminate
+            )
+        )
+    
+    SELECT
+        r as component,
+        v,
+    FROM contraction
+    WHERE terminate
 );
 
 
+-- TODO DFS by iterating over nodes one by one
+
+-- Attempt at DFS but how is it possible to track all visited positions?
+CREATE OR REPLACE SEQUENCE seq_idc;
 WITH RECURSIVE
-    -- edges AS (
-    --     SELECT
-    --         edge[1] as v,
-    --         edge[2] as w,
-    --     FROM (
-    --         SELECT DISTINCT list_sort([r1.id, r2.id]) as edge,
-    --         FROM region r1
-    --         JOIN region r2 ON r1.plant = r2.plant AND abs(r1.idx - r2.idx) + abs(r1.idy - r2.idy) = 1
-    --     )
-    -- ),
-    vertices AS (
-        SELECT unnest(generate_series(1, 10)) as id
-    ),
-    edges AS (
-        FROM (VALUES
-            (1, 5),
-            (1, 10),
-            (2, 4),
-            (2, 9),
-            (3, 8),
-            (3, 10),
-            (4, 9),
-            (5, 6),
-            (5, 7),
-            (6, 10),
-        ) e(v, w)
-    ),
-    closed_neighbourhoods AS (
+    plots AS (
         SELECT
-            r.id as x,
-            list_prepend(r.id, list(e.w)) as n,
-        FROM vertices r
-        JOIN edges e ON r.id = e.v OR r.id = e.w
-        GROUP BY r.id
+            0 as it,
+            nextval('seq_idc') as idc,
+            idy,
+            idx,
+            plant,
+            [id] as visited,
+        FROM region
+        WHERE idy = 1 AND idx = 1
+        UNION ALL
+        SELECT
+            -- if(p.plant = r.plant, p.it + 1, 0) as it,
+            p.it + 1 as it,
+            -- if(p.plant = r.plant, p.idc, nextval('seq_idc')) as idc,
+            if(EXISTS (FROM plots pp WHERE r.id IN pp.visited), p.idc, nextval('seq_idc')) as idc,
+            r.idy as idy,
+            r.idx as idx,
+            r.plant,
+            -- if(p.plant = r.plant, list_prepend(r.id, visited), [r.id]) as visited,
+            list_prepend(r.id, visited) as visited,
+        FROM plots p
+        -- JOIN region r ON p.plant = r.plant AND abs(p.idx - r.idx) + abs(p.idy - r.idy) = 1
+        JOIN region r ON abs(p.idx - r.idx) + abs(p.idy - r.idy) = 1
+        WHERE it < 10
+          AND NOT EXISTS (FROM plots pp WHERE r.id IN pp.visited)
+        --   AND r.id NOT IN p.visited
     )
 
--- FROM edges
--- ORDER BY v
--- ;
-
-FROM closed_neighbourhoods
-ORDER BY x
+FROM plots
+-- ORDER BY it, idy, idx
+ORDER BY idc
 ;
 
 
--- -- Attempt at DFS but how is it possible to track all visited positions?
--- CREATE OR REPLACE SEQUENCE seq_idc;
--- WITH RECURSIVE
---     plots AS (
---         SELECT
---             0 as it,
---             nextval('seq_idc') as idc,
---             idy,
---             idx,
---             plant,
---             [id] as visited,
---         FROM region
---         WHERE idy = 1 AND idx = 1
---         UNION ALL
---         SELECT
---             -- if(p.plant = r.plant, p.it + 1, 0) as it,
---             p.it + 1 as it,
---             -- if(p.plant = r.plant, p.idc, nextval('seq_idc')) as idc,
---             if(EXISTS (FROM plots pp WHERE r.id IN pp.visited), p.idc, nextval('seq_idc')) as idc,
---             r.idy as idy,
---             r.idx as idx,
---             r.plant,
---             -- if(p.plant = r.plant, list_prepend(r.id, visited), [r.id]) as visited,
---             list_prepend(r.id, visited) as visited,
---         FROM plots p
---         -- JOIN region r ON p.plant = r.plant AND abs(p.idx - r.idx) + abs(p.idy - r.idy) = 1
---         JOIN region r ON abs(p.idx - r.idx) + abs(p.idy - r.idy) = 1
---         WHERE it < 10
---           AND NOT EXISTS (FROM plots pp WHERE r.id IN pp.visited)
---         --   AND r.id NOT IN p.visited
---     )
-
--- FROM plots
--- -- ORDER BY it, idy, idx
--- ORDER BY idc
--- ;
-
-
-
+-- TODO Recursive scan line approach
 
 WITH
     marked_points AS (
@@ -263,89 +325,8 @@ ORDER BY plant, idx
 ;
 
 
-CREATE OR REPLACE VIEW plots AS (
-    WITH
-        hlines AS (
-            SELECT 
-                r1.plant,
-                r1.idy,
-                -- list(DISTINCT (r1.idy, coalesce(r2.idx, r1.idx))) as points, -- bad
-                list(DISTINCT (r1.idy, r2.idx)) as points, -- also bad, but less
-            FROM region r1 
-            LEFT JOIN region r2 ON r1.plant = r2.plant AND r1.idy = r2.idy AND abs(r1.idx - r2.idx) = 1
-            GROUP BY r1.plant, r1.idy
-            -- delete me
-            ORDER BY r1.plant, r1.idy
-        ),
-        plots AS (
-            SELECT
-                h1.plant,
-                -- flatten(list(h2.points)) as plot,
-                h1.points,
-                h2.points,
-            FROM hlines h1
-            JOIN hlines h2 ON h1.plant = h2.plant AND abs(h1.idy - h2.idy) = 1
-            -- GROUP BY h1.plant
-        )
-    FROM plots
-    ORDER BY plant
-);
-
-
--- CREATE OR REPLACE VIEW plots AS (
---     WITH
---         hlines AS (
---             SELECT
---                 plant,
---                 list((idy, idx)) as points,
---             FROM region
---             GROUP BY plant, idy
---         ),
---         vlines AS (
---             SELECT
---                 plant,
---                 list((idy, idx)) as points,
---             FROM region
---             GROUP BY plant, idx
---         )
-
---     FROM hlines
-
---     -- SELECT
---     --     h.*,
---     --     (SELECT flatten(list(v.points)) FROM vlines v WHERE list_has_any(h.points, v.points)) as foo
---     -- FROM hlines h
---     -- ORDER BY plant
-
---     -- SELECT
---     --     r.plant,
---     --     r.idy,
---     --     r.idx,
---     --     (SELECT points FROM hlines WHERE (r.idy, r.idx) IN points)
---     -- FROM region r
--- )
-
-
-
--- SELECT
---     *,
---     rank - lag(rank, 1, 0) OVER (PARTITION BY idy ORDER BY idx) as prev,
---     plant = lag(plant, 1) OVER (PARTITION BY idy ORDER BY idx) as same,
--- FROM (
---     SELECT
---         plant,
---         idy,
---         idx,
---         dense_rank() OVER (PARTITION BY plant ORDER BY idx) as rank,
---     FROM region
---     WHERE idy = 5
--- )
--- ORDER BY idy, idx
--- ;
-
-
-
-
+-- Initial approach working for examples, but too slow for input
+-- Can this be optimized by more aggressive "count-pruning"?
 CREATE OR REPLACE TABLE plots AS (
     WITH RECURSIVE
         -- TODO adjust perimeters schema
@@ -360,8 +341,7 @@ CREATE OR REPLACE TABLE plots AS (
                 DISTINCT ON (plot)
                 0 as it,
                 r1.plant as plant,
-                -- list_sort([(r1.idy, r1.idx), (r2.idy, r2.idx)])::STRUCT(x BIGINT, y BIGINT)[] as plot,
-                list_sort([(r1.idy, r1.idx), (r2.idy, r2.idx)]) as plot,
+                list_sort([(r1.idy, r1.idx), (r2.idy, r2.idx)])::STRUCT(x BIGINT, y BIGINT)[] as plot,
             FROM region r1
             JOIN region r2 ON r1.plant = r2.plant AND abs(r1.idx - r2.idx) + abs(r1.idy - r2.idy) = 1
             UNION ALL
