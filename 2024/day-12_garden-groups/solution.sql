@@ -101,6 +101,7 @@ CREATE OR REPLACE TABLE edges AS (
 ---------------------------------------------------------------------------------------
 
 -- TODO Integrate edge reduction in each step (as in the paper) instead of joining all edges
+-- TODO Implement randomized contraction
 
 -- Basic contraction keeping representatives up to date
 CREATE OR REPLACE TABLE components AS (
@@ -216,18 +217,6 @@ CREATE OR REPLACE TABLE plots AS (
             FROM edges
             GROUP BY v
         ),
-        -- outlines AS (
-        --     -- For each plot: all edges from vertices to neighbours with different plant
-        --     SELECT
-        --         c.component as plot,
-        --         r2.idy as idy,
-        --         r2.idx as idx,
-        --         if(r1.idy = r2.idy, 'h', 'v') as dir,
-        --     FROM components c
-        --     JOIN region r1 ON r1.id = c.id
-        --     JOIN region r2 ON r1.plant != r2.plant AND
-        --                       abs(r1.idx - r2.idx) + abs(r1.idy - r2.idy) = 1
-        -- ),
         borders AS (
             SELECT
                 *,
@@ -338,78 +327,7 @@ CREATE OR REPLACE TABLE plots AS (
         area * perimeter as score1,
         area * sides as score2,
     FROM plots
-    -- delete me
-    ORDER BY plot
 );
-
--- FROM borders
--- WHERE plot = 53
--- ORDER BY plot, outside[1], inside[1]
-
--- FROM vertical_crossings
--- WHERE plot = 53
--- ORDER BY plot, idy, idx
-
--- SELECT
---     plot,
---     idx,
---     idy,
---     idy - lag(idy) OVER (PARTITION BY plot, dir, idx ORDER BY idy) as dy,
--- FROM outlines
--- WHERE plot = 8 AND dir = 'h'
--- ORDER BY plot, idx, idy
-
--- SELECT
---     plot, idx, idy,
---     if(dy = 1, NULL, true) as side_start, -- Everything except dy = 1 marks the start of a side
--- FROM (
---     SELECT
---         plot, dir, idx, idy,
---         idy - lag(idy) OVER (PARTITION BY plot, idx ORDER BY idy) as dy,
---     FROM horizontal_crossings
--- )
--- -- delete me
--- WHERE plot = 8
--- ORDER BY plot, idx, idy
-
--- FROM crossings
--- WHERE plot = 8
--- ORDER BY plot, dir, if(dir = 'h', idx, idy), if(dir = 'h', idy, idx)
-
--- SELECT
---     plot, idx, idy,
---     if(delta = 1, NULL, true) as side_start, -- Everything except 1 marks the start of a side
--- FROM (
---     SELECT
---         plot, dir, idx, idy,
---         if(dir = 'h', idy, idx) as d1, -- When horizontal track dy, otherwhise dx
---         if(dir = 'h', idx, idy) as d2,
---         d1 - lag(d1) OVER (PARTITION BY plot, dir, d2 ORDER BY d1) as delta,
---     FROM crossings
--- )
--- -- delete me
--- WHERE plot = 8
--- ORDER BY plot, idx, idy
--- ;
-
--- SELECT
---     outy as idy,
---     idx,
--- FROM (
---     SELECT
---         *,
---         row_number() OVER (PARTITION BY outy ORDER BY idx) % 2 = 1 as pick,
---     FROM (
---         SELECT
---             outy,
---             unnest([outx, inx]) as idx,
---         FROM outline
---         WHERE iny = outy
---     )
--- )
--- WHERE pick
--- ORDER BY idx, idy;
-
 
 -- Variables "break" interactive mode (changing example)
 SET VARIABLE remainder = (SELECT
