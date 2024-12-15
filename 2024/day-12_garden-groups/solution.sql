@@ -272,32 +272,39 @@ CREATE OR REPLACE TABLE plots AS (
     FROM plots
 );
 
--- Variables "break" interactive mode (changing example)
-SET VARIABLE remainder = (SELECT
-    ((SELECT count() FROM region) - (SELECT sum(area) FROM plots)) * 4
-);
-CREATE OR REPLACE VIEW solution AS (
+CREATE OR REPLACE TABLE results AS (
+    WITH
+        single_plants AS (
+            SELECT singles * 4 as score FROM (
+                SELECT count() - (SELECT sum(area) FROM plots) as singles
+                FROM region
+            )
+        )
+
     SELECT
-        sum(score1) + getvariable('remainder') as part1,
-        sum(score2) + getvariable('remainder') as part2,
+        sum(score1) + (SELECT score FROM single_plants) as part1,
+        sum(score2) + (SELECT score FROM single_plants) as part2,
     FROM plots
 );
 
 
-SELECT 
-    'Part 1' as part,
-    part1 as result,
-    if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
-    result = expected as correct
-FROM solution
-UNION
-SELECT 
-    'Part 2' as part,
-    part2 as result,
-    if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
-    result = expected as correct
-FROM solution
-ORDER BY part;
+CREATE OR REPLACE VIEW solution AS (
+    SELECT 
+        'Part 1' as part,
+        part1 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
+        result = expected as correct
+    FROM results
+    UNION
+    SELECT 
+        'Part 2' as part,
+        part2 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
+        result = expected as correct
+    FROM results
+    ORDER BY part
+);
+FROM solution;
 
 -- region Troubleshooting Utils
 -- TODO add series for idx (with sensible padding)
