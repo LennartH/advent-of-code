@@ -23,24 +23,27 @@ CREATE OR REPLACE VIEW parser AS (
 
 -- Do stuff
 
-CREATE OR REPLACE VIEW solution AS (
+CREATE OR REPLACE VIEW results AS (
     SELECT
         NULL as part1,
         NULL as part2
 );
 
 
-SELECT 
-    'Part 1' as part,
-    part1 as result,
-    if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
-    result = expected as correct
-FROM solution
-UNION
-SELECT 
-    'Part 2' as part,
-    part2 as result,
-    if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
-    result = expected as correct
-FROM solution
-ORDER BY part;
+CREATE OR REPLACE VIEW solution AS (
+    SELECT 
+        'Part 1' as part,
+        part1 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
+        result = expected as correct
+    FROM results
+    UNION
+    SELECT 
+        'Part 2' as part,
+        part2 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
+        result = expected as correct
+    FROM results
+    ORDER BY part
+);
+FROM solution;
