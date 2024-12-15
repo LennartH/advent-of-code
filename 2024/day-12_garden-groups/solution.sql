@@ -155,6 +155,8 @@ CREATE OR REPLACE TABLE components AS (
     WHERE terminate
 );
 
+-- TODO Implement "naturally" terminating contraction (see ecca97646939c879e3d54b904a22884a23c60428)
+
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
 
