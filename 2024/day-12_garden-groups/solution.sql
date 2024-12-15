@@ -90,6 +90,8 @@ CREATE OR REPLACE TABLE edges AS (
 
 
 -- TODO DFS by iterating over nodes one by one (see de2bc3d5c18b133f510ebec01c4a2c3e61c020f9)
+--      Other implementation: https://github.com/WilliamLP/AdventOfCode/blob/master/2024/day12.sql
+
 -- TODO Recursive scan line approach (see de2bc3d5c18b133f510ebec01c4a2c3e61c020f9)
 
 
@@ -153,70 +155,11 @@ CREATE OR REPLACE TABLE components AS (
     WHERE terminate
 );
 
--- -- Adjusted basic contraction terminating "naturally", vertex substitutions need to be reverted afterwards
--- -- FIXME Doesn't work for large example, but for the other two. Issue with multiple plots for same plant?
--- -- Also slower than the other implementation
--- CREATE OR REPLACE TABLE components AS (
---     WITH RECURSIVE
---         substitutions AS (
---             -- Recursion state is mapping from vertex to its representative
---             -- starting with representatives for initial closed neighbourhoods
---             SELECT
---                 0 as it,
---                 v,
---                 least(v, min(w)) as r
---             FROM edges
---             GROUP BY v
---             UNION ALL
---             -- Updated subset of representatives
---             SELECT
---                 any_value(it) + 1 as it,
---                 v,
---                 least(v, min(w)) as r
---             FROM (
---                 -- Contract graph by building reduced set of edges from representatives
---                 -- Eliminating duplicates and loop edges eventually terminates recursion
---                 SELECT DISTINCT
---                     v.it as it,
---                     v.r as v,
---                     w.r as w,
---                 FROM edges e, substitutions v, substitutions w
---                 WHERE e.v = v.v AND e.w = w.v AND v.r != w.r
---             )
---             GROUP BY v
---         ),
---         -- Second recursive CTE to backtrack representative substitutions
---         explode AS (
---             FROM substitutions
---             WHERE it = 0
---             UNION ALL
---             SELECT
---                 r.it as it,
---                 l.v as v,
---                 coalesce(r.r, l.r) as r,
---             FROM explode l
---             JOIN substitutions r ON l.it + 1 = r.it AND l.r = r.v
---         )
-
---     SELECT
---         max_by(r, it) as component,
---         v as id,
---     FROM explode
---     GROUP BY v
--- );
-
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
 
 CREATE OR REPLACE TABLE plots AS (
     WITH
-        perimeters AS (
-            SELECT
-                v as id,
-                4 - count() as perimeter,
-            FROM edges
-            GROUP BY v
-        ),
         borders AS (
             SELECT
                 *,
@@ -305,17 +248,15 @@ CREATE OR REPLACE TABLE plots AS (
                 plot,
                 any_value(plant) as plant,
                 any_value(area) as area,
-                any_value(perimeter) as perimeter,
+                count() as perimeter,
                 count(s.side_start) as sides,
             FROM (
                 SELECT
                     component as plot,
                     any_value(r.plant) as plant,
-                    sum(p.perimeter) as perimeter, -- TODO count sides should now work again
                     count() as area,
                 FROM components c
                 JOIN region r ON c.id = r.id
-                JOIN perimeters p ON c.id = p.id
                 GROUP BY c.component
             ) p
             JOIN sides s USING (plot)
