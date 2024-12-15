@@ -59,7 +59,7 @@ CREATE OR REPLACE VIEW machine_stats AS (
                 least(px // bdx, py // bdy, 100) as b_max,
             FROM machines
             WHERE (a_max * adx) + (b_max * bdx) >= px AND
-                (a_max * ady) + (b_max * bdy) >= py
+                  (a_max * ady) + (b_max * bdy) >= py
         ),
         button_mins AS (
             SELECT
@@ -80,30 +80,52 @@ CREATE OR REPLACE VIEW machine_stats AS (
 
 CREATE OR REPLACE VIEW solver AS (
     WITH
-        a_presses AS (
+        first_button AS (
             SELECT
-                idx, adx, ady, bdx, bdy, px, py,
-                unnest(generate_series(a_max, a_min, -1)) as a,
+                idx, px, py,
+                bdx as fdx,
+                bdy as fdy,
+                adx as sdx,
+                ady as sdy,
+                unnest(generate_series(b_max, b_min, -1)) as f,
+                true as f_is_b,
             FROM machine_stats
-        ),
-        b_presses AS (
+            WHERE b_max - b_min <= a_max - a_min
+            UNION ALL
             SELECT
-                *,
-                px - (a * adx) as rx,
-                py - (a * ady) as ry,
-                rx / bdx as div_x,
-                ry / bdy as div_y,
+                idx, px, py,
+                adx as fdx,
+                ady as fdy,
+                bdx as sdx,
+                bdy as sdy,
+                unnest(generate_series(a_max, a_min, -1)) as f,
+                false as f_is_b,
+            FROM machine_stats
+            WHERE a_max - a_min < b_max - b_min
+        ),
+        second_button AS (
+            SELECT
+                idx,
+                if(f_is_b, sdx, fdx) as adx,
+                if(f_is_b, sdy, fdy) as ady,
+                if(f_is_b, fdx, sdx) as bdx,
+                if(f_is_b, fdy, sdy) as bdy,
+                px - (f * fdx) as rx,
+                py - (f * fdy) as ry,
+                rx / sdx as div_x,
+                ry / sdy as div_y,
                 round(div_x, 0) = div_x AND round(div_y, 0) = div_y as whole,
                 div_x::INTEGER = div_y::INTEGER as same,
-                div_x::INTEGER as b,
-            FROM a_presses
+                if(f_is_b, div_x::INTEGER, f) as a,
+                if(f_is_b, f, div_x::INTEGER) as b,
+            FROM first_button
             WHERE whole AND same
         )
 
     SELECT
         idx, a, b,
         (3 * a) + b as cost,
-    FROM b_presses
+    FROM second_button
 );
 
 CREATE OR REPLACE VIEW results AS (
