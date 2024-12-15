@@ -19,7 +19,7 @@ SET VARIABLE exampleSolution2 = NULL;
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 221616000;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 7572;
 
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
@@ -61,20 +61,19 @@ CREATE OR REPLACE VIEW simulations AS (
                 dy,
                 max_x,
                 max_y,
-                px + dx as px,
-                py + dy as py,
+                fmod(px + dx, max_x)::INTEGER as px,
+                fmod(py + dy, max_y)::INTEGER as py,
             FROM movements
-            WHERE it < 100
+            WHERE it < 10000
         )
 
     SELECT
+        it,
         idx,
-        fmod(px, max_x)::INTEGER as px,
-        fmod(py, max_y)::INTEGER as py,
+        px, py,
         dx, dy,
         max_x, max_y,
     FROM movements
-    WHERE it = 100
 );
 
 CREATE OR REPLACE VIEW results AS (
@@ -92,12 +91,24 @@ CREATE OR REPLACE VIEW results AS (
                     ELSE NULL
                 END as quadrant,
             FROM simulations
-            WHERE quadrant IS NOT NULL
+            WHERE it = 100 AND quadrant IS NOT NULL
+        ),
+        easter_egg AS (
+            SELECT
+                min(it) as it,
+            FROM (
+                SELECT 
+                    it,
+                    count(DISTINCT (px, py)) as count, 
+                FROM simulations
+                GROUP BY it
+            )
+            WHERE count = (SELECT count() FROM robots)
         )
 
     SELECT
         (SELECT product(c)::BIGINT FROM (SELECT count() as c FROM quadrants GROUP BY quadrant)) as part1,
-        NULL as part2
+        (SELECT it FROM easter_egg) as part2,
 );
 
 
@@ -118,3 +129,27 @@ CREATE OR REPLACE VIEW solution AS (
     ORDER BY part
 );
 FROM solution;
+
+-- region Troubleshooting Utils
+CREATE OR REPLACE MACRO print_robots(iteration) AS TABLE (
+    WITH
+        grid AS (
+            SELECT *, unnest(range(0, (SELECT any_value(max_y) FROM robots))) as py FROM (
+                SELECT '.' as symbol, unnest(range(0, (SELECT any_value(max_x) FROM robots))) as px
+            )
+        ),
+        occupied AS (
+            SELECT DISTINCT '#' as symbol, px, py
+            FROM simulations
+            WHERE it = iteration
+        )
+
+    SELECT
+        py,
+        string_agg(coalesce(o.symbol, g.symbol), '' ORDER BY px) as line,
+    FROM grid g
+    LEFT JOIN occupied o USING (px, py)
+    GROUP BY py
+    ORDER BY py
+);
+-- endregion
