@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024
+- **Day 15: Warehouse Woes** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-15_warehouse-woes/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/15)
 - **Day 14: Restroom Redoubt** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-14_restroom-redoubt/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/14)
 - **Day 13: Claw Contraption** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-13_claw-contraption/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/13)
 - **Day 12: Garden Groups** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-12_garden-groups/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/12)
