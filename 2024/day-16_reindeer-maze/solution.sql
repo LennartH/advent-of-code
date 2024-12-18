@@ -40,6 +40,19 @@ SET VARIABLE example = '
 SET VARIABLE exampleSolution1 = 11048;
 SET VARIABLE exampleSolution2 = NULL;
 
+SET VARIABLE example = '
+    #############
+    #####......E#
+    ####..#.#####
+    ###..##.#####
+    ##..###.#####
+    #..####.....#
+    #.#########.#
+    #...........#
+    #S###########
+    #############
+';
+
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
@@ -47,10 +60,10 @@ SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n') as line FROM r
 SET VARIABLE solution1 = NULL;
 SET VARIABLE solution2 = NULL;
 
--- SET VARIABLE mode = 'example';
-SET VARIABLE mode = 'input';
+SET VARIABLE mode = 'example';
+-- SET VARIABLE mode = 'input';
 
-CREATE OR REPLACE TABLE map AS (
+CREATE OR REPLACE VIEW map AS (
     SELECT
         row_number() OVER () as id,
         *
@@ -78,7 +91,7 @@ CREATE OR REPLACE TABLE map AS (
 -- );
 
 
-CREATE OR REPLACE TABLE pathfinder AS (
+CREATE OR REPLACE VIEW pathfinder AS (
     WITH RECURSIVE
         pathfinder AS (
             SELECT
@@ -332,7 +345,7 @@ CREATE OR REPLACE TABLE pathfinder AS (
 
 
 
-CREATE OR REPLACE TABLE results AS (
+CREATE OR REPLACE VIEW results AS (
     SELECT
         (SELECT min(cost) + 1 FROM pathfinder WHERE final) as part1,
         NULL as part2
