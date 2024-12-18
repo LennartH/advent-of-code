@@ -18,27 +18,27 @@ SET VARIABLE example = '
 SET VARIABLE exampleSolution1 = 7036;
 SET VARIABLE exampleSolution2 = NULL;
 
--- SET VARIABLE example = '
---     #################
---     #...#...#...#..E#
---     #.#.#.#.#.#.#.#.#
---     #.#.#.#...#...#.#
---     #.#.#.#.###.#.#.#
---     #...#.#.#.....#.#
---     #.#.#.#.#.#####.#
---     #.#...#.#.#.....#
---     #.#.#####.#.###.#
---     #.#.#.......#...#
---     #.#.###.#####.###
---     #.#.#...#.....#.#
---     #.#.#.#####.###.#
---     #.#.#.........#.#
---     #.#.#.#########.#
---     #S#.............#
---     #################
--- ';
--- SET VARIABLE exampleSolution1 = 11048;
--- SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE example = '
+    #################
+    #...#...#...#..E#
+    #.#.#.#.#.#.#.#.#
+    #.#.#.#...#...#.#
+    #.#.#.#.###.#.#.#
+    #...#.#.#.....#.#
+    #.#.#.#.#.#####.#
+    #.#...#.#.#.....#
+    #.#.#####.#.###.#
+    #.#.#.......#...#
+    #.#.###.#####.###
+    #.#.#...#.....#.#
+    #.#.#.#####.###.#
+    #.#.#.........#.#
+    #.#.#.#########.#
+    #S#.............#
+    #################
+';
+SET VARIABLE exampleSolution1 = 11048;
+SET VARIABLE exampleSolution2 = NULL;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 
@@ -47,10 +47,10 @@ SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n') as line FROM r
 SET VARIABLE solution1 = NULL;
 SET VARIABLE solution2 = NULL;
 
-SET VARIABLE mode = 'example';
--- SET VARIABLE mode = 'input';
+-- SET VARIABLE mode = 'example';
+SET VARIABLE mode = 'input';
 
-CREATE OR REPLACE VIEW map AS (
+CREATE OR REPLACE TABLE map AS (
     SELECT
         row_number() OVER () as id,
         *
@@ -78,147 +78,163 @@ CREATE OR REPLACE VIEW map AS (
 -- );
 
 
--- CREATE OR REPLACE VIEW pathfinder AS (
---     WITH RECURSIVE
---         pathfinder AS (
---             SELECT
---                 id,
---                 x,
---                 y,
---                 1 as dx,
---                 0 as dy,
---                 0 as cost,
---                 [] as visited,
---             FROM map
---             WHERE symbol = 'S'
---             UNION ALL
---             FROM (
---                 SELECT
---                     m.id as id,
---                     m.x as x,
---                     m.y as y,
---                     m.x - p.x as dx,
---                     m.y - p.y as dy,
---                     p.cost + if(
---                         m.x = p.x + p.dx AND m.y = p.y + p.dy,
---                         1,
---                         1001
---                     ) as cost,
---                     list_prepend(p.id, p.visited) as visited,
---                 FROM pathfinder p, map m
---                 WHERE m.symbol = '.'
---                 AND abs(m.x - p.x) + abs(m.y - p.y) = 1
---                 AND m.id NOT IN p.visited
---                 ORDER BY cost desc
---                 LIMIT 100
---             )
---         )
-
---     SELECT p.x, p.y, cost
---     FROM pathfinder p
---     JOIN map m ON m.symbol = 'E' AND abs(m.x - p.x) + abs(m.y - p.y) = 1
--- );
-
-
-
-DROP TYPE IF EXISTS STATE;
-CREATE TYPE STATE AS STRUCT(cost BIGINT, id INTEGER, x INTEGER, y INTEGER, dx INTEGER, dy INTEGER, path INTEGER[]);
-
-CREATE OR REPLACE VIEW pathfinder AS (
+CREATE OR REPLACE TABLE pathfinder AS (
     WITH RECURSIVE
         pathfinder AS (
             SELECT
                 0 as it,
-                [{'cost': 0, 'id': m.id, 'x': x, 'y': y, 'dx': 1, 'dy': 0, 'path': []::INTEGER[]}]::STATE[] as stack,
-            FROM map m
+                id,
+                x,
+                y,
+                1 as dx,
+                0 as dy,
+                0 as cost,
+                [] as visited,
+            FROM map
             WHERE symbol = 'S'
             UNION ALL (
                 WITH
-                    reachable AS (
+                    paths AS (
                         SELECT
+                            p.it + 1 as it,
                             m.id as id,
                             m.x as x,
                             m.y as y,
-                            m.x - p.stack[1].x as dx,
-                            m.y - p.stack[1].y as dy,
-                            p.stack[1].cost + if(
-                                m.x = p.stack[1].x + p.stack[1].dx AND m.y = p.stack[1].y + p.stack[1].dy,
+                            m.x - p.x as dx,
+                            m.y - p.y as dy,
+                            p.cost + if(
+                                m.x = p.x + p.dx AND m.y = p.y + p.dy,
                                 1,
                                 1001
                             ) as cost,
-                            list_prepend(p.stack[1].id, p.stack[1].path) as path,
-                            m.symbol = 'E' as terminate,
-                        FROM pathfinder p
-                        JOIN map m ON m.symbol IN ('.', 'E') AND
-                                      -- cardinal directions without diagonals
-                                      abs(m.x - p.stack[1].x) + abs(m.y - p.stack[1].y) = 1 AND
-                                      m.id NOT IN p.stack[1].path
-                    ),
-                    reachable_agg AS (
-                        SELECT
-                            list({'cost': cost, 'id': id, 'x': x, 'y': y, 'dx': dx, 'dy': dy, 'path': path}) as agg
-                        FROM reachable
-                    ),
-                    pushpop AS (
-                        SELECT
-                            x.it + 1 as it,
-                            x.stack as stack,
-                        FROM reachable_agg _(r), LATERAL (
-                            SELECT
-                                p.it,
-                                r || p.stack[2:] as stack,
-                            FROM pathfinder p
-                            WHERE len(r) > 0
-                            UNION ALL
-                            SELECT
-                                p.it,
-                                p.stack[2:] as stack,
-                            FROM pathfinder p
-                            WHERE len(r) IS NULL AND len(p.stack) > 0
-                        ) x
-                        WHERE NOT EXISTS (FROM reachable WHERE terminate)
-                    ),
-                    explode AS (
-                        SELECT it, unnest(stack) as state FROM pushpop
-                    ),
-                    compact AS (
-                        SELECT DISTINCT ON (state.cost, state.id, state.dx, state.dy) *
-                        FROM explode
+                            list_prepend(p.id, p.visited) as visited,
+                        FROM pathfinder p, map m
+                        WHERE m.symbol = '.'
+                          AND abs(m.x - p.x) + abs(m.y - p.y) = 1
+                        --   AND m.id NOT IN p.visited
+                          AND NOT EXISTS (FROM pathfinder pp WHERE m.id IN pp.visited)
                     )
 
                 SELECT
                     any_value(it) as it,
-                    list(state ORDER BY state.cost DESC) as stack,
-                FROM compact
-                WHERE it < 10
+                    id, x, y, dx, dy,
+                    min(cost) as cost,
+                    min_by(visited, cost) as visited,
+                FROM paths
+                GROUP BY ALL
             )
         )
 
-    -- SELECT 
-    --     it,
-    --     stack[1].y || ',' || stack[1].x || '|' || stack[1].cost as state,
-    --     [e.y || ',' || e.x || '|' || e.cost FOR e IN stack[2:]] as stack,
-    --     v.path as path,
-    -- FROM pathfinder p, (
-    --     SELECT
-    --         list('(' || m.y || ',' || m.x || ')' ORDER BY v.idx) as path,
-    --     FROM (
-    --         SELECT
-    --             generate_subscripts(p.stack[1].path, 1) as idx,
-    --             unnest(p.stack[1].path) as id,
-    --     ) v
-    --     JOIN map m USING (id)
-    -- ) v
-    -- ORDER BY it
-    -- ;
-
     SELECT
         it,
-        unnest(p.stack[1]),
+        cost,
+        p.y,
+        p.x,
         m.id IS NOT NULL as final,
     FROM pathfinder p
-    LEFT JOIN map m ON m.symbol = 'E' AND abs(m.x - p.stack[1].x) + abs(m.y - p.stack[1].y) = 1
+    LEFT JOIN map m ON m.symbol = 'E' AND abs(m.x - p.x) + abs(m.y - p.y) = 1
 );
+
+
+
+-- DROP TYPE IF EXISTS STATE;
+-- CREATE TYPE STATE AS STRUCT(cost BIGINT, id INTEGER, x INTEGER, y INTEGER, dx INTEGER, dy INTEGER, path INTEGER[]);
+
+-- CREATE OR REPLACE VIEW pathfinder AS (
+--     WITH RECURSIVE
+--         pathfinder AS (
+--             SELECT
+--                 0 as it,
+--                 [{'cost': 0, 'id': m.id, 'x': x, 'y': y, 'dx': 1, 'dy': 0, 'path': []::INTEGER[]}]::STATE[] as stack,
+--             FROM map m
+--             WHERE symbol = 'S'
+--             UNION ALL (
+--                 WITH
+--                     reachable AS (
+--                         SELECT
+--                             m.id as id,
+--                             m.x as x,
+--                             m.y as y,
+--                             m.x - p.stack[1].x as dx,
+--                             m.y - p.stack[1].y as dy,
+--                             p.stack[1].cost + if(
+--                                 m.x = p.stack[1].x + p.stack[1].dx AND m.y = p.stack[1].y + p.stack[1].dy,
+--                                 1,
+--                                 1001
+--                             ) as cost,
+--                             list_prepend(p.stack[1].id, p.stack[1].path) as path,
+--                             m.symbol = 'E' as terminate,
+--                         FROM pathfinder p
+--                         JOIN map m ON m.symbol IN ('.', 'E') AND
+--                                       -- cardinal directions without diagonals
+--                                       abs(m.x - p.stack[1].x) + abs(m.y - p.stack[1].y) = 1 AND
+--                                       m.id NOT IN p.stack[1].path
+--                     ),
+--                     reachable_agg AS (
+--                         SELECT
+--                             list({'cost': cost, 'id': id, 'x': x, 'y': y, 'dx': dx, 'dy': dy, 'path': path}) as agg
+--                         FROM reachable
+--                     ),
+--                     pushpop AS (
+--                         SELECT
+--                             x.it + 1 as it,
+--                             x.stack as stack,
+--                         FROM reachable_agg _(r), LATERAL (
+--                             SELECT
+--                                 p.it,
+--                                 r || p.stack[2:] as stack,
+--                             FROM pathfinder p
+--                             WHERE len(r) > 0
+--                             UNION ALL
+--                             SELECT
+--                                 p.it,
+--                                 p.stack[2:] as stack,
+--                             FROM pathfinder p
+--                             WHERE len(r) IS NULL AND len(p.stack) > 0
+--                         ) x
+--                         WHERE NOT EXISTS (FROM reachable WHERE terminate)
+--                     ),
+--                     explode AS (
+--                         SELECT it, unnest(stack) as state FROM pushpop
+--                     ),
+--                     compact AS (
+--                         SELECT DISTINCT ON (state.cost, state.id, state.dx, state.dy) *
+--                         FROM explode
+--                     )
+
+--                 SELECT
+--                     any_value(it) as it,
+--                     list(state ORDER BY state.cost DESC) as stack,
+--                 FROM compact
+--                 WHERE it < 10
+--             )
+--         )
+
+--     -- SELECT 
+--     --     it,
+--     --     stack[1].y || ',' || stack[1].x || '|' || stack[1].cost as state,
+--     --     [e.y || ',' || e.x || '|' || e.cost FOR e IN stack[2:]] as stack,
+--     --     v.path as path,
+--     -- FROM pathfinder p, (
+--     --     SELECT
+--     --         list('(' || m.y || ',' || m.x || ')' ORDER BY v.idx) as path,
+--     --     FROM (
+--     --         SELECT
+--     --             generate_subscripts(p.stack[1].path, 1) as idx,
+--     --             unnest(p.stack[1].path) as id,
+--     --     ) v
+--     --     JOIN map m USING (id)
+--     -- ) v
+--     -- ORDER BY it
+--     -- ;
+
+--     SELECT
+--         it,
+--         unnest(p.stack[1]),
+--         m.id IS NOT NULL as final,
+--     FROM pathfinder p
+--     LEFT JOIN map m ON m.symbol = 'E' AND abs(m.x - p.stack[1].x) + abs(m.y - p.stack[1].y) = 1
+-- );
 
 
 -- WITH
@@ -316,7 +332,7 @@ CREATE OR REPLACE VIEW pathfinder AS (
 
 
 
-CREATE OR REPLACE VIEW results AS (
+CREATE OR REPLACE TABLE results AS (
     SELECT
         (SELECT min(cost) + 1 FROM pathfinder WHERE final) as part1,
         NULL as part2
