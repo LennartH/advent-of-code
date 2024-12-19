@@ -1,22 +1,22 @@
--- SET VARIABLE example = '
---     ###############
---     #.......#....E#
---     #.#.###.#.###.#
---     #.....#.#...#.#
---     #.###.#####.#.#
---     #.#.#.......#.#
---     #.#.#####.###.#
---     #...........#.#
---     ###.#.#####.#.#
---     #...#.....#.#.#
---     #.#.#.###.#.#.#
---     #.....#...#.#.#
---     #.###.#.#.#.#.#
---     #S..#.....#...#
---     ###############
--- ';
--- SET VARIABLE exampleSolution1 = 7036;
--- SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE example = '
+    ###############
+    #.......#....E#
+    #.#.###.#.###.#
+    #.....#.#...#.#
+    #.###.#####.#.#
+    #.#.#.......#.#
+    #.#.#####.###.#
+    #...........#.#
+    ###.#.#####.#.#
+    #...#.....#.#.#
+    #.#.#.###.#.#.#
+    #.....#...#.#.#
+    #.###.#.#.#.#.#
+    #S..#.....#...#
+    ###############
+';
+SET VARIABLE exampleSolution1 = 7036;
+SET VARIABLE exampleSolution2 = 45;
 
 SET VARIABLE example = '
     #################
@@ -38,28 +38,14 @@ SET VARIABLE example = '
     #################
 ';
 SET VARIABLE exampleSolution1 = 11048;
-SET VARIABLE exampleSolution2 = NULL;
-
--- SET VARIABLE example = '
---     #############
---     #####......E#
---     ####..#.#####
---     ###..##.#####
---     ##..###.#####
---     #..####.....#
---     #.#########.#
---     #...........#
---     #S###########
---     #############
--- ';
--- SET VARIABLE exampleSolution1 = 6025;
+SET VARIABLE exampleSolution2 = 64;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = 104516;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 545;
 
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
@@ -121,9 +107,8 @@ CREATE OR REPLACE TABLE pathfinder AS (
                             WHERE m.symbol IN ('.', 'E')
                               AND abs(m.x - p.x) + abs(m.y - p.y) = 1
                         ) p
-                        WHERE NOT EXISTS (FROM pathfinder pp WHERE pp.path_costs[list_position(pp.path, p.id)] < p.cost OR (pp.end_reached AND pp.cost < p.cost))
-                        -- WHERE NOT EXISTS (FROM pathfinder pp WHERE pp.path_costs[list_position(pp.path, p.id)] < p.cost)
-                        --   AND NOT EXISTS (FROM pathfinder pp WHERE pp.end_reached AND pp.cost < p.cost)
+                        WHERE NOT EXISTS (FROM pathfinder pp WHERE pp.path_costs[list_position(pp.path, p.id)] < p.cost 
+                                                                OR (pp.end_reached AND pp.cost < p.cost))
                     )
 
                 SELECT * EXCLUDE (rank)
@@ -141,21 +126,52 @@ CREATE OR REPLACE TABLE pathfinder AS (
     SELECT
         it,
         p.id,
-        p.y,
-        p.x,
         cost,
-        dx,
-        dy,
         p.end_reached as final,
         path,
+        path_costs,
     FROM pathfinder p
-    WHERE final
 );
 
-CREATE OR REPLACE TABLE results AS (
+CREATE OR REPLACE TABLE winning_tiles AS (
+    WITH
+        winning_paths AS (
+            SELECT
+                generate_subscripts(min_by(path, cost), 1) as pos,
+                unnest(min_by(path, cost)) as id,
+                unnest(min_by(path_costs, cost)) as cost,
+            FROM pathfinder
+            WHERE final
+        )
+
+    SELECT id
+    FROM winning_paths
+    UNION
+    SELECT DISTINCT
+        unnest(p.path) as id,
+    FROM (
+        SELECT
+            pos, id, cost,
+            lag(cost) OVER (ORDER BY pos) as next_cost,
+            lead(id) OVER (ORDER BY pos) as prev_id,
+        FROM (
+            SELECT
+                generate_subscripts(min_by(path, cost), 1) as pos,
+                unnest(min_by(path, cost)) as id,
+                unnest(min_by(path_costs, cost)) as cost,
+            FROM pathfinder
+            WHERE final
+        )
+    ) e
+    JOIN pathfinder p USING (id)
+    -- All connected branches with lower cost that are not part of the winning branch
+    WHERE e.next_cost > p.path_costs[1] AND e.prev_id != p.path[1]
+);
+
+CREATE OR REPLACE VIEW results AS (
     SELECT
         (SELECT min(cost) FROM pathfinder WHERE final) as part1,
-        NULL as part2
+        (SELECT count() + 1 FROM winning_tiles)  as part2,
 );
 
 
@@ -176,6 +192,8 @@ CREATE OR REPLACE VIEW solution AS (
     ORDER BY part
 );
 FROM solution;
+
+
 
 -- region Troubleshooting Utils
 CREATE OR REPLACE MACRO print_map() AS TABLE (
@@ -211,4 +229,66 @@ CREATE OR REPLACE MACRO print_path(step) AS TABLE (
     GROUP BY y
     ORDER BY y
 );
+
+CREATE OR REPLACE MACRO print_winning_tiles() AS TABLE (
+    WITH
+        tiles AS (
+            SELECT
+                id,
+                'O' as symbol,
+            FROM winning_tiles
+        )
+
+    SELECT
+        y,
+        string_agg(coalesce(t.symbol, m.symbol), ' ' ORDER BY x) as line,
+    FROM map m
+    LEFT JOIN tiles t USING (id)
+    GROUP BY y
+    ORDER BY y
+);
+-- endregion
+
+-- region Other Test Inputs
+
+-- SET VARIABLE example = '
+--     #############
+--     #####......E#
+--     ####..#.#####
+--     ###..##.#####
+--     ##..###.#####
+--     #..####.....#
+--     #.#########.#
+--     #...........#
+--     #S###########
+--     #############
+-- ';
+-- SET VARIABLE exampleSolution1 = 6025;
+
+-- SET VARIABLE example = '
+--     ###########
+--     ######E####
+--     ######.####
+--     ######.####
+--     ####...#.E#
+--     ####.#.####
+--     #S.....####
+--     ###########
+-- ';
+-- SET VARIABLE exampleSolution1 = 1010;
+-- SET VARIABLE exampleSolution2 = 11;
+
+-- SET VARIABLE example = '
+--     ###########
+--     ######E####
+--     ######.####
+--     ###########
+--     ####.....E#
+--     ####.#.####
+--     #S.....####
+--     ###########
+-- ';
+-- SET VARIABLE exampleSolution1 = 2010;
+-- SET VARIABLE exampleSolution2 = 14;
+
 -- endregion
