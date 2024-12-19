@@ -87,6 +87,7 @@ CREATE OR REPLACE VIEW exe AS (
                 NULL as operand,
                 NULL as combo_operand,
                 NULL::VARCHAR as out,
+            FROM register r
             UNION ALL (
                 WITH
                     combo_operand AS (
