@@ -1,39 +1,38 @@
-SET VARIABLE example = '
-    Register A: 729
-    Register B: 0
-    Register C: 0
-
-    Program: 0,1,5,4,3,0
-';
-SET VARIABLE exampleSolution1 = '4,6,3,5,6,3,5,2,1,0';
-SET VARIABLE exampleSolution2 = NULL;
-
 -- SET VARIABLE example = '
---     Register A: 10
+--     Register A: 729
 --     Register B: 0
 --     Register C: 0
 
---     Program: 5,0,5,1,5,4
+--     Program: 0,1,5,4,3,0
 -- ';
--- SET VARIABLE exampleSolution1 = '0,1,2';
+-- SET VARIABLE exampleSolution1 = '4,6,3,5,6,3,5,2,1,0';
 -- SET VARIABLE exampleSolution2 = NULL;
 
+SET VARIABLE example = '
+    Register A: 2024
+    Register B: 0
+    Register C: 0
+
+    Program: 0,3,5,4,3,0
+';
+SET VARIABLE exampleSolution1 = '5,7,3,0';
+SET VARIABLE exampleSolution2 = 117440;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n') as line FROM read_text('input');
 SET VARIABLE solution1 = '1,5,0,5,2,0,1,3,5';
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 236581108670061;
 
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
 
-CREATE OR REPLACE VIEW register AS (
+CREATE OR REPLACE TABLE register AS (
     SELECT
-        string_split(lines[1], ': ')[2]::INTEGER as a,
-        string_split(lines[2], ': ')[2]::INTEGER as b,
-        string_split(lines[3], ': ')[2]::INTEGER as c,
+        string_split(lines[1], ': ')[2]::BIGINT as a,
+        string_split(lines[2], ': ')[2]::BIGINT as b,
+        string_split(lines[3], ': ')[2]::BIGINT as c,
     FROM (
         SELECT
             list(line) as lines,
@@ -41,7 +40,7 @@ CREATE OR REPLACE VIEW register AS (
     )
 );
 
-CREATE OR REPLACE VIEW instructions AS (
+CREATE OR REPLACE TABLE instructions AS (
     WITH
         instructions AS (
             SELECT
@@ -52,7 +51,7 @@ CREATE OR REPLACE VIEW instructions AS (
                     string_split(
                         string_split(last(line), ': ')[2],
                         ','
-                    )::INTEGER[] as instructions,
+                    )::BIGINT[] as instructions,
                 FROM query_table(getvariable('mode'))
             )
         ),
@@ -75,19 +74,20 @@ CREATE OR REPLACE VIEW instructions AS (
     POSITIONAL JOIN operands
 );
 
-CREATE OR REPLACE VIEW exe AS (
+CREATE OR REPLACE MACRO run(reg_a) AS TABLE (
     WITH RECURSIVE
         exe AS (
             SELECT
                 0 as it,
-                r.a, r.b, r.c,
+                reg_a::BIGINT as a,
+                0::BIGINT as b,
+                0::BIGINT as c,
                 0 as ptr,
                 NULL as opcode,
                 NULL::VARCHAR as op,
                 NULL as operand,
-                NULL as combo_operand,
+                NULL::BIGINT as combo_operand,
                 NULL::VARCHAR as out,
-            FROM register r
             UNION ALL (
                 WITH
                     combo_operand AS (
@@ -149,10 +149,53 @@ CREATE OR REPLACE VIEW exe AS (
     FROM exe
 );
 
+CREATE OR REPLACE MACRO print(reg_a) AS (
+    SELECT list(out ORDER BY it) FILTER (out IS NOT NULL) FROM run(reg_a)
+);
+
+CREATE OR REPLACE TABLE codebreaker AS (
+    WITH RECURSIVE
+        target_sequence AS (
+            SELECT flatten(list([opcode, operand])) as sequence,
+            FROM instructions
+        ),
+        codebreaker AS (
+            SELECT
+                0 as it,
+                NULL as oct,
+                0::BIGINT as a,
+                []::VARCHAR[] as output,
+                sequence,
+            FROM target_sequence
+            UNION ALL
+            SELECT
+                it,
+                oct,
+                a,
+                print(a) as output,
+                sequence,
+            FROM (
+                SELECT
+                    it + 1 as it,
+                    unnest(range(0, 8)) as oct,
+                    (a << 3) + unnest(range(0, 8)) as a,
+                    sequence,
+                FROM codebreaker
+            )
+            WHERE output = sequence[-it:]
+              AND it <= len(sequence)
+        )
+
+    SELECT
+        it, oct, a, output,
+    FROM codebreaker
+    WHERE len(output) = len(sequence)
+);
+
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        (SELECT string_agg(out, ',' ORDER BY it) FROM exe) as part1,
-        NULL as part2
+        (SELECT list_aggregate(print(a), 'string_agg', ',') FROM register) as part1,
+        (SELECT min(a) FROM codebreaker) as part2
 );
 
 
@@ -175,9 +218,14 @@ CREATE OR REPLACE VIEW solution AS (
 FROM solution;
 
 -- region Troubleshooting Utils
-CREATE OR REPLACE MACRO memdump() AS TABLE (
+CREATE OR REPLACE MACRO memdump(reg_a) AS TABLE (
+    WITH
+        exe AS (FROM run(reg_a))
+
     SELECT
         it,
+        if(ptr NOT IN (SELECT ptr FROM instructions), 'EOF', ptr::VARCHAR) as ptr,
+        op,
         CASE
             WHEN op = 'adv' THEN format('{:b} >> {:d} -> A', a, operand)
             WHEN op = 'bdv' THEN format('{:b} >> {:d} -> B', a, operand)
@@ -192,21 +240,10 @@ CREATE OR REPLACE MACRO memdump() AS TABLE (
         format('{0:d}: {0:b}', a) as a,
         format('{0:d}: {0:b}', b) as b,
         format('{0:d}: {0:b}', c) as c,
-        if(ptr NOT IN (SELECT ptr FROM instructions), 'EOF', ptr::VARCHAR) as ptr,
-        opcode,
-        op,
         format('{0:d}: {0:b}', operand) as operand,
-        CASE
-            WHEN op IN ('adv', 'bdv', 'cdv', 'bst', 'out') THEN
-                'combo (' || CASE
-                    WHEN operand = 4 THEN 'A'
-                    WHEN operand = 5 THEN 'B'
-                    WHEN operand = 6 THEN 'C'
-                    ELSE operand::VARCHAR
-                END || ')'
-            WHEN op IS NULL THEN NULL
-            ELSE 'literal'
-        END as optype,
+        format('{0:d}: {0:b}', out::INTEGER) as out,
+        opcode,
+        optype,
     FROM (
         SELECT
             * EXCLUDE (operand, combo_operand),
@@ -215,11 +252,23 @@ CREATE OR REPLACE MACRO memdump() AS TABLE (
                 WHEN op = 'bxc' THEN NULL
                 ELSE operand
             END as operand,
+            CASE
+                WHEN op IN ('adv', 'bdv', 'cdv', 'bst', 'out') THEN
+                    'combo (' || CASE
+                        WHEN operand = 4 THEN 'A'
+                        WHEN operand = 5 THEN 'B'
+                        WHEN operand = 6 THEN 'C'
+                        ELSE operand::VARCHAR
+                    END || ')'
+                WHEN op IS NULL THEN NULL
+                ELSE 'literal'
+            END as optype,
         FROM (
             SELECT
                 e.it, e.a, e.b, e.c, e.ptr,
                 nxt.opcode, nxt.op,
                 nxt.operand, nxt.combo_operand,
+                nxt.out,
             FROM exe e
             LEFT JOIN exe nxt ON nxt.it = e.it + 1
         )
