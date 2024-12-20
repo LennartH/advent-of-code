@@ -1,6 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024 [SQL]
+- **Day 18: RAM Run** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-18_ram-run/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/18)
 - **Day 17: Chronospatial Computer** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-17_chronospatial-computer/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/17)
 - **Day 16: Reindeer Maze** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-16_reindeer-maze/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/16)
 - **Day 15: Warehouse Woes** (takes ~4 mins) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-15_warehouse-woes/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/15)
