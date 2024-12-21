@@ -110,7 +110,7 @@ CREATE OR REPLACE TABLE edges AS (
 
 CREATE OR REPLACE TABLE pathfinder AS (
     WITH RECURSIVE
-        edges AS MATERIALIZED (
+        edges AS (
             SELECT 
                 e.* 
             FROM main.edges e, config c
@@ -147,7 +147,7 @@ CREATE OR REPLACE TABLE pathfinder AS (
 
 CREATE OR REPLACE TABLE pathbreaker AS (
     WITH RECURSIVE
-        edges AS MATERIALIZED (FROM main.edges e),
+        edges AS (FROM main.edges e),
         pathbreaker AS (
             SELECT
                 0 as it,
@@ -180,7 +180,7 @@ CREATE OR REPLACE TABLE pathbreaker AS (
                         ) p
                         WHERE NOT EXISTS (FROM paths pp WHERE p.id IN pp.path)
                     ),
-                    any_path AS MATERIALIZED (
+                    any_path AS (
                         SELECT EXISTS (FROM paths WHERE terminate) as exists
                     )
                 
@@ -225,6 +225,7 @@ CREATE OR REPLACE VIEW solution AS (
     ORDER BY part
 );
 FROM solution;
+
 
 -- region Troubleshooting Utils
 CREATE OR REPLACE MACRO print_corrupted_bytes(at_byte) AS TABLE (
@@ -297,4 +298,4 @@ CREATE OR REPLACE MACRO print_path() AS TABLE (
     GROUP BY y
     ORDER BY y
 );
---
+-- endregion
