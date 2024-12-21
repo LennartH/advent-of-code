@@ -12,14 +12,14 @@ SET VARIABLE example = '
 ';
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 6;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 16;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 255;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 621820080273474;
 
-SET VARIABLE mode = 'example';
+-- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE TABLE patterns AS (
@@ -47,44 +47,62 @@ CREATE OR REPLACE TABLE arrangements AS (
         arrangements AS (
             SELECT
                 0 as it,
-                [idx] as design,
+                MAP{idx: 1}::MAP(INTEGER, BIGINT) as design_count,
                 design as remaining,
             FROM designs
-            UNION ALL
-            SELECT
-                any_value(it) as it,
-                list_distinct(flatten(list(design))) as design,
-                remaining,
-            FROM (
+            UNION ALL (
+                WITH
+                    arrange AS (
+                        SELECT
+                            it,
+                            key as id,
+                            value as count,
+                            remaining,
+                        FROM (
+                            SELECT
+                                a.it + 1 as it,
+                                unnest(map_entries(a.design_count), recursive := true),
+                                a.remaining[len(p.pattern) + 1:] as remaining,
+                            FROM arrangements a, patterns p
+                            WHERE starts_with(a.remaining, p.pattern)
+                        )
+                    ),
+                    design_counts AS (
+                        SELECT
+                            any_value(it) as it,
+                            id,
+                            sum(count) as count,
+                            remaining,
+                        FROM arrange
+                        GROUP BY remaining, id
+                    )
+
                 SELECT
-                    a.it + 1 as it,
-                    a.design,
-                    a.remaining[len(p.pattern) + 1:] as remaining,
-                FROM arrangements a, patterns p
-                WHERE starts_with(a.remaining, p.pattern)
+                    any_value(it) as it,
+                    map_from_entries(list((id, count))) as design_count,
+                    remaining,
+                FROM design_counts
+                GROUP BY remaining
             )
-            GROUP BY remaining
         )
 
     SELECT
-        unnest(design) as design,
-    FROM arrangements
-    WHERE remaining = ''
+        key as id,
+        sum(value) as count,
+    FROM (
+        SELECT
+            unnest(map_entries(design_count), recursive := true),
+        FROM arrangements
+        WHERE remaining = ''
+    )
+    GROUP BY key
 );
-
--- CREATE OR REPLACE TABLE foo AS (
---     SELECT
---         design,
---         count() as count,
---     FROM arrangements
---     GROUP BY design
--- );
--- FROM foo;
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        (SELECT count(DISTINCT design) FROM arrangements) as part1,
-        NULL as part2
+        count() as part1,
+        sum(count) as part2,
+    FROM arrangements
 );
 
 
