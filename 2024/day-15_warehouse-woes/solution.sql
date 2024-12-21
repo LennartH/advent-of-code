@@ -137,11 +137,11 @@ CREATE OR REPLACE TABLE updated_warehouse AS (
                             unnest([r.next_x, r.idx, ab.idx]) as idx,
                         FROM robot r, (
                             FROM updated_warehouse ab -- after box
-                            WHERE ab.object != 'O' AND CASE WHEN r.dx = 0
-                                -- TODO Can check for same column/row be expressed mathematically?
-                                THEN ab.idx = r.idx AND ab.idy * r.dy > r.idy * r.dy
-                                ELSE ab.idy = r.idy AND ab.idx * r.dx > r.idx * r.dx
-                            END
+                            WHERE ab.object != 'O' AND
+                                  -- in line with current direction (either x-x/y-y is 0 or dy/dx is 0)
+                                  (ab.idy - r.idy) * r.dx + (ab.idx - r.idx) * r.dy = 0 AND
+                                  -- is after current position in current direction (multiplying by dx/dy flips numbers so > can be used regardless of signs)
+                                  (ab.idy * dy > r.idy * r.dy OR ab.idx * r.dx > r.idx * r.dx)
                             ORDER BY abs(ab.idx - r.idx) + abs(ab.idy - r.idy)
                             LIMIT 1
                         ) ab
@@ -308,7 +308,7 @@ CREATE OR REPLACE VIEW results AS (
                 idy * 100 + idx as gps,
             FROM updated_warehouse
             WHERE idm = (SELECT count() FROM moves) AND object = 'O'
-        ),
+        )
         scaled_boxes AS (
             SELECT 
                 idy, idx,
