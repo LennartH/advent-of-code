@@ -6,7 +6,7 @@ SET VARIABLE exampleSolution1 = NULL;
 SET VARIABLE exampleSolution2 = NULL;
 
 CREATE OR REPLACE TABLE input AS
-SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n') as line FROM read_text('input');
+SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = NULL;
 SET VARIABLE solution2 = NULL;
 
