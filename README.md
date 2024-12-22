@@ -1,7 +1,7 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024 [SQL]
-- ~~**Day 21: Keypad Conundrum** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-21_keypad-conundrum/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/21)~~
+- **Day 21: Keypad Conundrum** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-21_keypad-conundrum/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/21)
 - **Day 20: Race Condition** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-20_race-condition/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/20)
 - **Day 19: Linen Layout** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-19_linen-layout/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/19)
 - **Day 18: RAM Run** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-18_ram-run/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/18)

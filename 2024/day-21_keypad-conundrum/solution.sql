@@ -149,7 +149,6 @@ CREATE OR REPLACE TABLE dirpaths AS (
     FROM paths
 );
 
--- TODO Clean aliases
 CREATE OR REPLACE TABLE expanded_dirpaths AS (
     WITH RECURSIVE
         tracked_dirpaths AS (
@@ -216,7 +215,6 @@ CREATE OR REPLACE TABLE expanded_dirpaths AS (
                                s.to_d2 = n.d2 AND 
                                s.id = n.id
 );
-
 
 CREATE OR REPLACE TABLE expanded_numpaths AS (
     WITH RECURSIVE
