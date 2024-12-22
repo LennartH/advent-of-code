@@ -112,20 +112,6 @@ CREATE OR REPLACE TABLE numpaths AS (
             )
         )
 
-    -- SELECT DISTINCT ON (n1, n2)
-    --     from_button as n1,
-    --     to_button as n2,
-    --     list_append(moves, 'A') as moves,
-    -- FROM paths
-    -- WHERE len(moves) <= 2
-    -- UNION ALL
-    -- SELECT
-    --     from_button as n1,
-    --     to_button as n2,
-    --     list_append(moves, 'A') as moves,
-    -- FROM paths
-    -- WHERE len(moves) > 2
-
     SELECT
         from_button as n1,
         to_button as n2,
@@ -156,20 +142,6 @@ CREATE OR REPLACE TABLE dirpaths AS (
             )
         )
 
-    -- SELECT DISTINCT ON (d1, d2)
-    --     from_button as d1,
-    --     to_button as d2,
-    --     list_append(moves, 'A') as moves,
-    -- FROM paths
-    -- WHERE len(moves) <= 2
-    -- UNION ALL
-    -- SELECT
-    --     from_button as d1,
-    --     to_button as d2,
-    --     list_append(moves, 'A') as moves,
-    -- FROM paths
-    -- WHERE len(moves) > 2
-
     SELECT
         from_button as d1,
         to_button as d2,
@@ -180,86 +152,79 @@ CREATE OR REPLACE TABLE dirpaths AS (
 -- TODO Clean aliases
 CREATE OR REPLACE TABLE expanded_dirpaths AS (
     WITH RECURSIVE
-        dirpaths AS (
+        tracked_dirpaths AS (
             SELECT
                 d.*,
                 row_number() OVER (PARTITION BY d1, d2) as id,
-            FROM main.dirpaths d
-            -- delete me
-            -- WHERE d1 = 'A' AND d2 = '<'
+            FROM dirpaths d
         ),
         exploded AS (
             SELECT
-                d1 as n1, d2 as n2, id,
+                d1 as from_d1,
+                d2 as to_d2,
+                id,
                 generate_subscripts(moves, 1) as pos,
                 unnest(list_prepend('A', moves[:-2])) as d1,
                 unnest(moves) as d2,
                 len(moves) as length,
-            FROM dirpaths
+            FROM tracked_dirpaths
         ),
         moves AS (
             SELECT
-                n1, n2,
+                from_d1, to_d2,
                 id, pos, length,
                 d1, d2,
                 coalesce(moves, ['A']) as moves,
             FROM exploded
-            LEFT JOIN main.dirpaths USING (d1, d2)
+            LEFT JOIN dirpaths USING (d1, d2)
         ),
         expanded AS (
             SELECT
-                n1, n2, id,
-                pos, length,
+                from_d1, to_d2,
+                id, pos, length,
                 moves,
             FROM moves
             WHERE pos = 1
             UNION ALL
             SELECT
-                e.n1, e.n2, e.id,
-                m.pos, e.length,
+                e.from_d1,
+                e.to_d2,
+                e.id,
+                m.pos,
+                e.length,
                 e.moves || m.moves AS moves,
             FROM expanded e
-            JOIN moves m ON m.n1 = e.n1 AND m.n2 = e.n2 AND m.id = e.id AND m.pos = e.pos + 1
+            JOIN moves m USING (from_d1, to_d2, id) 
+            WHERE m.pos = e.pos + 1
         ),
-        -- shortest AS (
-        --     SELECT
-        --         n1, n2, id, moves,
-        --         dense_rank() OVER (PARTITION BY n1, n2 ORDER BY len(moves)) as rank,
-        --     FROM expanded
-        --     WHERE pos = length
-        --     QUALIFY rank = 1
-        -- ),
         shortest AS (
             SELECT
-                n1, n2, id, moves,
-                row_number() OVER (PARTITION BY n1, n2 ORDER BY len(moves)) as rank,
+                from_d1, to_d2, id, moves,
+                row_number() OVER (PARTITION BY from_d1, to_d2 ORDER BY len(moves)) as rank,
             FROM expanded
             WHERE pos = length
             QUALIFY rank = 1
         )
 
     SELECT
-        s.n1 as d1,
-        s.n2 as d2,
+        s.from_d1 as d1,
+        s.to_d2 as d2,
         n.moves as dir2_moves,
         s.moves as dir1_moves,
     FROM shortest s
-    JOIN dirpaths n ON s.n1 = n.d1 AND s.n2 = n.d2 AND s.id = n.id
+    JOIN tracked_dirpaths n ON s.from_d1 = n.d1 AND 
+                               s.to_d2 = n.d2 AND 
+                               s.id = n.id
 );
 
 
 CREATE OR REPLACE TABLE expanded_numpaths AS (
     WITH RECURSIVE
-        numpaths AS (
+        tracked_numpaths AS (
             SELECT
                 n.*,
                 row_number() OVER (PARTITION BY n1, n2) as id,
-            FROM main.numpaths n
-            -- delete me
-            -- WHERE (n1 = '0' AND n2 = '2') OR (n1 = '2' AND n2 = '3') OR (n1 = 'A' AND n2 = '7')
-            -- WHERE n1 = '3' AND n2 = '7'
-            -- WHERE n1 = '2' AND n2 = '3'
-            -- WHERE n1 = 'A' AND n2 = '7'
+            FROM numpaths n
         ),
         exploded AS (
             SELECT
@@ -268,16 +233,13 @@ CREATE OR REPLACE TABLE expanded_numpaths AS (
                 unnest(list_prepend('A', moves[:-2])) as d1,
                 unnest(moves) as d2,
                 len(moves) as length,
-            FROM numpaths
+            FROM tracked_numpaths
         ),
         moves AS (
             SELECT
                 n1, n2,
                 id, pos, length,
                 d1, d2,
-            --     coalesce(moves, ['A']) as moves,
-            -- FROM exploded
-            -- LEFT JOIN dirpaths USING (d1, d2)
                 coalesce(dir2_moves, ['A']) as dir2_moves,
                 coalesce(dir1_moves, ['A']) as dir1_moves,
             FROM exploded
@@ -300,14 +262,6 @@ CREATE OR REPLACE TABLE expanded_numpaths AS (
             FROM expanded e
             JOIN moves m ON m.n1 = e.n1 AND m.n2 = e.n2 AND m.id = e.id AND m.pos = e.pos + 1
         ),
-        -- shortest AS (
-        --     SELECT
-        --         n1, n2, id, moves,
-        --         dense_rank() OVER (PARTITION BY n1, n2 ORDER BY len(moves)) as rank,
-        --     FROM expanded
-        --     WHERE pos = length
-        --     QUALIFY rank = 1
-        -- ),
         shortest AS (
             SELECT
                 n1, n2, id, dir2_moves, dir1_moves,
@@ -323,10 +277,9 @@ CREATE OR REPLACE TABLE expanded_numpaths AS (
         s.dir2_moves,
         s.dir1_moves,
     FROM shortest s
-    JOIN numpaths n USING (n1, n2, id)
+    JOIN tracked_numpaths n USING (n1, n2, id)
 );
 
--- TODO Simplify: flatten instead of unnest+groupby, wrap into recursive CTE?
 CREATE OR REPLACE VIEW sequences AS (
     WITH
         button_presses AS (
