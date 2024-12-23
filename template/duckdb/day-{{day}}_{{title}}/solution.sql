@@ -10,14 +10,15 @@ SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FRO
 SET VARIABLE solution1 = NULL;
 SET VARIABLE solution2 = NULL;
 
+.maxrows 75
 SET VARIABLE mode = 'example';
 -- SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE VIEW parser AS (
     SELECT
         row_number() OVER () as idx,
-        regexp_split_to_array(line, ' ') as parts,
-        cast(regexp_split_to_array(line, ' ') as INTEGER[]) as values
+        string_split(line, ' ') as parts,
+        cast(string_split(line, ' ') as INTEGER[]) as values
     FROM query_table(getvariable('mode'))
 );
 
