@@ -13,6 +13,7 @@ CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 156714;
 SET VARIABLE solution2 = NULL; -- 602493282827076 too high
+-- Pick up from f88608990af2cee4fe364491a3d40a56f12b67e1 for part 2
 
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
