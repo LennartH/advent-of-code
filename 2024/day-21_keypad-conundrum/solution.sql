@@ -211,45 +211,45 @@ CREATE OR REPLACE TABLE numpaths AS (
     FROM ranked_paths
 );
 
--- dirpaths with less branches by ranking with some heuristic (repeating symbols)
-CREATE OR REPLACE TABLE dirpaths AS (
-    WITH RECURSIVE
-        paths AS (
-            SELECT
-                d1 as from_button,
-                d2 as to_button,
-                [d1] as path,
-                [move] as moves,
-                0 as score,
-            FROM dirpad
-            UNION ALL
-            SELECT
-                p.from_button,
-                d.d2 as to_button,
-                list_append(p.path, p.to_button) as path,
-                list_append(p.moves, d.move) as moves,
-                score + if(p.moves[-1] = d.move, 1, 0) as score,
-            FROM paths p
-            JOIN dirpad d ON d.d1 = p.to_button
-            WHERE NOT EXISTS (
-                FROM paths pp
-                WHERE pp.from_button = p.from_button AND d.d2 IN pp.path
-            )
-        ),
-        ranked_paths AS (
-            FROM paths
-            QUALIFY dense_rank() OVER (
-                PARTITION BY from_button, to_button 
-                ORDER BY score desc
-            ) = 1
-        )
+-- -- dirpaths with less branches by ranking with some heuristic (repeating symbols)
+-- CREATE OR REPLACE TABLE dirpaths AS (
+--     WITH RECURSIVE
+--         paths AS (
+--             SELECT
+--                 d1 as from_button,
+--                 d2 as to_button,
+--                 [d1] as path,
+--                 [move] as moves,
+--                 0 as score,
+--             FROM dirpad
+--             UNION ALL
+--             SELECT
+--                 p.from_button,
+--                 d.d2 as to_button,
+--                 list_append(p.path, p.to_button) as path,
+--                 list_append(p.moves, d.move) as moves,
+--                 score + if(p.moves[-1] = d.move, 1, 0) as score,
+--             FROM paths p
+--             JOIN dirpad d ON d.d1 = p.to_button
+--             WHERE NOT EXISTS (
+--                 FROM paths pp
+--                 WHERE pp.from_button = p.from_button AND d.d2 IN pp.path
+--             )
+--         ),
+--         ranked_paths AS (
+--             FROM paths
+--             QUALIFY dense_rank() OVER (
+--                 PARTITION BY from_button, to_button 
+--                 ORDER BY score desc
+--             ) = 1
+--         )
 
-    SELECT
-        from_button as d1,
-        to_button as d2,
-        list_append(moves, 'A') as moves,
-    FROM ranked_paths
-);
+--     SELECT
+--         from_button as d1,
+--         to_button as d2,
+--         list_append(moves, 'A') as moves,
+--     FROM ranked_paths
+-- );
 
 -- -- Lookup table for movements on the dirpad (from d1 to d2 which buttons/moves have to be done on the next level)
 -- CREATE OR REPLACE TABLE dirpad_lookup AS (
@@ -503,76 +503,121 @@ CREATE OR REPLACE TABLE dirpaths AS (
 -- )
 
 
--- Different dirpad lookup table with fewer columns and follow-up moves not being unnested
-DROP TYPE IF EXISTS PAIR;
-CREATE TYPE PAIR AS STRUCT(a VARCHAR, b VARCHAR);
-CREATE OR REPLACE TABLE dir_lookup AS (
-    WITH RECURSIVE
-        path_ids AS (
-            SELECT
-                row_number() OVER () as id,
-                (a, b)::PAIR as path,
-            FROM 
-                unnest(['<', '^', '>', 'v', 'A']) a(a),
-                unnest(['<', '^', '>', 'v', 'A']) b(b)
-            WHERE a != b
-        ),
-        paths AS (
-            SELECT
-                d1 as from_button,
-                d2 as to_button,
-                [d1] as path,
-                [move] as moves,
-            FROM dirpad
-            UNION ALL
-            SELECT
-                p.from_button,
-                d.d2 as to_button,
-                list_append(p.path, p.to_button) as path,
-                list_append(p.moves, d.move) as moves,
-            FROM paths p
-            JOIN dirpad d ON d.d1 = p.to_button
-            WHERE NOT EXISTS (
-                FROM paths pp
-                WHERE pp.from_button = p.from_button AND d.d2 IN pp.path
-            )
-        ),
-        paths_lookup AS (
-            SELECT
-                p.id,
-                any_value(p.path) as path,
-                p.branch,
-                list(p.meta_path ORDER BY pos) as meta_paths,
-                list(coalesce(m.id, 0)) as meta_path_ids,
-                any_value(p.length) as length,
-            FROM (
-                SELECT
-                    i.id,
-                    i.path as path,
-                    row_number() OVER (PARTITION BY id) as branch,
-                    unnest(list_zip(
-                        list_prepend('A', moves),
-                        list_append(moves, 'A')
-                    )::PAIR[]) as meta_path,
-                    unnest(generate_series(1, len(p.moves) + 1)) as pos,
-                    len(p.moves) + 1 as length,
-                FROM paths p
-                JOIN path_ids i ON i.path = (from_button, to_button)
-            ) p
-            LEFT JOIN path_ids m ON m.path = p.meta_path
-            GROUP BY p.id, p.branch
-        )
+-- -- Different dirpad lookup table with fewer columns and follow-up moves not being unnested
+-- DROP TYPE IF EXISTS PAIR;
+-- CREATE TYPE PAIR AS STRUCT(a VARCHAR, b VARCHAR);
+-- CREATE OR REPLACE TABLE dir_lookup AS (
+--     WITH RECURSIVE
+--         path_ids AS (
+--             SELECT
+--                 row_number() OVER () as id,
+--                 (a, b)::PAIR as path,
+--             FROM 
+--                 unnest(['<', '^', '>', 'v', 'A']) a(a),
+--                 unnest(['<', '^', '>', 'v', 'A']) b(b)
+--             WHERE a != b
+--         ),
+--         paths AS (
+--             SELECT
+--                 d1 as from_button,
+--                 d2 as to_button,
+--                 [d1] as path,
+--                 [move] as moves,
+--             FROM dirpad
+--             UNION ALL
+--             SELECT
+--                 p.from_button,
+--                 d.d2 as to_button,
+--                 list_append(p.path, p.to_button) as path,
+--                 list_append(p.moves, d.move) as moves,
+--             FROM paths p
+--             JOIN dirpad d ON d.d1 = p.to_button
+--             WHERE NOT EXISTS (
+--                 FROM paths pp
+--                 WHERE pp.from_button = p.from_button AND d.d2 IN pp.path
+--             )
+--         ),
+--         paths_lookup AS (
+--             SELECT
+--                 p.id,
+--                 any_value(p.path) as path,
+--                 p.branch,
+--                 list(p.meta_path ORDER BY pos) as meta_paths,
+--                 list(coalesce(m.id, 0)) as meta_path_ids,
+--                 any_value(p.length) as length,
+--             FROM (
+--                 SELECT
+--                     i.id,
+--                     i.path as path,
+--                     row_number() OVER (PARTITION BY id) as branch,
+--                     unnest(list_zip(
+--                         list_prepend('A', moves),
+--                         list_append(moves, 'A')
+--                     )::PAIR[]) as meta_path,
+--                     unnest(generate_series(1, len(p.moves) + 1)) as pos,
+--                     len(p.moves) + 1 as length,
+--                 FROM paths p
+--                 JOIN path_ids i ON i.path = (from_button, to_button)
+--             ) p
+--             LEFT JOIN path_ids m ON m.path = p.meta_path
+--             GROUP BY p.id, p.branch
+--         )
 
+--     SELECT
+--         id,
+--         path.a AS d1,
+--         path.b AS d2,
+--         path,
+--         branch,
+--         meta_path_ids,
+--         meta_paths,
+--         length
+--     FROM paths_lookup
+-- );
+
+-- Ideal moves stolen from reddit
+-- '<': { 'A': '>>^', 'v': '>', '^': '>^', '>': '>>', },
+-- 'A': { '^': '<', '>': 'v', '<': 'v<<', 'v': '<v', },
+-- '>': { 'A': '^', 'v': '<', '^': '<^', '<': '<<', },
+-- '^': { 'A': '>', 'v': 'v', '>': 'v>', '<': 'v<', },
+-- 'v': { 'A': '^>', '^': '^', '>': '>', '<': '<', },
+-- 
+-- Handwritten lookup for ideal moves. Still way to high for part 2.
+-- deep_dirpaths must be faulty even without branching...
+CREATE OR REPLACE TABLE dir_lookup AS (
     SELECT
-        id,
-        path.a AS d1,
-        path.b AS d2,
-        path,
-        branch,
-        meta_path_ids,
-        meta_paths,
-        length
-    FROM paths_lookup
+        id, d1, d2,
+        (d1, d2)::PAIR as path,
+        1 as branch,
+        moves as meta_path_ids,
+        -- NULL::PAIR[] as meta_paths,
+        len(moves) as length,
+    FROM (VALUES
+        (1, '<', '>', [10, 0, 6]),
+        (2, '<', 'A', [10, 0, 7, 15]),
+        (3, '<', '^', [10, 7, 15]),
+        (4, '<', 'v', [10, 6]),
+
+        (5, '>', '<', [9, 0, 2]),
+        (6, '>', 'A', [11, 15]),
+        (7, '>', '^', [9, 3, 15]),
+        (8, '>', 'v', [9, 2]),
+
+        ( 9, 'A', '<', [12, 17, 0, 2]),
+        (10, 'A', '>', [12, 19]),
+        (11, 'A', '^', [9, 2]),
+        (12, 'A', 'v', [9, 4, 19]),
+
+        (13, '^', '<', [12, 17, 2]),
+        (14, '^', '>', [12, 17, 2]),
+        (15, '^', 'A', [10, 6]),
+        (16, '^', 'v', [12, 19]),
+
+        (17, 'v', '<', [9, 2]),
+        (18, 'v', '>', [10, 6]),
+        (19, 'v', 'A', [11, 14, 6]),
+        (20, 'v', '^', [11, 15]),
+    ) _(id, d1, d2, moves)
 );
 
 -- First attempt to count how often a move is done at depth X for every dirpad combination
