@@ -34,18 +34,18 @@ SET VARIABLE example = '
 ';
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 7;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 'co,de,ka,ta';
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 1184;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 'hf,hz,lb,lm,ls,my,ps,qu,ra,uc,vi,xz,yv';
 
 .maxrows 75
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
 
-CREATE OR REPLACE VIEW edges AS (
+CREATE OR REPLACE TABLE edges AS (
     SELECT DISTINCT
         unnest(parts) as n1,
         unnest(list_reverse(parts)) as n2,
@@ -57,7 +57,7 @@ CREATE OR REPLACE VIEW edges AS (
     )
 );
 
-CREATE OR REPLACE VIEW parties AS (
+CREATE OR REPLACE TABLE parties AS (
     SELECT DISTINCT ON (nodes)
         list_sort([e1.n1, e1.n2, e2.n2]) as nodes,
         e1.mark OR e2.mark as mark,
@@ -66,10 +66,40 @@ CREATE OR REPLACE VIEW parties AS (
     ORDER BY nodes
 );
 
-CREATE OR REPLACE VIEW results AS (
+CREATE OR REPLACE TABLE largest_party AS (
+    WITH RECURSIVE
+        largest_party AS (
+            SELECT
+                row_number() OVER () as id,
+                [n1, n2] as nodes,
+            FROM edges
+            UNION ALL (
+                WITH
+                    connected AS (
+                        SELECT DISTINCT ON (nodes)
+                            list_sort(list_append(any_value(p.nodes), e.n1)) as nodes,
+                        FROM largest_party p, edges e
+                        WHERE e.n1 NOT IN p.nodes AND e.n2 IN p.nodes
+                        GROUP BY p.id, e.n1
+                        HAVING count() = len(any_value(p.nodes))
+                    )
+
+                SELECT
+                    row_number() OVER () as id,
+                    nodes,
+                FROM connected
+            )
+        )
+
+    FROM largest_party
+    ORDER BY len(nodes) desc
+    LIMIT 1
+);
+
+CREATE OR REPLACE TABLE results AS (
     SELECT
         (SELECT count() FROM parties WHERE mark) as part1,
-        NULL as part2
+        (SELECT list_aggregate(nodes, 'string_agg', ',') FROM largest_party) as part2,
 );
 
 
