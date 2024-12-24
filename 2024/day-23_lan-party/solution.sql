@@ -66,6 +66,9 @@ CREATE OR REPLACE TABLE parties AS (
     ORDER BY nodes
 );
 
+-- TODO Do something smarter than brute force, e.g.:
+--        - https://en.wikipedia.org/wiki/Bron%E2%80%93Kerbosch_algorithm
+--        - MAXCLIQUE Problem Solved Using SQL: https://www.thinkmind.org/articles/dbkda_2011_4_40_30097.pdf
 CREATE OR REPLACE TABLE largest_party AS (
     WITH RECURSIVE
         largest_party AS (
