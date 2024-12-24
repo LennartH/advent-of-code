@@ -1,0 +1,40 @@
+digraph example_net {
+    rankdir="LR"
+
+    {ntg  fgs} -> mjb
+    {y02  x01} -> tnw
+    {kwq  kpj} -> z05
+    {x00  x03} -> fst
+    {tgd  rvg} -> z01
+    {vdt  tnw} -> bfw
+    {bfw  frj} -> z10
+    {ffh  nrd} -> bqk
+    {y00  y03} -> djm
+    {y03  y00} -> psh
+    {bqk  frj} -> z08
+    {tnw  fst} -> frj
+    {gnj  tgd} -> z11
+    {bfw  mjb} -> z00
+    {x03  x00} -> vdt
+    {gnj  wpb} -> z02
+    {x04  y00} -> kjc
+    {djm  pbm} -> qhw
+    {nrd  vdt} -> hwm
+    {kjc  fst} -> rvg
+    {y04  y02} -> fgs
+    {y01  x02} -> pbm
+    {ntg  kjc} -> kwq
+    {psh  fgs} -> tgd
+    {qhw  tgd} -> z09
+    {pbm  djm} -> kpj
+    {x03  y03} -> ffh
+    {x00  y04} -> ntg
+    {bfw  bqk} -> z06
+    {nrd  fgs} -> wpb
+    {frj  qhw} -> z04
+    {bqk  frj} -> z07
+    {y03  x01} -> nrd
+    {hwm  bqk} -> z03
+    {tgd  rvg} -> z12
+    {tnw  pbm} -> gnj
+}
