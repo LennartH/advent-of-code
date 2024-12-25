@@ -161,6 +161,7 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
     listStartIndex = headerIndex + listHeader.length + 1;
   }
 
+  // TODO Insert at correct position if days are done out of order
   const beforeList = readmeContent.slice(0, listStartIndex);
   const afterList = readmeContent.slice(listStartIndex);
   const newEntry = readmeEntry({

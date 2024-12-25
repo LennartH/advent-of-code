@@ -1,9 +1,10 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
 ### 2024 [SQL]
-- **Day 25: Code Chronicle** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-25_code-chronicle/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/25)
+- **Day 25: Code Chronicle** (only Part 1) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-25_code-chronicle/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/25)
 - **Day 24: Crossed Wires** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-24_crossed-wires/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/24)
 - **Day 23: Lan Party** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-23_lan-party/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/23)
+- **Day 22: Monkey Market** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-22_monkey-market/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/22)
 - **Day 21: Keypad Conundrum** (only Part 1) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-21_keypad-conundrum/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/21)
 - **Day 20: Race Condition** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-20_race-condition/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/20)
 - **Day 19: Linen Layout** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-19_linen-layout/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/19)
