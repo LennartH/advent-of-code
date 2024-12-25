@@ -41,12 +41,10 @@ SET VARIABLE example = '
 ';
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\n\s*') as line;
 SET VARIABLE exampleSolution1 = 3;
-SET VARIABLE exampleSolution2 = NULL;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 3395;
-SET VARIABLE solution2 = NULL;
 
 .maxrows 75
 -- SET VARIABLE mode = 'example';
@@ -104,18 +102,15 @@ CREATE OR REPLACE VIEW key_lock_fits AS (
 );
 
 CREATE OR REPLACE VIEW results AS (
-    WITH
-        fitting AS (
-            SELECT 
-                lock_id, key_id 
-            FROM key_lock_fits 
-            GROUP BY lock_id, key_id 
-            HAVING bool_and(fits)
-        )
-
     SELECT
-        (SELECT count() FROM fitting) as part1,
-        NULL as part2
+        count() as part1
+    FROM (
+        SELECT 
+            lock_id, key_id 
+        FROM key_lock_fits 
+        GROUP BY lock_id, key_id 
+        HAVING bool_and(fits)
+    )
 );
 
 
@@ -126,13 +121,5 @@ CREATE OR REPLACE VIEW solution AS (
         if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
         result = expected as correct
     FROM results
-    UNION
-    SELECT 
-        'Part 2' as part,
-        part2 as result,
-        if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
-        result = expected as correct
-    FROM results
-    ORDER BY part
 );
 FROM solution;
