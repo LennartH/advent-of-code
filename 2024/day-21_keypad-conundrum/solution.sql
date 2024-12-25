@@ -163,7 +163,9 @@ CREATE OR REPLACE TABLE dir_moves AS (
 -- 3:  19 |          <   v      A       ^      >   A        v       <<       A     >        ^   A     >   A        v      A       ^   A
 -- 4:  47 |   v <<   A > A ^  > A   <   A  v > A ^ A   < v  A   <   AA >>  ^ A  v  A   <  ^ A > A  v  A ^ A   < v  A ^  > A   <   A > A
 -- 5: 123 | <vA<AA>>^AvA^A<Av>A^Av<<A>>^A<vA>A^A<A>Av<<A>A^>Av<<A>>^AAvAA<^A>A<vA^>Av<<A>^A>AvA^A<vA^>A<A>Av<<A>A^>A<Av>A^Av<<A>>^AvA^A
-
+--
+-- TOOD Find a solution without prebaked optimal moves (how to handle path branching without messing up the counts?)
+-- TODO Find a way to incorporate repeating moves (>>, vvv, etc.) into dir_move_lookup. Doing a LEFT JOIN is to easy to forget or mess up (see sequences query).
 CREATE OR REPLACE TABLE frequencies AS (
     WITH RECURSIVE
         dir_move_lookup AS (
@@ -247,7 +249,11 @@ CREATE OR REPLACE VIEW sequences AS (
                     any_value(n2) as n2,
                     sum(length) as length,
                 FROM (
+                    -- This is an example why repeating moves shouldn't be an edge case
+                    -- This was the last thing to fix (at least it also broke part 1) and
+                    -- correctly handling frequencies being NULL everywhere is easy to mess up
                     SELECT
+                        -- TODO This is not pretty (and duplicate of magic numbers)
                         unnest(if(f.depth IS NULL, [2, 25], [f.depth])) as depth,
                         n.id,
                         n.n1, n.n2,
@@ -302,8 +308,8 @@ CREATE OR REPLACE VIEW sequences AS (
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        sum(complexity) FILTER (depth < 10) as part1,
-        sum(complexity) FILTER (depth > 10) as part2,
+        sum(complexity) FILTER (depth = 2) as part1,
+        sum(complexity) FILTER (depth = 25) as part2,
     FROM sequences
 );
 
