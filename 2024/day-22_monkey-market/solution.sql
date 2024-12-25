@@ -1,30 +1,30 @@
 SET VARIABLE example = '
     1
-    10
-    100
+    2
+    3
     2024
 ';
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
-SET VARIABLE exampleSolution1 = 37327623;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution1 = 37990510;
+SET VARIABLE exampleSolution2 = 23;
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 17163502021;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 1938;
 
 .maxrows 75
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
 
-CREATE OR REPLACE VIEW buyers AS (
+CREATE OR REPLACE TABLE buyers AS (
     SELECT
         row_number() OVER () as id,
         line::BIGINT as secret,
     FROM query_table(getvariable('mode'))
 );
 
-CREATE OR REPLACE VIEW random_number_generator AS (
+CREATE OR REPLACE TABLE random_number_generator AS (
     WITH RECURSIVE
         rng AS (
             SELECT
@@ -53,13 +53,45 @@ CREATE OR REPLACE VIEW random_number_generator AS (
         )
 
     FROM rng
-    WHERE it = 2000
+);
+
+CREATE OR REPLACE TABLE price_optimizer AS (
+    WITH
+        price_data AS (
+            SELECT
+                *,
+                list(delta) OVER (PARTITION BY id ORDER BY it ROWS 3 PRECEDING) as seq,
+            FROM (
+                SELECT
+                    it,
+                    id,
+                    secret,
+                    secret % 10 as price,
+                    price - lag(price) OVER (PARTITION BY id ORDER BY it) as delta,
+                FROM random_number_generator
+            )
+        )
+
+    SELECT
+        seq,
+        sum(price) as total,
+    FROM (
+        SELECT
+            id,
+            first(price ORDER BY it) as price,
+            seq,
+        FROM price_data
+        WHERE it > 3
+        GROUP BY id, seq
+    )
+    GROUP BY seq
+    ORDER BY total desc
 );
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        (SELECT sum(secret) FROM random_number_generator) as part1,
-        NULL as part2
+        (SELECT sum(secret) FROM random_number_generator WHERE it = 2000) as part1,
+        (SELECT max(total) FROM price_optimizer) as part2,
 );
 
 
