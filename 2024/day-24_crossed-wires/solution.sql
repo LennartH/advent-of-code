@@ -47,54 +47,20 @@ SET VARIABLE example = '
     tgd XOR rvg -> z12
     tnw OR pbm -> gnj
 ';
-SET VARIABLE exampleSolution1 = 2024; -- 0011111101000
-SET VARIABLE exampleSolution2 = NULL;
-
--- SET VARIABLE example = '
---     x00: 1
---     x01: 0
---     x02: 1
---     x03: 1
---     y00: 1
---     y01: 0
---     y02: 0
---     y03: 1
-
---     x00 XOR y00 -> z00
---     y01 XOR x01 -> tdh
---     x00 AND y00 -> gtb
---     x01 AND y01 -> vpp
-
---     gtb AND tdh -> svv
---     tdh XOR gtb -> z01
-
---     svv OR vpp -> prf
---     x02 XOR y02 -> dvr
---     x02 AND y02 -> qvc
-
---     prf XOR dvr -> z02
---     prf AND dvr -> npq
-
---     npq OR qvc -> ptp
---     y03 XOR x03 -> tcb
-
---     tcb XOR ptp -> z03
--- ';
--- SET VARIABLE exampleSolution1 = 6; -- 0110
--- SET VARIABLE exampleSolution2 = NULL; -- 1101 + 1001 = 10110 | 13 + 9 = 22
-
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
+SET VARIABLE exampleSolution1 = 2024; -- 0011111101000
+SET VARIABLE exampleSolution2 = ''; -- not applicable to example
 
 CREATE OR REPLACE TABLE input AS
 SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 52038112429798;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 'cph,jqn,kwb,qkf,tgr,z12,z16,z24';
 
 .maxrows 75
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
 
-CREATE OR REPLACE VIEW gates AS (
+CREATE OR REPLACE TABLE gates AS (
     SELECT
         parts[1] as in1,
         parts[3] as in2,
@@ -109,7 +75,7 @@ CREATE OR REPLACE VIEW gates AS (
     )
 );
 
-CREATE OR REPLACE VIEW initial_values AS (
+CREATE OR REPLACE TABLE initial_values AS (
     SELECT
         parts[1] as node,
         parts[2]::BOOLEAN as active,
@@ -122,7 +88,7 @@ CREATE OR REPLACE VIEW initial_values AS (
     )
 );
 
-CREATE OR REPLACE VIEW nodes AS (
+CREATE OR REPLACE TABLE nodes AS (
     SELECT node
     FROM initial_values
     UNION
@@ -137,7 +103,7 @@ CREATE OR REPLACE VIEW nodes AS (
 -- - Only keep gates that don't have a value or if their value is input
 --   for a connection with missing inputs
 -- - Stop when all values are set (which should happen "naturally")
-CREATE OR REPLACE VIEW propagate AS (
+CREATE OR REPLACE TABLE propagate AS (
     WITH RECURSIVE
         final_nodes AS (
             SELECT 
@@ -219,10 +185,45 @@ CREATE OR REPLACE VIEW output AS (
     )
 );
 
+CREATE OR REPLACE TABLE faulty_gates AS (
+    -- With help from https://www.reddit.com/r/adventofcode/comments/1hla5ql/2024_day_24_part_2_a_guide_on_the_idea_behind_the/
+    WITH
+        faulty_outputs AS (
+            FROM gates
+            WHERE node != 'z45' AND node[1] = 'z' AND op != 'XOR'
+        ),
+        faulty_intermediates AS (
+            FROM gates
+            WHERE node[1] != 'z' 
+              AND in1[1] NOT IN ('x', 'y') AND in2 NOT IN ('x', 'y')
+              AND op = 'XOR'
+        ),
+        carry_feeder AS (
+            FROM gates
+            WHERE NOT (in1 IN ('x00', 'y00') OR in2 IN ('x00', 'y00'))
+              AND in1[1] IN ('x', 'y') AND in2[1] IN ('x', 'y')
+        ),
+        faulty_carry_feeder AS (
+            FROM carry_feeder f
+            WHERE f.op = 'XOR'
+            AND NOT EXISTS (FROM gates g WHERE g.op = 'XOR' AND (g.in1 = f.node OR g.in2 = f.node))
+            UNION ALL
+            FROM carry_feeder f
+            WHERE f.op = 'AND'
+            AND NOT EXISTS (FROM gates g WHERE g.op = 'OR' AND (g.in1 = f.node OR g.in2 = f.node))
+        )
+
+    FROM faulty_outputs
+    UNION
+    FROM faulty_intermediates
+    UNION
+    FROM faulty_carry_feeder
+);
+
 CREATE OR REPLACE VIEW results AS (
     SELECT
         (SELECT bits::UHUGEINT FROM output) as part1,
-        NULL as part2
+        (SELECT string_agg(node, ',' ORDER BY node) FROM faulty_gates) as part2
 );
 
 
