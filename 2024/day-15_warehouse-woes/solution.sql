@@ -308,7 +308,7 @@ CREATE OR REPLACE VIEW results AS (
                 idy * 100 + idx as gps,
             FROM updated_warehouse
             WHERE idm = (SELECT count() FROM moves) AND object = 'O'
-        )
+        ),
         scaled_boxes AS (
             SELECT 
                 idy, idx,
