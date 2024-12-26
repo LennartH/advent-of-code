@@ -27,7 +27,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 - **Day 2: Red-Nosed Reports** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-02_red-nosed-reports/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/2)
 - **Day 1: Historian Hysteria** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2024/day-01_historian-hysteria/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/1)
 
-### 2023
+### 2023 [TypeScript]
 - **Day 25: Snowverload** (only Part 1) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-25_snowverload/index.ts) / [Puzzle](https://adventofcode.com/2023/day/25)
 - **Day 24: Never Tell Me The Odds** (only Part 1) [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-24_never-tell-me-the-odds/index.ts) / [Puzzle](https://adventofcode.com/2023/day/24)
 - **Day 23: A Long Walk** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-23_a-long-walk/index.ts) / [Puzzle](https://adventofcode.com/2023/day/23)
@@ -54,7 +54,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 - **Day 2: Cube Conundrum** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-02_cube-conundrum/index.ts) / [Puzzle](https://adventofcode.com/2023/day/2)
 - **Day 1: Trebuchet Calibration** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2023/src/day-01_trebuchet-calibration/index.ts) / [Puzzle](https://adventofcode.com/2023/day/1)
 
-### 2022
+### 2022 [TypeScript]
 - **Day 21: Monkey Math** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-21_monkey-math/index.ts) / [Puzzle](https://adventofcode.com/2022/day/21)
 - **Day 20: Grove Positioning System** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-20_grove-positioning-system/index.ts) / [Puzzle](https://adventofcode.com/2022/day/20)
 - ~~**Day 19: Not Enough Minerals** [Solution](https://github.com/LennartH/advent-of-code/blob/main/2022/src/day-19_not-enough-minerals/index.ts) / [Puzzle](https://adventofcode.com/2022/day/19)~~
