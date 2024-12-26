@@ -15,9 +15,6 @@ SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampl
 SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2'));
 
 
-SELECT * FROM query_table(getvariable('mode'));
-
-.timer on
 WITH
     symbols AS (
         SELECT
