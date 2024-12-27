@@ -133,6 +133,9 @@ CREATE OR REPLACE TABLE visited AS (
     JOIN directions d ON d.dir = m.prev_dir
 );
 
+-- TODO optimize loop search: keep complete path when starting loop and stop when a tile "from the future" is encountered with the
+--      same direction (will always end leaving the map, no need to do all that everytime)
+--      Also when a past tile is encountered with the same direction it's a loop, no need to wait until we meet the start of the loop
 CREATE OR REPLACE MACRO step_id(idx, idy, dir) AS idx || '|' || idy || '|' || dir;
 CREATE OR REPLACE TABLE loops AS (
 WITH RECURSIVE

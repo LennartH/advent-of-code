@@ -42,6 +42,7 @@ CREATE OR REPLACE TABLE designs AS (
     OFFSET 1
 );
 
+-- TODO Can this be done without a map (like day 21)?
 CREATE OR REPLACE TABLE arrangements AS (
     WITH RECURSIVE
         arrangements AS (

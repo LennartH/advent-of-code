@@ -87,6 +87,8 @@ CREATE OR REPLACE TABLE parameters AS (
 --     FROM default_path
 -- );
 
+-- TODO Search from multiple points at the same time (equally distributed in x and y) and join paths on contact
+--      How to correctly determine the distance from the start?
 -- Raywalking pathfinder: 6-7 seconds
 CREATE OR REPLACE TABLE default_path AS (
     WITH RECURSIVE

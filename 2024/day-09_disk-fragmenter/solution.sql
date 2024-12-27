@@ -105,7 +105,8 @@ SELECT
 FROM file_blocks f
 POSITIONAL JOIN empty_blocks e);
 
-
+-- TODO use priority queue by file size: look for reddit post
+-- TODO iterate over gaps with free space instead of the next file
 CREATE OR REPLACE MACRO add_size(history, pos, size) AS 
 CASE
     WHEN map_contains(history, pos) THEN

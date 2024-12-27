@@ -146,6 +146,7 @@ CREATE OR REPLACE TABLE pathfinder AS (
 );
 
 -- TODO Solve Part 2 using this: https://www.reddit.com/r/adventofcode/comments/1hhiawu/2024_day_18_part_2_visualization_of_my_algorithm/
+--      or Disjoint Set Union: https://en.wikipedia.org/wiki/Disjoint-set_data_structure
 CREATE OR REPLACE TABLE pathbreaker AS (
     WITH RECURSIVE
         edges AS (FROM main.edges e),
