@@ -33,7 +33,7 @@ So you're using that hammer, even if the assignment is to write something on a p
 
 - In general DB engines are quite good at doing things "broad". Like doing the same thing to a lot of stuff and as long as it's
 not too complicated and you don't have to collect and unnest lists all the time it doesn't matter that much if a lot of records
-are created along the way (although space requirements are probably a lot higher)
+are created along the way (although space requirements are probably a lot higher compared to other languages)
   - For example [generating the random numbers](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-22_monkey-market/solution.sql#L27-L56)
   for _day 22_ creates ~4 million (~200 MiB) records in ~0.4 seconds and [simulating the robot movements](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-14_restroom-redoubt/solution.sql#L47-L77)
   for _day 14_ results in ~5 million records (~300 MiB) in ~2 seconds
@@ -77,14 +77,14 @@ to do that with SQL) and if what you're doing is a bit complex or costly, perfor
 - I don't think SQL is bad because of that, it just shows that you need to think differently about how to get things done and
 that you need to approach problems from unusual directions.
 - The only really bad thing I have to say about SQL is that it has just awful ergonomics. To understand a query you need to start
-reading somewhere from the middle (and it has to be the right middle as well) and continue upwards and downwards simultaneously. It
-absolutely makes sense that what you're grouping by is specified at the very end, but what you're doing with those groups is at
+reading somewhere from the middle (and it has to be the right middle as well) and continue upwards and downwards at the same time.
+It absolutely makes sense that what you're grouping by is specified at the very end, but what you're doing with those groups is at
 the start of the query. Put a [subquery in the middle](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-11_plutonian-pebbles/solution.sql#L36-L55)
 and you can be sure that everyone has to read that at least three times to get an idea about what's going on. Common table
 expressions help, but my point remains.
 
 
-**The ~~Ugly~~ Remarkable**
+**The** ~~Ugly~~ **Remarkable**
 
 - _Day 6_ was an early curveball. Not only was it the first time to do some kind of pathfinding, causing loops instead of preventing
 them made things extra spicy. Took me nearly two days to get that done and putting in the work to get [some kind of visual represenation](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-06_guard-gallivant/solution.sql#L230-L335)
@@ -97,7 +97,7 @@ logic and I find my approach quite neat (no recursive CTE necessary), even thoug
 All those optimizations payed of, because the solution runs in ~1 second, but the [python variant](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-12_garden-groups/solution.py)
 with a simple floodfill and direct translation of the side finding approach only takes ~0.15 seconds (and around 150 lines shorter).
 - The most difficult puzzle for me this year was _day 21_ by far. I chewed on that one for a few days before I had to put it aside
-and continue with the other days. In fact _day 21_ was the last one I solved before picking up my 50th star for the first time. At
+and continue with the other days. In fact _day 21_ was the last one I solved before picking up my 50th star (for the first time). At
 times I had over 1000 lines of commented code with previous attempts and explorative queries. I only got it to work, after looking
 up the optimal moves for the directional keypad and [manually define](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-21_keypad-conundrum/solution.sql#L113-L157)
 them to eliminate branching, so calculating the amount of button presses 25 robots deep doesn't explode or scramble the histogram.
@@ -109,12 +109,12 @@ this was the perfect balance between [incremental progress and insanity](https:/
 
 **Now What?**
 
-- Clean up some of the remaining "very bad stuff" ([I'm looking at you](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-13_claw-contraption/solution.sql#L175-L186) _day 13_)
-- There are a lot of ideas I had to leave behind I want to pick up again and approaches from other people to try out
+- Clean up the remaining "very bad stuff" ([I'm looking at you](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-13_claw-contraption/solution.sql#L175-L186) _day 13_)
+- There are a lot of ideas I had to leave behind I'd like to pick up again and approaches from other people to try out
   - Finally get a working A* implementation (e.g. for _day 18_ instead of [limiting the number of tracks](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-18_ram-run/solution.sql#L127-L136)
   for the BFS)
   - Implement Bron Kerbosch (or something comparable) to solve the max clique problem for _day 23_
-  - [And more](https://github.com/search?q=repo%3ALennartH%2Fadvent-of-code+path%3A%2F%5E2024%5C%2F%2F+TODO+OR+FIXME&type=code)
+  - [Other stuff](https://github.com/search?q=repo%3ALennartH%2Fadvent-of-code+path%3A%2F%5E2024%5C%2F%2F+TODO+OR+FIXME&type=code)
 - Revisit the early days to see if I would do things differently now
 - Try to find faster solutions for the >10 seconds days
 - Implement the solutions in Python for comparison
@@ -123,7 +123,8 @@ this was the perfect balance between [incremental progress and insanity](https:/
 Let's see how much of that I'm actually going to do.
 
 
-#### Running a Solution
+
+### Running a Solution
 
 - You need to have [DuckDB installed](https://duckdb.org/docs/installation), the solutions were implemented with version 1.1.3
 - You're input needs to be in a file with name `input` in the same directory as the `solution.sql` file
