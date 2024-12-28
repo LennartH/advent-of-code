@@ -5,7 +5,6 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 See [this](https://github.com/LennartH/advent-of-code/tree/main/2024#2024-sql-with-duckdb) for some thoughts about using SQL for AoC and [here](https://github.com/LennartH/advent-of-code/tree/main/2024#running-a-solution)
 about how to execute the SQL files.
 
-- **Day 2: Mawp** [Solution](./2024/day-02_mawp/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/2)
 - **Day 25: Code Chronicle** [Solution](./2024/day-25_code-chronicle/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/25)
 - **Day 24: Crossed Wires** [Solution](./2024/day-24_crossed-wires/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/24)
 - **Day 23: Lan Party** [Solution](./2024/day-23_lan-party/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/23)
