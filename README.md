@@ -5,6 +5,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 See [this](https://github.com/LennartH/advent-of-code/tree/main/2024#2024-sql-with-duckdb) for some thoughts about using SQL for AoC and [here](https://github.com/LennartH/advent-of-code/tree/main/2024#running-a-solution)
 about how to execute the SQL files.
 
+- **Day 2: Mawp** [Solution](./2024/day-02_mawp/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/2)
 - **Day 25: Code Chronicle** [Solution](./2024/day-25_code-chronicle/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/25)
 - **Day 24: Crossed Wires** [Solution](./2024/day-24_crossed-wires/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/24)
 - **Day 23: Lan Party** [Solution](./2024/day-23_lan-party/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/23)
@@ -32,6 +33,7 @@ about how to execute the SQL files.
 - **Day 1: Historian Hysteria** [Solution](./2024/day-01_historian-hysteria/solution.sql) / [Puzzle](https://adventofcode.com/2024/day/1)
 
 ### 2023 [TypeScript]
+
 - **Day 25: Snowverload** (only Part 1) [Solution](./2023/src/day-25_snowverload/index.ts) / [Puzzle](https://adventofcode.com/2023/day/25)
 - **Day 24: Never Tell Me The Odds** (only Part 1) [Solution](./2023/src/day-24_never-tell-me-the-odds/index.ts) / [Puzzle](https://adventofcode.com/2023/day/24)
 - **Day 23: A Long Walk** [Solution](./2023/src/day-23_a-long-walk/index.ts) / [Puzzle](https://adventofcode.com/2023/day/23)
@@ -59,6 +61,7 @@ about how to execute the SQL files.
 - **Day 1: Trebuchet Calibration** [Solution](./2023/src/day-01_trebuchet-calibration/index.ts) / [Puzzle](https://adventofcode.com/2023/day/1)
 
 ### 2022 [TypeScript]
+
 - **Day 21: Monkey Math** [Solution](./2022/src/day-21_monkey-math/index.ts) / [Puzzle](https://adventofcode.com/2022/day/21)
 - **Day 20: Grove Positioning System** [Solution](./2022/src/day-20_grove-positioning-system/index.ts) / [Puzzle](https://adventofcode.com/2022/day/20)
 - ~~**Day 19: Not Enough Minerals** [Solution](./2022/src/day-19_not-enough-minerals/index.ts) / [Puzzle](https://adventofcode.com/2022/day/19)~~

@@ -135,14 +135,14 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
 
   const listHeader = readmeListHeader(options);
   let headerIndex = readmeContent.indexOf(listHeader);
-  let listStartIndex = readmeContent.indexOf('-', headerIndex);
+  let listStartIndex = readmeContent.indexOf('\n-', headerIndex) + 1;
   if (headerIndex < 0) {
     const yearValue = Number(options.year);
     const yearHeaders = readmeContent.match(/### \d{4}/g) || [];
     const existingYears = yearHeaders?.map((h) => Number(h.split(' ')[1]));
 
     if (existingYears.length === 0 || yearValue < Math.min(...existingYears)) {
-      readmeContent += `\n${listHeader}\n`;
+      readmeContent += `\n${listHeader}\n\n`;
     } else {
       for (let i = 0; i < existingYears.length; i++) {
         const currentYear = existingYears[i];
@@ -155,7 +155,7 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
     }
 
     headerIndex = readmeContent.indexOf(listHeader);
-    listStartIndex = headerIndex + listHeader.length + 1;
+    listStartIndex = headerIndex + listHeader.length + 2;
   }
 
   // TODO Insert at correct position if days are done out of order
