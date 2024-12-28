@@ -10,9 +10,6 @@ import * as path from 'path';
 
 dotenv.config();
 
-// TODO Add tests
-
-// TODO Move templates into tool directory
 // TODO Determine path of this file and make source path relative to this file
 const aocTokenEnv = 'AOC_TOKEN';
 const readmePath = path.resolve('README.md');
@@ -126,8 +123,8 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
 
 // TODO Determine repository URL from git remote
 const solutionUrl: Record<string, ReturnType<typeof Handlebars.compile>> = {
-  typescript: Handlebars.compile('https://github.com/LennartH/advent-of-code/blob/main/{{year}}/src/{{directory}}/index.ts'),
-  duckdb: Handlebars.compile('https://github.com/LennartH/advent-of-code/blob/main/{{year}}/{{directory}}/solution.sql')
+  typescript: Handlebars.compile('./{{year}}/src/{{directory}}/index.ts'),
+  duckdb: Handlebars.compile('./{{year}}/{{directory}}/solution.sql')
 }
 const puzzleUrl = Handlebars.compile('https://adventofcode.com/{{year}}/day/{{day}}');
 const readmeListHeader = Handlebars.compile('### {{year}}');
