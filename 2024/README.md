@@ -4,10 +4,6 @@ I decided to do AoC 2024 with SQL, partially as a challenge and because my SQL h
 about how these kind of problems can be solved in SQL. I chose DuckDB because it's [easy to setup](https://duckdb.org/why_duckdb#simple),
 [reasonably fast](https://duckdb.org/why_duckdb#fast) and has some [nice QoL features](https://duckdb.org/docs/sql/dialect/friendly_sql).
 
-- I did the previous years in TypeScript using a [template](../template/typescript/day-{{day}}_{{title}}/index.test.ts) with separate
-tests for example and real input for both parts and tried to replicate something similar for my SQL template, which is probably not a
-common use case. I found a [somewhat comparable setup](../template/duckdb/day-{{day}}_{{title}}/solution.sql) using variables and
-some utility functions, but it definetely adds some bloat.
 - DuckDB also has some unusual features (e.g. [MACROs](https://duckdb.org/docs/sql/statements/create_macro),
 [list comprehensions](https://duckdb.org/docs/sql/functions/list#list-comprehension) and [lambdas](https://duckdb.org/docs/sql/functions/lambda)),
 but using those felt like cheating, so I tried to limit their usage as much as possible (except for troubleshooting/debugging).
@@ -15,7 +11,7 @@ but using those felt like cheating, so I tried to limit their usage as much as p
 No imperative elements like some [other SQL dialects](https://www.postgresql.org/docs/current/plpgsql-control-structures.html#PLPGSQL-CONTROL-STRUCTURES-LOOPS).
 So you're using that hammer, even if the assignment is to write something on a piece of paper. You also have to think differently about
 "looping over stuff and doing things", because recursive CTEs come with some strings attached.
-  - Basically it's split into two parts, the first sets up the initial state (e.g. for _day 10_ [all coordinates with height 0](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-10_hoof-it/solution.sql#L34-L40))
+  - Basically they're split into two parts, the first sets up the initial state (e.g. for _day 10_ [all coordinates with height 0](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-10_hoof-it/solution.sql#L34-L40))
   and the second part is "called with the previous state" and produces the next one. This continues until that second parts results
   in 0 records. Finally all states are combined with the specified set operation (e.g. `UNION`) to the end result.
   - This means you're logic can only access the information of the previous iteration and if you need stuff from before (e.g. "jumping wires" in _day 24_)
