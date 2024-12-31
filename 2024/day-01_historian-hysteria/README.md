@@ -29,10 +29,13 @@ The input is two lists of numbers "side by side", for example:
 - Use compact subqueries to make solution more concise
 - Simplify join for similarity score calculation
 
-#### Runtimes
+#### Stats
 
-|      Variant | Runtime |
-| -----------: | ------- |
-|          SQL | ~0.04s  |
-| Original SQL | ~0.04s  |
-|       Python | ~0.05s  |
+|                                 Variant | Runtime[^runtime] | LoC[^loc] |
+| --------------------------------------: | ----------------- | --------- |
+|                   [SQL](./solution.sql) | ~0.04s            | 67        |
+| [Original SQL](./solution.original.sql) | ~0.04s            | 74        |
+|                 [Python](./solution.py) | ~0.05s            | 55        |
+
+[^runtime]: Running `time <cmd to run solution>` several times and averaging by eyesight.
+[^loc]: Number of non-empty lines (comments count) using `grep -cve '^\s*$' *.{sql,py}`. For Python it's the sum of the test and solution file.
