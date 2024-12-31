@@ -6,74 +6,69 @@ SET VARIABLE example = '
     3   9
     3   3
 ';
-CREATE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
+CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 11;
 SET VARIABLE exampleSolution2 = 31;
 
-CREATE TABLE input AS
-SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line
-FROM read_text('input');
+CREATE OR REPLACE TABLE input AS
+SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 1873376;
 SET VARIABLE solution2 = 18997088;
 
-SET VARIABLE mode = 'input'; -- example or input
-SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
-SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2'));
+.maxrows 75
+-- SET VARIABLE mode = 'example';
+SET VARIABLE mode = 'input';
+
+CREATE OR REPLACE TABLE locations AS (
+    FROM query_table(getvariable('mode'))
+    SELECT
+        split_part(line, '   ', 1)::INTEGER as l,
+        split_part(line, '   ', 2)::INTEGER as r,
+);
+
+CREATE OR REPLACE TABLE results AS (
+    WITH
+        distance AS (
+            FROM (FROM locations SELECT l ORDER BY l)
+            POSITIONAL JOIN (FROM locations SELECT r ORDER BY r)
+            SELECT abs(l - r) as d
+        ),
+        location_counts AS (
+            FROM locations
+            SELECT
+                r as l,
+                count() as count,
+            GROUP BY r
+        ),
+        similarity AS (
+            FROM locations
+            JOIN location_counts USING (l)
+            SELECT
+                l,
+                count,
+                l * count as score,
+        )
+
+    SELECT
+        (FROM distance SELECT sum(d)) as part1,
+        (FROM similarity SELECT sum(score)) as part2,
+);
 
 
-WITH
-    location_ids AS (
-        SELECT
-            cast(split_part(line, '   ', 1) AS INTEGER) as location_id_a,
-            cast(split_part(line, '   ', 2) AS INTEGER) as location_id_b
-        FROM query_table(getvariable('mode'))
-    ),
-    ordered_location_ids_a AS (
-        SELECT 
-            row_number() OVER (ORDER BY location_id_a asc) as idx,
-            location_id_a
-        FROM location_ids
-    ),
-    ordered_location_ids_b AS (
-        SELECT 
-            row_number() OVER (ORDER BY location_id_b asc) as idx,
-            location_id_b 
-        FROM location_ids
-    ),
-    location_id_distance AS (
-        SELECT 
-            *,
-            @(location_id_a - location_id_b) as distance 
-        FROM ordered_location_ids_a 
-        JOIN ordered_location_ids_b USING (idx)
-        ORDER BY idx
-    ),
-    location_b_count AS (
-        SELECT
-            location_id_b,
-            count() as count
-        FROM location_ids
-        GROUP BY location_id_b
-    ),
-     similarity AS (
-        SELECT
-            location_id_a,
-            count,
-            location_id_a * count as score
-        FROM location_ids
-        LEFT JOIN location_b_count ON location_ids.location_id_a = location_b_count.location_id_b
-    )
-
-SELECT 
-    'Part 1' as part,
-    sum(distance) as solution,
-    getvariable('expected1') as expected,
-    solution = expected as correct
-FROM location_id_distance
-UNION
-SELECT 
-    'Part 2' as part,
-    sum(score) as solution,
-    getvariable('expected2') as expected,
-    solution = expected as correct
-FROM similarity;
+CREATE OR REPLACE VIEW solution AS (
+    SELECT 
+        'Part 1' as part,
+        part1 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
+        result = expected as correct
+    FROM results
+    UNION
+    SELECT 
+        'Part 2' as part,
+        part2 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
+        result = expected as correct
+    FROM results
+    ORDER BY part
+);
+FROM solution;

@@ -135,32 +135,34 @@ Let's see how much of that I'm actually going to do.
 
 #### Runtimes
 
-Times are for both parts including DuckDB startup and reading the input from file measured with `time duckdb < solution.sql` (system info: AMD Ryzen 7 2700X, 32 GiB memory)
-|                                                                            Day | Runtime |
-| -----------------------------------------------------------------------------: | ------- |
-|          [Day 1: Historian Hysteria](./day-01_historian-hysteria/solution.sql) | ~0.03s  |
-|            [Day 2: Red-Nosed Reports](./day-02_red-nosed-reports/solution.sql) | ~0.08s  |
-|                      [Day 3: Mull It Over](./day-03_mull-it-over/solution.sql) | ~0.02s  |
-|                      [Day 4: Ceres Search](./day-04_ceres-search/solution.sql) | ~0.02s  |
-|                        [Day 5: Print Queue](./day-05_print-queue/solution.sql) | ~0.85s  |
-|                [Day 6: Guard Gallivant](./day-06_guard-gallivant/solution.sql) | ~15s    |
-|                    [Day 7: Bridge Repair](./day-07_bridge-repair/solution.sql) | ~45s    |
-|    [Day 8: Resonant Collinearity](./day-08_resonant-collinearity/solution.sql) | ~0.04s  |
-|                [Day 9: Disk Fragmenter](./day-09_disk-fragmenter/solution.sql) | ~40s    |
-|                               [Day 10: Hoof It](./day-10_hoof-it/solution.sql) | ~0.2s   |
-|           [Day 11: Plutonian Pebbles](./day-11_plutonian-pebbles/solution.sql) | ~0.7s   |
-|                   [Day 12: Garden Groups](./day-12_garden-groups/solution.sql) | ~1s     |
-|             [Day 13: Claw Contraption](./day-13_claw-contraption/solution.sql) | ~0.15s  |
-|             [Day 14: Restroom Redoubt](./day-14_restroom-redoubt/solution.sql) | 2-3s    |
-|                 [Day 15: Warehouse Woes](./day-15_warehouse-woes/solution.sql) | ~4m     |
-|                   [Day 16: Reindeer Maze](./day-16_reindeer-maze/solution.sql) | ~24s    |
-| [Day 17: Chronospatial Computer](./day-17_chronospatial-computer/solution.sql) | ~4.5s   |
-|                               [Day 18: RAM Run](./day-18_ram-run/solution.sql) | ~11.5s  |
-|                     [Day 19: Linen Layout](./day-19_linen-layout/solution.sql) | ~4.75s  |
-|                 [Day 20: Race Condition](./day-20_race-condition/solution.sql) | ~11s    |
-|             [Day 21: Keypad Conundrum](./day-21_keypad-conundrum/solution.sql) | ~0.1s   |
-|                   [Day 22: Monkey Market](./day-22_monkey-market/solution.sql) | ~1.5s   |
-|                           [Day 23: Lan Party](./day-23_lan-party/solution.sql) | ~22s    |
-|                   [Day 24: Crossed Wires](./day-24_crossed-wires/solution.sql) | ~0.3s   |
-|                 [Day 25: Code Chronicle](./day-25_code-chronicle/solution.sql) | ~0.07s  |
-|                                                                      **Total** | ~7m 5s  |
+Times are for both parts including DuckDB startup and reading the input from file measured like this `time duckdb < solution.sql` (system info: AMD Ryzen 7 2700X, 32 GiB memory)
+
+|                                                                            Day | SQL                                                | Original SQL                                                | Python                                            |
+| -----------------------------------------------------------------------------: | -------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------- |
+|                       [Day 1: Historian Hysteria](./day-01_historian-hysteria) | [~0.04s](./day-01_historian-hysteria/solution.sql) | [~0.04s](./day-01_historian-hysteria/solution.original.sql) | [~0.05s](./day-01_historian-hysteria/solution.py) |
+|            [Day 2: Red-Nosed Reports](./day-02_red-nosed-reports/solution.sql) |                                                    | ~0.08s                                                      |                                                   |
+|                      [Day 3: Mull It Over](./day-03_mull-it-over/solution.sql) |                                                    | ~0.02s                                                      |                                                   |
+|                      [Day 4: Ceres Search](./day-04_ceres-search/solution.sql) |                                                    | ~0.02s                                                      |                                                   |
+|                        [Day 5: Print Queue](./day-05_print-queue/solution.sql) |                                                    | ~0.85s                                                      |                                                   |
+|                [Day 6: Guard Gallivant](./day-06_guard-gallivant/solution.sql) |                                                    | ~15s                                                        |                                                   |
+|                    [Day 7: Bridge Repair](./day-07_bridge-repair/solution.sql) |                                                    | ~45s                                                        |                                                   |
+|    [Day 8: Resonant Collinearity](./day-08_resonant-collinearity/solution.sql) |                                                    | ~0.04s                                                      |                                                   |
+|                [Day 9: Disk Fragmenter](./day-09_disk-fragmenter/solution.sql) |                                                    | ~40s                                                        |                                                   |
+|                               [Day 10: Hoof It](./day-10_hoof-it/solution.sql) |                                                    | ~0.2s                                                       |                                                   |
+|           [Day 11: Plutonian Pebbles](./day-11_plutonian-pebbles/solution.sql) |                                                    | ~0.7s                                                       |                                                   |
+|                   [Day 12: Garden Groups](./day-12_garden-groups/solution.sql) |                                                    | ~1s                                                         |                                                   |
+|             [Day 13: Claw Contraption](./day-13_claw-contraption/solution.sql) |                                                    | ~0.15s                                                      |                                                   |
+|             [Day 14: Restroom Redoubt](./day-14_restroom-redoubt/solution.sql) |                                                    | 2-3s                                                        |                                                   |
+|                 [Day 15: Warehouse Woes](./day-15_warehouse-woes/solution.sql) |                                                    | ~4m                                                         |                                                   |
+|                   [Day 16: Reindeer Maze](./day-16_reindeer-maze/solution.sql) |                                                    | ~24s                                                        |                                                   |
+| [Day 17: Chronospatial Computer](./day-17_chronospatial-computer/solution.sql) |                                                    | ~4.5s                                                       |                                                   |
+|                               [Day 18: RAM Run](./day-18_ram-run/solution.sql) |                                                    | ~11.5s                                                      |                                                   |
+|                     [Day 19: Linen Layout](./day-19_linen-layout/solution.sql) |                                                    | ~4.75s                                                      |                                                   |
+|                 [Day 20: Race Condition](./day-20_race-condition/solution.sql) |                                                    | ~11s                                                        |                                                   |
+|             [Day 21: Keypad Conundrum](./day-21_keypad-conundrum/solution.sql) |                                                    | ~0.1s                                                       |                                                   |
+|                   [Day 22: Monkey Market](./day-22_monkey-market/solution.sql) |                                                    | ~1.5s                                                       |                                                   |
+|                           [Day 23: Lan Party](./day-23_lan-party/solution.sql) |                                                    | ~22s                                                        |                                                   |
+|                   [Day 24: Crossed Wires](./day-24_crossed-wires/solution.sql) |                                                    | ~0.3s                                                       |                                                   |
+|                 [Day 25: Code Chronicle](./day-25_code-chronicle/solution.sql) |                                                    | ~0.07s                                                      |                                                   |
+|                                                                      **Total** |                                                    | ~7m 5s                                                      |                                                   |
+
