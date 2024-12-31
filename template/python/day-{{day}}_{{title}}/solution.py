@@ -1,3 +1,7 @@
+import math
+
+from pathlib import Path
+
 # region Types and Globals
 
 # endregion
@@ -6,13 +10,13 @@
 def solve_part1(input: str) -> int:
     lines = [line.strip() for line in input.splitlines()]
     # TODO implement solution
-    return None
+    return math.nan
 
 
 def solve_part2(input: str) -> int:
     lines = [line.strip() for line in input.splitlines()]
     # TODO implement solution
-    return None
+    return math.nan
 
 
 # region Shared Code

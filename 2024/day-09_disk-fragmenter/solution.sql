@@ -33,6 +33,8 @@ SET VARIABLE example = '
 -- -- IN: 0.....1..2.3.44.5.6.777777.88
 -- -- P1: 0887771772736445.............
 -- -- P2: 0886531442..........777777...
+-- SET VARIABLE exampleSolution1 = 595;
+-- SET VARIABLE exampleSolution2 = 1106;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 1928;
