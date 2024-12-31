@@ -6,13 +6,22 @@ import dotenv from 'dotenv';
 import * as Handlebars from 'handlebars';
 import { kebabCase, startCase } from 'lodash';
 import * as fs from 'node:fs/promises';
+import * as fssync from 'fs';
 import * as path from 'path';
 
-dotenv.config();
+const rootPath = path.resolve(__dirname, '../..');
 
-// TODO Determine path of this file and make source path relative to this file
+dotenv.config({
+  path: [
+    '.env',
+    path.join(rootPath, '.env'),
+  ]
+});
+
 const aocTokenEnv = 'AOC_TOKEN';
-const readmePath = path.resolve('README.md');
+const readmePath = path.join(rootPath, 'README.md');  // FIXME this changes the actual readme when testing stuff...
+const templateDir = path.join(rootPath, 'template');
+const languages = fssync.readdirSync(templateDir, { withFileTypes: true }) .filter(e => e.isDirectory()) .map(e => e.name);
 
 const now = new Date();
 
@@ -26,11 +35,10 @@ const currentYear = now.getFullYear();
 const maxYear = now.getMonth() === 11 ? currentYear : currentYear - 1;
 const currentYearDefault = currentYear.toString();
 
-// TODO Infer language choices from templates directory
 // TODO Add option to dry-run
 const command = new Command()
   .argument('<output>', 'Path to the output directory')
-  .addOption(new Option('-l, --language <language>', 'Template language to use').choices(['typescript', 'duckdb']).default('typescript').makeOptionMandatory())
+  .addOption(new Option('-l, --language <language>', 'Template language to use').choices(languages).default('python').makeOptionMandatory())
   .requiredOption('-t, --title <title>', 'Title of the puzzle')
   .requiredOption('-d, --day <number>', `Number of the day [${minDay}-${maxDay}]`, parseDayNumber, currentDayDefault)
   .option('-y, --year <number>', `Number of the year [${minYear}-${maxYear}]`, parseYear, currentYearDefault)
@@ -80,24 +88,33 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
     day: options.day.padStart(2, '0')
   };
 
-  const sourcePath = path.resolve(__dirname, `../../template/${options.language}/day-{{day}}_{{title}}`);
+  const sourcePath = path.resolve(templateDir, `${options.language}/day-{{day}}_{{title}}`);
   const outputDirectory = renderTemplate(path.basename(sourcePath), pathOptions);
   const outputPath = path.join(path.resolve(output), outputDirectory);
-  const outputExists = await fs.access(outputPath, fs.constants.F_OK)
+  const outputPathExists = await fs.access(outputPath, fs.constants.F_OK)
     .then(() => true)
     .catch((error) => error.code === 'ENOENT' ? false : Promise.reject(error));
-  // TODO Do not abort if directory exists, print warning, skip existing files (with warning/error)
-  if (outputExists) {
-    console.log(`Error - Output directory already exists: ${path.relative(process.cwd(), outputPath)}`);
-    return;
+  if (!outputPathExists) {
+    await fs.mkdir(outputPath, { recursive: true });
+  } else if (options.updateReadme) {
+    console.log("Warning - Output directory already exists, readme will not be updated");
+    options.updateReadme = false;
   }
-  await fs.mkdir(outputPath, { recursive: true });
 
   const templateFiles = await fs.readdir(sourcePath);
   for (const templateFile of templateFiles) {
     const outputFilename = renderTemplate(templateFile, pathOptions);
+    const outputFilePath = path.join(outputPath, outputFilename);
+    const outputFileExists = await fs.access(outputFilePath, fs.constants.F_OK)
+      .then(() => true)
+      .catch((error) => error.code === 'ENOENT' ? false : Promise.reject(error));
+    if (outputFileExists) {
+      console.log(`Warning - Skipping ${outputFilename}: File already exists`);
+      continue;
+    }
+
     const outputContent = await renderFile(path.join(sourcePath, templateFile), options);
-    await fs.writeFile(path.join(outputPath, outputFilename), outputContent);
+    await fs.writeFile(outputFilePath, outputContent);
   }
   console.log(`Files have been generated at ${path.relative(process.cwd(), outputPath)}`);
 
@@ -114,17 +131,27 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
       console.log(`Error: ${aocTokenEnv} not found`)
     } else {
       const {year, day} = options;
+      // TODO Implement caching independent from title (e.g. cache downloaded input files by year and day in $HOME/.aoctl/inputs)
       const inputFilePath = path.join(outputPath, 'input');
-      await fetchPuzzleInput(year, day, inputFilePath);
+      const inputFileExists = await fs.access(inputFilePath, fs.constants.F_OK)
+        .then(() => true)
+        .catch((error) => error.code === 'ENOENT' ? false : Promise.reject(error));
+      if (inputFileExists) {
+        console.log(`Info - Input file already exists`);
+      } else {
+        await fetchPuzzleInput(year, day, inputFilePath);
+      }
     }
   }
 }
 
 
-// TODO Determine repository URL from git remote
+// TODO Build relative path link from config instead of hard coded paths
+// TODO Handle days with solutions in different languages
 const solutionUrl: Record<string, ReturnType<typeof Handlebars.compile>> = {
   typescript: Handlebars.compile('./{{year}}/src/{{directory}}/index.ts'),
-  duckdb: Handlebars.compile('./{{year}}/{{directory}}/solution.sql')
+  duckdb: Handlebars.compile('./{{year}}/{{directory}}/solution.sql'),
+  python: Handlebars.compile('./{{year}}/{{directory}}/solution.py'),
 }
 const puzzleUrl = Handlebars.compile('https://adventofcode.com/{{year}}/day/{{day}}');
 const readmeListHeader = Handlebars.compile('### {{year}}');
@@ -176,6 +203,7 @@ async function fetchPuzzleInput(year: number | string, day: number | string, out
   try {
     const response = await axios.get(`https://adventofcode.com/${year}/day/${day}/input`, {
       headers: {
+        'User-Agent': 'github.com/LennartH/advent-of-code/tree/main/tool',
         'Cookie': `session=${process.env[aocTokenEnv]}`
       }
     });
