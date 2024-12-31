@@ -21,15 +21,8 @@ def solve_part2(input: str) -> int:
 
 # region Shared Code
 def parse_lists(input: str) -> tuple[list[int], list[int]]:
-    lines = [line.strip() for line in input.splitlines()]
-    left = []
-    right = []
-    for line in lines:
-        l, r = line.split('   ')
-        left.append(int(l))
-        right.append(int(r))
-
-    return left, right
+    left, right = zip(*[map(int, line.split()) for line in input.splitlines()])
+    return list(left), list(right)
 # endregion
 
 
