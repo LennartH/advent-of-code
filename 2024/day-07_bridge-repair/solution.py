@@ -31,7 +31,6 @@ def parse_calibrations(input: str) -> list[Calibration]:
     return calibrations
 
 
-# ~0.08s, using string instead of math operations doesn't really change runtime
 def r2l_is_valid_calibration(calibration: Calibration, with_concatenation: bool) -> bool:
     target, operands = calibration
     tallies = [target]
@@ -51,7 +50,6 @@ def r2l_is_valid_calibration(calibration: Calibration, with_concatenation: bool)
     return operands[0] in tallies
 
 
-# ~2.3s
 def pruned_is_valid_calibration(calibration: Calibration, with_concatenation: bool) -> bool:
     target, operands = calibration
     tallies = [operands[0]]
@@ -68,7 +66,6 @@ def pruned_is_valid_calibration(calibration: Calibration, with_concatenation: bo
     return target in tallies
 
 
-# ~4s
 def is_valid_calibration(calibration: Calibration, with_concatenation: bool) -> bool:
     target, operands = calibration
     tallies = [operands[0]]
@@ -82,8 +79,7 @@ def is_valid_calibration(calibration: Calibration, with_concatenation: bool) -> 
         tallies = next_tallies
     return target in tallies
 
-# string concatenation: naive ~7.4s, pruned ~4s
-#                 math: naive ~4s,   pruned ~2.3s
+
 def concatenation(a: int, b: int) -> int:
     digits = math.floor(math.log10(b)) + 1
     return (a * 10**digits) + b

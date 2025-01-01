@@ -35,53 +35,59 @@ CREATE OR REPLACE TABLE calculations AS (
         calculations AS (
             FROM calibrations
             SELECT
-                2 as ido,
+                length as ido,
                 target,
                 operands,
                 false as uses_concatenation,
-                operands[1]::BIGINT as tally,
-                length,
+                target as tally,
                 false as finished,
             UNION ALL
             FROM (
                 -- Addition
                 FROM calculations
                 SELECT
-                    ido, target, operands, length, finished,
+                    ido, target, operands, finished,
                     uses_concatenation,
-                    tally + operands[ido] as next_tally,
+                    tally - operands[ido] as next_tally,
+                WHERE next_tally > 0
                 UNION ALL
                 -- Multiplication
                 FROM calculations
                 SELECT
-                    ido, target, operands, length, finished,
+                    ido, target, operands, finished,
                     uses_concatenation,
-                    tally * operands[ido] as next_tally,
+                    tally // operands[ido] as next_tally,
+                WHERE tally % operands[ido] = 0
                 UNION ALL
                 -- Concatenation
-                FROM calculations
-                SELECT
-                    ido, target, operands, length, finished,
-                    true as uses_concatenation,
-                    -- (tally || operands[ido])::BIGINT as next_tally,
-                    tally * 10**(floor(log10(operands[ido])) + 1) + operands[ido] as next_tally,
+                FROM (
+                    FROM calculations
+                    SELECT
+                        ido, target, operands, finished,
+                        true as uses_concatenation,
+                        floor(log10(tally)) + 1 as tally_length,
+                        floor(log10(operands[ido])) + 1 as operand_length,
+                        -- a**b always returns a DOUBLE, fdiv and fmod prevent subsequent errors
+                        fdiv(tally, 10**operand_length) as next_tally,
+                    WHERE tally_length > operand_length AND fmod(tally, 10**operand_length) = operands[ido]
+                )
+                SELECT * EXCLUDE (tally_length, operand_length)
             )
             SELECT
-                ido + 1 as ido,
+                ido - 1 as ido,
                 target,
                 operands,
                 uses_concatenation,
                 next_tally as tally,
-                length,
-                ido = length as finished,
-            WHERE NOT finished AND next_tally <= target
+                ido = 2 as finished,
+            WHERE NOT finished
         )
 
     FROM calculations
     SELECT 
         target,
         uses_concatenation,
-    WHERE finished AND tally = target
+    WHERE finished AND tally = operands[1]
 );
 
 CREATE OR REPLACE TABLE results AS (
