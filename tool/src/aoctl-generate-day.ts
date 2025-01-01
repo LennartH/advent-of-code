@@ -36,6 +36,7 @@ const maxYear = now.getMonth() === 11 ? currentYear : currentYear - 1;
 const currentYearDefault = currentYear.toString();
 
 // TODO Add option to dry-run
+// TODO Support adding additional language to an existing solution with fewer options (or as separate command)
 const command = new Command()
   .argument('<output>', 'Path to the output directory')
   .addOption(new Option('-l, --language <language>', 'Template language to use').choices(languages).default('python').makeOptionMandatory())

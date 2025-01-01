@@ -6,7 +6,7 @@ SET VARIABLE exampleSolution1 = NULL;
 SET VARIABLE exampleSolution2 = NULL;
 
 CREATE OR REPLACE TABLE input AS
-SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
+FROM read_text('input') SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line;
 SET VARIABLE solution1 = NULL;
 SET VARIABLE solution2 = NULL;
 
@@ -15,11 +15,11 @@ SET VARIABLE mode = 'example';
 -- SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE VIEW parser AS (
+    FROM query_table(getvariable('mode'))
     SELECT
         row_number() OVER () as idx,
         string_split(line, ' ') as parts,
         cast(string_split(line, ' ') as INTEGER[]) as values
-    FROM query_table(getvariable('mode'))
 );
 
 -- Do stuff
@@ -32,19 +32,19 @@ CREATE OR REPLACE VIEW results AS (
 
 
 CREATE OR REPLACE VIEW solution AS (
+    FROM results
     SELECT 
         'Part 1' as part,
         part1 as result,
         if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
         result = expected as correct
-    FROM results
     UNION
+    FROM results
     SELECT 
         'Part 2' as part,
         part2 as result,
         if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
         result = expected as correct
-    FROM results
     ORDER BY part
 );
 FROM solution;
