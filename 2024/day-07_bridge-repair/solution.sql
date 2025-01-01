@@ -9,87 +9,95 @@ SET VARIABLE example = '
     21037: 9 7 18 13
     292: 11 6 16 20
 ';
-CREATE OR REPLACE TABLE example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
+CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 3749;
 SET VARIABLE exampleSolution2 = 11387;
 
 CREATE OR REPLACE TABLE input AS
-SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text('input');
+SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
 SET VARIABLE solution1 = 21572148763543;
 SET VARIABLE solution2 = 581941094529163;
 
-SET VARIABLE mode = 'input'; -- example or input
+.maxrows 75
+-- SET VARIABLE mode = 'example';
+SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE VIEW calibrations AS (
-    SELECT
-        idx,
-        expected,
-        string_split(operands, ' ')::BIGINT[] as operands,
     FROM (
+        FROM query_table(getvariable('mode'))
         SELECT
             row_number() OVER () as idx,
-            string_split(line, ':')[1]::BIGINT as expected,
+            string_split(line, ':')[1]::BIGINT as target,
             string_split(line, ':')[2].trim() as operands,
-        FROM query_table(getvariable('mode'))
     )
+    SELECT
+        idx,
+        target,
+        string_split(operands, ' ')::BIGINT[] as operands,
 );
 
 CREATE OR REPLACE TABLE calculations AS (
-WITH RECURSIVE
-    calculations AS (
-        SELECT
-            idx, 
-            2 as ido,
-            expected,
-            operands,
-            []::varchar[] as operators,
-            operands[1] as result,
-            false as finished,
-        FROM calibrations
-        UNION ALL
-        SELECT
-            idx,
-            ido + 1 as ido,
-            expected,
-            operands,
-            unnest([
-                array_append(operators, '+'),
-                array_append(operators, '*'),
-                array_append(operators, '||')
-            ]) as operators,
-            unnest([
-                result + operands[ido],
-                result * operands[ido],
-                (result || operands[ido])::BIGINT
-            ]) as result,
-            ido = len(operands) as finished,
-        FROM calculations
-        WHERE ido <= len(operands) AND result <= expected
-    )
-SELECT
-    * EXCLUDE (ido, finished),
-    result = expected as correct,
-FROM calculations
-WHERE finished);
+    WITH RECURSIVE
+        calculations AS (
+            FROM calibrations
+            SELECT
+                idx, 
+                2 as ido,
+                target,
+                operands,
+                []::varchar[] as operators,
+                operands[1] as result,
+                false as finished,
+            UNION ALL
+            FROM calculations
+            SELECT
+                idx,
+                ido + 1 as ido,
+                target,
+                operands,
+                unnest([
+                    array_append(operators, '+'),
+                    array_append(operators, '*'),
+                    array_append(operators, '||')
+                ]) as operators,
+                unnest([
+                    result + operands[ido],
+                    result * operands[ido],
+                    (result || operands[ido])::BIGINT
+                ]) as result,
+                ido = len(operands) as finished,
+            WHERE ido <= len(operands) AND result <= target
+        )
 
-CREATE OR REPLACE VIEW solution AS (
-    SELECT
-        (SELECT sum(DISTINCT result) FROM calculations WHERE correct AND '||' NOT IN operators) as part1,
-        (SELECT sum(DISTINCT result) FROM calculations WHERE correct) as part2,
+    FROM calculations
+    SELECT 
+        target,
+        '||' IN operators as uses_concatenation,
+    WHERE finished AND result = target
 );
 
-SET VARIABLE expected1 = if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1'));
-SET VARIABLE expected2 = if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2'));
-SELECT 
-    'Part 1' as part,
-    part1 as result,
-    getvariable('expected1') as expected,
-    result = expected as correct
-FROM solution
-UNION
-SELECT 
-    'Part 2' as part,
-    part2 as result,
-    getvariable('expected2') as expected,
-    result = expected as correct
+CREATE OR REPLACE VIEW results AS (
+    FROM calculations
+    SELECT
+        sum(DISTINCT target) FILTER (NOT uses_concatenation) as part1,
+        sum(DISTINCT target) as part2,
+);
+
+
+CREATE OR REPLACE VIEW solution AS (
+    FROM results
+    SELECT 
+        'Part 1' as part,
+        part1 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
+        result = expected as correct
+    UNION
+    FROM results
+    SELECT 
+        'Part 2' as part,
+        part2 as result,
+        if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
+        result = expected as correct
+    ORDER BY part
+);
 FROM solution;
