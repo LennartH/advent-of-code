@@ -38,8 +38,8 @@ CREATE OR REPLACE TABLE calculations AS (
                 2 as ido,
                 target,
                 operands,
-                []::varchar[] as operators,
-                operands[1]::BIGINT as result,
+                false as uses_concatenation,
+                operands[1]::BIGINT as tally,
                 length,
                 false as finished,
             UNION ALL
@@ -49,26 +49,26 @@ CREATE OR REPLACE TABLE calculations AS (
                 target,
                 operands,
                 unnest([
-                    array_append(operators, '+'),
-                    array_append(operators, '*'),
-                    array_append(operators, '||')
-                ]) as operators,
+                    uses_concatenation,
+                    uses_concatenation,
+                    true,
+                ]) as uses_concatenation,
                 unnest([
-                    result + operands[ido],
-                    result * operands[ido],
-                    -- (result || operands[ido])::BIGINT,
-                    result * 10**(floor(log10(operands[ido])) + 1) + operands[ido],
-                ]) as result,
+                    tally + operands[ido],
+                    tally * operands[ido],
+                    -- (tally || operands[ido])::BIGINT,
+                    tally * 10**(floor(log10(operands[ido])) + 1) + operands[ido],
+                ]) as tally,
                 length,
                 ido = length as finished,
-            WHERE NOT finished AND result <= target
+            WHERE NOT finished AND tally <= target
         )
 
     FROM calculations
     SELECT 
         target,
-        '||' IN operators as uses_concatenation,
-    WHERE finished AND result = target
+        uses_concatenation,
+    WHERE finished AND tally = target
 );
 
 CREATE OR REPLACE TABLE results AS (
