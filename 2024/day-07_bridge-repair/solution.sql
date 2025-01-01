@@ -22,18 +22,12 @@ SET VARIABLE solution2 = 581941094529163;
 -- SET VARIABLE mode = 'example';
 SET VARIABLE mode = 'input';
 
-CREATE OR REPLACE VIEW calibrations AS (
-    FROM (
-        FROM query_table(getvariable('mode'))
-        SELECT
-            row_number() OVER () as idx,
-            string_split(line, ':')[1]::BIGINT as target,
-            string_split(line, ':')[2].trim() as operands,
-    )
+CREATE OR REPLACE TABLE calibrations AS (
+    FROM query_table(getvariable('mode'))
     SELECT
-        idx,
-        target,
-        string_split(operands, ' ')::BIGINT[] as operands,
+        split_part(line, ':', 1)::BIGINT as target,
+        string_split(split_part(line, ': ', 2), ' ')::INTEGER[] as operands,
+        len(operands) as length,
 );
 
 CREATE OR REPLACE TABLE calculations AS (
@@ -41,17 +35,16 @@ CREATE OR REPLACE TABLE calculations AS (
         calculations AS (
             FROM calibrations
             SELECT
-                idx, 
                 2 as ido,
                 target,
                 operands,
                 []::varchar[] as operators,
-                operands[1] as result,
+                operands[1]::BIGINT as result,
+                length,
                 false as finished,
             UNION ALL
             FROM calculations
             SELECT
-                idx,
                 ido + 1 as ido,
                 target,
                 operands,
@@ -65,8 +58,9 @@ CREATE OR REPLACE TABLE calculations AS (
                     result * operands[ido],
                     (result || operands[ido])::BIGINT
                 ]) as result,
-                ido = len(operands) as finished,
-            WHERE ido <= len(operands) AND result <= target
+                length,
+                ido = length as finished,
+            WHERE NOT finished AND result <= target
         )
 
     FROM calculations
@@ -76,7 +70,7 @@ CREATE OR REPLACE TABLE calculations AS (
     WHERE finished AND result = target
 );
 
-CREATE OR REPLACE VIEW results AS (
+CREATE OR REPLACE TABLE results AS (
     FROM calculations
     SELECT
         sum(DISTINCT target) FILTER (NOT uses_concatenation) as part1,
