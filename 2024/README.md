@@ -1,3 +1,11 @@
+[**2024: SQL with DuckDB**](#2024-sql-with-duckdb)</br>
+&ensp;&ensp;[The Good](#the-good)</br>
+&ensp;&ensp;[The Bad](#the-bad)</br>
+&ensp;&ensp;[The ~~Ugly~~ Remarkable](#the-ugly-remarkable)
+
+[**Running a Solution**](#running-a-solution)</br>
+[**Runtimes**](#runtimes)
+
 ### 2024: SQL with DuckDB
 
 I decided to do AoC 2024 with SQL, partially as a challenge and because my SQL has gotten a bit rusty, but mostly out of curiosity
@@ -25,7 +33,7 @@ So you're using that hammer, even if the assignment is to write something on a p
   especially without terminating too early or the records you want are dropped before making it into the final result.
 
 
-**The Good**
+#### The Good
 
 - In general DB engines are quite good at doing things "broad". Like doing the same thing to a lot of stuff and as long as it's
 not too complicated and you don't have to collect and unnest lists all the time, producing loads of records has a surprisingly
@@ -48,7 +56,7 @@ And of course being able to run complex/arbitrary queries on that data is extrem
   of price changes was practically trivial with SQL handling all the relationships between the data points behind the scenes. Very neat.
 
 
-**The Bad**
+#### The Bad
 
 - With all that, it's probably not surprising that SQL gets in your way when you want to do something depth-first. Like when a BFS
 pathfinding would explode due to too many branching paths or if you want to get some result as early as possible to reuse it later.
@@ -82,7 +90,7 @@ expressions help, but my point remains.
 that's more of a tooling issue than a flaw in SQL itself.
 
 
-**The** ~~Ugly~~ **Remarkable**
+#### The ~~Ugly~~ Remarkable
 
 - _Day 6_ was an early curveball. Not only was it the first time I had to do some kind of pathfinding using SQL, looking for how to cause
 loops instead of preventing them made things extra spicy. Took me nearly two days to get that done and putting in the work to get [some kind of visual represenation](https://github.com/LennartH/advent-of-code/blob/f448e1166d9805e763a45414f0561e26788472c0/2024/day-06_guard-gallivant/solution.sql#L230-L335)
@@ -133,7 +141,7 @@ Let's see how much of that I'm actually going to do.
     - `cd` into the directory for the day and run `duckdb < solution.sql`
     - Run the script `run.sh` with the day number as first argument (e.g. `./run.sh 5` or `./run.sh day-21`)
 
-#### Runtimes
+### Runtimes
 
 Times are for both parts including DuckDB startup and reading the input from file measured like this `time duckdb < solution.sql` (system info: AMD Ryzen 7 2700X, 32 GiB memory)
 
