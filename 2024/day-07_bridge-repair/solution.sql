@@ -43,25 +43,38 @@ CREATE OR REPLACE TABLE calculations AS (
                 length,
                 false as finished,
             UNION ALL
-            FROM calculations
+            FROM (
+                -- Addition
+                FROM calculations
+                SELECT
+                    ido, target, operands, length, finished,
+                    uses_concatenation,
+                    tally + operands[ido] as next_tally,
+                UNION ALL
+                -- Multiplication
+                FROM calculations
+                SELECT
+                    ido, target, operands, length, finished,
+                    uses_concatenation,
+                    tally * operands[ido] as next_tally,
+                UNION ALL
+                -- Concatenation
+                FROM calculations
+                SELECT
+                    ido, target, operands, length, finished,
+                    true as uses_concatenation,
+                    -- (tally || operands[ido])::BIGINT as next_tally,
+                    tally * 10**(floor(log10(operands[ido])) + 1) + operands[ido] as next_tally,
+            )
             SELECT
                 ido + 1 as ido,
                 target,
                 operands,
-                unnest([
-                    uses_concatenation,
-                    uses_concatenation,
-                    true,
-                ]) as uses_concatenation,
-                unnest([
-                    tally + operands[ido],
-                    tally * operands[ido],
-                    -- (tally || operands[ido])::BIGINT,
-                    tally * 10**(floor(log10(operands[ido])) + 1) + operands[ido],
-                ]) as tally,
+                uses_concatenation,
+                next_tally as tally,
                 length,
                 ido = length as finished,
-            WHERE NOT finished AND tally <= target
+            WHERE NOT finished AND next_tally <= target
         )
 
     FROM calculations
