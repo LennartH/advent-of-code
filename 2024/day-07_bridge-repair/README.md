@@ -79,7 +79,7 @@ From **~50s** to **~0.06s**, an improvement of three orders of magnitude. Not ba
 |                                           Variant | Runtime[^runtime] | LoC[^loc] |
 | ------------------------------------------------: | ----------------- | --------- |
 |                       [SQL - R2L](./solution.sql) | ~0.06s            | 109       |
-|                           SQL - Pruning TODO Link | ~2s               | TODO      |
+| [SQL - Pruning](https://github.com/LennartH/advent-of-code/blob/7bad233775feb3de9cfdcc448267eb9b3450875a/2024/day-07_bridge-repair/solution.sql) | ~2s | 103 |
 | [Original SQL - Pruning](./solution.original.sql) | ~50s              | 79        |
 |             [Python - R2L](./solution.py#L34-L50) | ~0.08s            | 80        |
 |         [Python - Pruning](./solution.py#L53-L66) | ~2.3s             | 80        |
