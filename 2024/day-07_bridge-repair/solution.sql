@@ -56,7 +56,8 @@ CREATE OR REPLACE TABLE calculations AS (
                 unnest([
                     result + operands[ido],
                     result * operands[ido],
-                    (result || operands[ido])::BIGINT
+                    -- (result || operands[ido])::BIGINT,
+                    result * 10**(floor(log10(operands[ido])) + 1) + operands[ido],
                 ]) as result,
                 length,
                 ido = length as finished,
