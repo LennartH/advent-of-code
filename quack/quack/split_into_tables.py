@@ -8,5 +8,5 @@ with open(sys.argv[1], 'r') as f:
 
 ast = parse(content, dialect="duckdb")
 
-for expr in ast:
-    print(repr(expr))
+# for expr in ast:
+    # print(repr(expr))
