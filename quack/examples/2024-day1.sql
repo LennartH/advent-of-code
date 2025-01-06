@@ -11,7 +11,7 @@ SET VARIABLE exampleSolution1 = 11;
 SET VARIABLE exampleSolution2 = 31;
 
 CREATE OR REPLACE TABLE input AS
-SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input');
+SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input') input;
 SET VARIABLE solution1 = 1873376;
 SET VARIABLE solution2 = 18997088;
 
@@ -30,8 +30,8 @@ CREATE OR REPLACE TABLE results AS (
     WITH
         distance AS (
             SELECT abs(l - r) as d
-            FROM (SELECT l FROM locations ORDER BY l)
-            POSITIONAL JOIN (SELECT r FROM locations ORDER BY r)
+            FROM (SELECT l FROM locations ORDER BY l) "left"
+            POSITIONAL JOIN (SELECT r FROM locations ORDER BY r) "right"
         ),
         location_counts AS (
             SELECT
@@ -50,8 +50,8 @@ CREATE OR REPLACE TABLE results AS (
         )
 
     SELECT
-        (SELECT sum(d) FROM distance) as part1,
-        (SELECT sum(score) FROM similarity) as part2,
+        (SELECT sum(d) as total_distance FROM distance) as part1,
+        (SELECT sum(score) as total_score FROM similarity) as part2,
 );
 
 

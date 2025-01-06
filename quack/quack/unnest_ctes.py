@@ -36,7 +36,7 @@ def unnest_ctes(expression: exp.Expression, prefix: str) -> list[exp.Expression]
         
         for table in expression.find_all(exp.Table):
             if (new_name := renames.get(table.name)) is not None:
-                renamed_table = exp.alias_(exp.table_(new_name), alias=table.alias_or_name, copy=False)
+                renamed_table = exp.alias_(exp.table_(new_name), alias=table.alias_or_name, quoted=True, copy=False)
                 table.replace(renamed_table)
         for with_node in with_nodes:
             with_node.pop()
@@ -46,12 +46,12 @@ def unnest_ctes(expression: exp.Expression, prefix: str) -> list[exp.Expression]
 
 if __name__ == '__main__':
     # input_file = sys.argv[1]
-    # input_file = '/home/lennart/projects/advent-of-code/quack/examples/2024-day1.sql'
+    input_file = '/home/lennart/projects/advent-of-code/quack/examples/2024-day1.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/some-ctes.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/simple-table.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/standalone-cte.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/with-subquery.sql'
-    input_file = '/home/lennart/projects/advent-of-code/quack/examples/nested-ctes.sql'
+    # input_file = '/home/lennart/projects/advent-of-code/quack/examples/nested-ctes.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/recursive-cte.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/recursive-nested-cte.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/nested-recursive-cte.sql'
@@ -67,13 +67,16 @@ if __name__ == '__main__':
     cte_counter = 1
     transformed_expressions = []
     for expression in expressions:
-        # TODO try except?
-        name_prefix = expression.this.name if expression.this else None
+        try:
+            name_prefix = expression.this.name if expression.this else None
+        except AttributeError:
+            name_prefix = None
         if name_prefix is None:
             name_prefix = f'cte{cte_counter}'
             cte_counter += 1
         
-        expression = qualify(expression, dialect='duckdb', quote_identifiers=False)
+        # FIXME qualify breaks FROM query_table(getvariable('mode')) because DuckDB has a bug if query_table is given an alias
+        expression = qualify(expression, dialect='duckdb')
         expression = eliminate_subqueries(expression)
         # TODO Make optional (e.g. by magic comment)
         expression = eliminate_ctes(expression)
