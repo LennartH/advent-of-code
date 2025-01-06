@@ -44,6 +44,7 @@ CREATE OR REPLACE VIEW robots AS (
     FROM parts
 );
 
+-- Do this: https://www.reddit.com/r/adventofcode/comments/1he0asr/2024_day_14_part_2_why_have_fun_with_image/
 CREATE OR REPLACE VIEW simulations AS (
     WITH RECURSIVE
         movements AS (
