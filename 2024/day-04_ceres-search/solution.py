@@ -10,7 +10,29 @@ word_backwards = 'SAMX'
 
 def solve_part1(input: str) -> int:
     grid = [list(line.strip()) for line in input.splitlines()]
-    return count_xmas_naive(grid)
+    # return count_xmas_naive(grid)
+    return count_xmas_seeking(grid)
+
+
+def count_xmas_seeking(grid: list[list[str]]) -> int:
+    height = len(grid)
+    width = len(grid[0])
+    count = 0
+    for y in range(height):
+        for x in range(width):
+            if grid[y][x] == 'X':
+                for dx, dy in [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1)]:
+                    for i in range(1, 4):
+                        nx = x + dx*i
+                        ny = y + dy*i
+                        if (
+                            nx < 0 or nx >= width or ny < 0 or ny >= height or
+                            grid[ny][nx] != word_forwards[i]
+                        ):
+                            break
+                        if i == 3:
+                            count += 1
+    return count
 
 
 def count_xmas_naive(grid: list[list[str]]) -> int:
@@ -93,11 +115,6 @@ def solve_part2(input: str) -> int:
                 ):
                     count += 1
     return count
-
-
-# region Shared Code
-
-# endregion
 
 
 if __name__ == '__main__':
