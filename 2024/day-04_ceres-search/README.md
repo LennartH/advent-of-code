@@ -49,11 +49,13 @@ A good approach is to take all occurrences of `A` and check their diagonal neigh
 
 #### Stats
 
+FIXME Python timings look IO bound
 |                                           Variant | Runtime[^runtime] | LoC[^loc] |
 | ------------------------------------------------: | ----------------- | --------- |
 |                             [SQL](./solution.sql) |                   |           |
 |           [Original SQL](./solution.original.sql) | ~0.25s            | 87        |
 |    [Python - Part 1 Naive]() | ~0.07s            |           |
+|    [Python](./solution.py) | ~0.07s            |           |
 
 [^runtime]: Running `time <cmd to run solution>` several times and averaging by eyesight.
 [^loc]: Number of non-empty lines (comments count) using `grep -cve '^\s*$' *.{sql,py}`. For Python it's the sum of the test and solution file, but only counting the lines used by the approach.

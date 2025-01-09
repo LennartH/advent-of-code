@@ -78,8 +78,21 @@ def count_xmas_in_direction(
 
 def solve_part2(input: str) -> int:
     grid = [list(line.strip()) for line in input.splitlines()]
-    # TODO implement solution
-    return math.nan
+    count = 0
+
+    for y in range(1, len(grid) - 1):
+        for x in range(1, len(grid[0]) - 1):
+            if grid[y][x] == 'A':
+                top_left = grid[y - 1][x - 1]
+                top_right = grid[y - 1][x + 1]
+                bottom_left = grid[y + 1][x - 1]
+                bottom_right = grid[y + 1][x + 1]
+                if (
+                    sorted([top_left, top_right, bottom_left, bottom_right]) == ['M', 'M', 'S', 'S'] and
+                    top_left != bottom_right and top_right != bottom_left
+                ):
+                    count += 1
+    return count
 
 
 # region Shared Code
