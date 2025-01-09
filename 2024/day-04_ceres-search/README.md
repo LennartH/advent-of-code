@@ -51,12 +51,9 @@ A good approach is to take all occurrences of `A` and check their diagonal neigh
 
 |                                           Variant | Runtime[^runtime] | LoC[^loc] |
 | ------------------------------------------------: | ----------------- | --------- |
-|                       [SQL - R2L](./solution.sql) | ~0.06s            | 109       |
-| [SQL - Pruning](https://github.com/LennartH/advent-of-code/blob/7bad233775feb3de9cfdcc448267eb9b3450875a/2024/day-07_bridge-repair/solution.sql) | ~2s | 103 |
-| [Original SQL - Pruning](./solution.original.sql) | ~50s              | 79        |
-|             [Python - R2L](./solution.py#L34-L50) | ~0.08s            | 80        |
-|         [Python - Pruning](./solution.py#L53-L66) | ~2.3s             | 80        |
-|           [Python - Naive](./solution.py#L69-L80) | ~4s               | 78        |
+|                             [SQL](./solution.sql) |                   |           |
+|           [Original SQL](./solution.original.sql) | ~0.25s            | 87        |
+|    [Python - Part 1 Naive]() | ~0.07s            |           |
 
 [^runtime]: Running `time <cmd to run solution>` several times and averaging by eyesight.
 [^loc]: Number of non-empty lines (comments count) using `grep -cve '^\s*$' *.{sql,py}`. For Python it's the sum of the test and solution file, but only counting the lines used by the approach.
