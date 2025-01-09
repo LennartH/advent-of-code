@@ -56,7 +56,7 @@ if __name__ == '__main__':
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/recursive-nested-cte.sql'
     # input_file = '/home/lennart/projects/advent-of-code/quack/examples/nested-recursive-cte.sql'
     # output_file = sys.argv[2]
-    output_file = '/home/lennart/projects/advent-of-code/quack/out/transformed.sql'
+    output_file = '/home/lennart/projects/advent-of-code/quack/out/out.sql'
 
     dot_commands = re.compile(r'^\.\w+.*$', re.MULTILINE)
     with open(input_file, 'r') as f:

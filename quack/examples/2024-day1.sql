@@ -6,12 +6,12 @@ SET VARIABLE example = '
     3   9
     3   3
 ';
-CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), chr(10) || ' '), '\n\s*') as line;
+CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), e'\n '), '\n\s*') as line;
 SET VARIABLE exampleSolution1 = 11;
 SET VARIABLE exampleSolution2 = 31;
 
 CREATE OR REPLACE TABLE input AS
-SELECT regexp_split_to_table(trim(content, chr(10) || ' '), '\n\s*') as line FROM read_text('input') input;
+SELECT regexp_split_to_table(trim(content, e'\n '), '\n\s*') as line FROM read_text('input') input;
 SET VARIABLE solution1 = 1873376;
 SET VARIABLE solution2 = 18997088;
 

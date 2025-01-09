@@ -72,7 +72,7 @@ I made the following changes, keeping track of their impact on the runtime. The 
   - Applying only this change to the original solution reduces the runtime to ~6.8s, so the other changes make a differences, although a lot is probably optimized in the background by DuckDB.
 - Implement R2L approach (<u>down by ~1.94s to **~0.06s**</u>)
 
-From **~50s** to **~0.06s**, an improvement of three orders of magnitude. Not bad at all (if you don't think about how bad the original solution was).
+From **~50s** to **~0.06s**, an improvement of nearly three orders of magnitude. Not bad at all (if you don't think about how bad the original solution was).
 
 #### Stats
 
