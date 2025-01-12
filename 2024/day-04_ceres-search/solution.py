@@ -157,10 +157,3 @@ if __name__ == '__main__':
     input = Path(__file__).parent.joinpath('input').read_text()
     print(f'Part 1: {solve_part1(input)}')
     print(f'Part 2: {solve_part2(input)}')
-
-    # import timeit
-    # n = 100
-    # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
-    # print(f'Part 1: {dur / n:.5f}s (average of {n})')
-    # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
-    # print(f'Part 2: {dur / n:.5f}s (average of {n})')
