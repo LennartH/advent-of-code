@@ -99,7 +99,22 @@ But I think part 2 is actually easier than part 1. Compared to the last approach
 
 #### Refactoring the original solution
 
-TODO
+My original SQL solution for part 1 is pretty close to the naive python approach, except that I'm collecting all 4 letter words in the grid and counting the number of `XMAS`. It'll be interesting to see, if filtering earlier provides a performance gain or if the DBMS is optimizing that under the hood anyway.
+
+For part though I've been having so much fun with window functions, I decided to keep using them and basically collected all 3x3 boxes in the grid and used DuckDBs [`SIMILAR TO`](https://duckdb.org/docs/sql/functions/char#string-similar-to-regex) operator (like `LIKE`, but with regex) to match these boxes to all valid combinations. Here's a short illustration  with and without noise:
+```
+MMS
+SAM => MMSSAMMXS matches M.M.A.S.S|M.S.A.M.S|S.S.A.M.M|S.M.A.S.M => True
+MXS    M.S.A.M.S
+```
+Keeping in mind that instead of having a nice block that can be transformed the grid is stored as a long list of coordinates and its letter, I'm expecting a significant performance gain by adopting the approach from above.
+
+And of course there's a lot to be done to make the solution more concise and easier to read. So lets get into it:
+
+- Use latest template version
+  - Takes **~0.25s** to run, which will be the overall baseline
+  - Running part 1 alone takes _~0.2s_ and part 2 _~0.08s_, looks like I was wrong about where the performance gains are
+- 
 
 #### Stats
 
