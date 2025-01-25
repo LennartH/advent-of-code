@@ -172,5 +172,5 @@ Times are for both parts including DuckDB startup and reading the input from fil
 |                              [Day 23: Lan Party](./day-23_lan-party/solution.sql) |                                                    | ~22s                                                        |                                                   |
 |                      [Day 24: Crossed Wires](./day-24_crossed-wires/solution.sql) |                                                    | ~0.3s                                                       |                                                   |
 |                    [Day 25: Code Chronicle](./day-25_code-chronicle/solution.sql) |                                                    | ~0.07s                                                      |                                                   |
-|                                                                         **Total** |                                                    | **~7m 10s **                                                |                                                   |
+|                                                                         **Total** |                                                    | **~7m 10s**                                                |                                                   |
 
