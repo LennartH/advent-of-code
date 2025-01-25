@@ -59,51 +59,13 @@ CREATE OR REPLACE TABLE xmas_count AS (
             FROM tokens SELECT string_agg(token, '') OVER (PARTITION BY d2 ORDER BY pos desc ROWS 3 PRECEDING) as slice
         )
 
-    SELECT count() as count
     FROM slices
+    SELECT count() as count
     WHERE slice = 'XMAS'
 );
 
 CREATE OR REPLACE TABLE x_mas_count AS (
     WITH
-        -- ~1.25s
-        corners_join AS (
-            FROM tokens t, tokens c1, tokens c2, tokens c3, tokens c4
-            SELECT t.token
-            WHERE t.token = 'A'
-              AND c1.x - t.x = -1 AND c1.y - t.y = -1 AND (c1.token = 'S' OR c1.token = 'M')
-              AND c2.x - t.x =  1 AND c2.y - t.y = -1 AND (c2.token = 'S' OR c2.token = 'M')
-              AND c3.x - t.x =  1 AND c3.y - t.y =  1 AND (c3.token = 'S' OR c3.token = 'M')
-              AND c4.x - t.x = -1 AND c4.y - t.y =  1 AND (c4.token = 'S' OR c4.token = 'M')
-              AND c1.token != c3.token AND c2.token != c4.token
-        ),
-
-        -- ~5s
-        corners_subquery AS (
-            FROM tokens t
-            SELECT
-                (FROM tokens c1 SELECT c1.token WHERE c1.x - t.x = -1 AND c1.y - t.y = -1) as c1,
-                (FROM tokens c2 SELECT c2.token WHERE c2.x - t.x =  1 AND c2.y - t.y = -1) as c2,
-                (FROM tokens c3 SELECT c3.token WHERE c3.x - t.x =  1 AND c3.y - t.y =  1) as c3,
-                (FROM tokens c4 SELECT c4.token WHERE c4.x - t.x = -1 AND c4.y - t.y =  1) as c4,
-            WHERE t.token = 'A' AND c1 != c3 AND c2 != c4
-              AND (c1 = 'S' OR c1 = 'M') AND (c2 = 'S' OR c2 = 'M')
-              AND (c3 = 'S' OR c3 = 'M') AND (c4 = 'S' OR c4 = 'M')
-        ),
-
-        -- ~0.23s
-        corners_groupby AS (
-            FROM tokens t
-            JOIN tokens n ON abs(t.x - n.x) = 1 AND abs(t.y - n.y) = 1
-            SELECT
-                t.x, t.y,
-                string_agg(n.token, '' ORDER BY n.y ASC, n.x ASC) as corners,
-            WHERE t.token = 'A'
-            GROUP BY t.x, t.y
-            HAVING corners IN ('MMSS', 'MSMS', 'SSMM', 'SMSM')
-        ),
-
-        -- ~0.065s
         corners_window AS (
             FROM tokens
             SELECT

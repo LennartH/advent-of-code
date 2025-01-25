@@ -107,23 +107,34 @@ MMS
 SAM => MMSSAMMXS matches M.M.A.S.S|M.S.A.M.S|S.S.A.M.M|S.M.A.S.M => True
 MXS    M.S.A.M.S
 ```
-Keeping in mind that instead of having a nice block that can be transformed the grid is stored as a long list of coordinates and its letter, I'm expecting a significant performance gain by adopting the approach from above.
+Note that instead of having a nice block that can be transformed directly, the grid is stored as a long list of coordinates and its letter. So I would expect a significant performance improvement by adopting the approach from above.
 
 And of course there's a lot to be done to make the solution more concise and easier to read. So lets get into it:
 
-- Use latest template version
+- First, refactor to my latest template and some general renaming and cleanup
   - Takes **~0.25s** to run, which will be the overall baseline
-  - Running part 1 alone takes _~0.2s_ and part 2 _~0.08s_, looks like I was wrong about where potential performance gains are
+  - Running part 1 alone takes _~0.2s_ and part 2 takes _~0.08s_ (including IO), looks like I was wrong about where potential performance gains are
+- I looked at part 2 first, because I found it easier to try different approaches. The times are for running only part including IO.
+  - Using a [single join with a group by](https://github.com/LennartH/advent-of-code/blob/dd60f848ac1dd0b52736930647c0cd14b7deab44/2024/day-04_ceres-search/solution.sql#L95-L104) takes _~0.23s_, nearly 3 times longer
+  - Using [4 joins (one per corner)](https://github.com/LennartH/advent-of-code/blob/dd60f848ac1dd0b52736930647c0cd14b7deab44/2024/day-04_ceres-search/solution.sql#L70-L79) takes _~1.25s_
+  - Using [one subquery per corner](https://github.com/LennartH/advent-of-code/blob/dd60f848ac1dd0b52736930647c0cd14b7deab44/2024/day-04_ceres-search/solution.sql#L82-L92) takes a whopping _~5s_
+  - Seems like window functions are the fastest way to "look around" a record
+  - Using [_lag_ and _lead_](./solution.sql#L69-L83) to get the 4 corners instead of two nested _string_agg_ and `SIMILAR TO` takes _~0.065s_. Not a significant improvement, but it's something.
+- With that I was pretty sure that part 1 wouldn't improve much by moving away from window functions and that the performance must be lost somewhere else. Times are againg from running only part 1, including IO.
+  - I tried implementing the seeking strategy by filtering for `X` before aggregating the windows, but that didn't change anything
+  - Remembering [revisiting day 7](../day-07_bridge-repair#day-7-bridge-repair) I was pretty sure that [this unnest](./solution.original.sql#L47-L58) is the culprit
+  - Replacing the unnest with [seperate queries (one per direction) that are unioned](./solution.sql#L44-L60) takes _~0.075s_
+- Both parts run together takes **~0.095s**, so a bit over twice as fast as the original solution, but slightly slower than the fastest python solution.
 
 #### Stats
 
-|                                       Variant | Runtime[^runtime] | Part 1[^parttime] | Part 2[^parttime] | LoC[^loc] |
-| --------------------------------------------: | ----------------- | ----------------- | ----------------- | --------- |
-|                         [SQL](./solution.sql) |                   |                   |                   |           |
-|       [Original SQL](./solution.original.sql) | ~0.25s            |                   |                   | 87        |
-|     [Python - Seeking](./solution.py#L19-L37) | ~0.07s            | ~0.013s           | ~0.0045s          | 73        |
-| [Python - Single Loop](./solution.py#L40-L83) | ~0.095s           | ~0.038s           | ~0.0045s          | 100       |
-|      [Python - Naive](./solution.py#L86-L134) | ~0.08s            | ~0.026s           | ~0.0045s          | 103       |
+|                                       Variant | Runtime[^runtime] | LoC[^loc] | Part 1[^parttime] | Part 2[^parttime] |
+| --------------------------------------------: | ----------------- | --------- | ----------------- | ----------------- |
+|                         [SQL](./solution.sql) | ~0.095s           | 102       |                   |                   |
+|       [Original SQL](./solution.original.sql) | ~0.25s            | 87        |                   |                   |
+|     [Python - Seeking](./solution.py#L19-L37) | ~0.07s            | 73        | ~0.013s           | ~0.0045s          |
+| [Python - Single Loop](./solution.py#L40-L83) | ~0.095s           | 100       | ~0.038s           | ~0.0045s          |
+|      [Python - Naive](./solution.py#L86-L134) | ~0.08s            | 103       | ~0.026s           | ~0.0045s          |
 
 [^runtime]: Running `time <cmd to run solution>` several times and averaging by eyesight.
 [^parttime]: Average of 100 runs using `timeit`. Only the time needed to run `solve_part_x`, without IO from reading the input.
