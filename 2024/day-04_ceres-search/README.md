@@ -75,7 +75,7 @@ for y in range(height):
         # do count for word_forward
         # do count for word_backward
 ```
-In both cases it's necessary to have a second word index to keep track of what letter should come next. In a similar fashion it's possible to search vertical lines in the same loop as well. But since the loop iterates the letters row by row adding 2 additional word indexes is not enough. Instead one per columns is necessary and not once, but twice to handle backwards search as well. This is starting to look like that wasn't such a good idea. Now for the diagonals. A `n x m` grid has `2 * (n + m - 1)` diagonal lines, with each position being part of two. To track the index for the search word for all those diagonals in both directions 4 arrays with size `n + m - 1` are needed. With that it's possible to use `x + y` and `x - y` to get the correct word index for the two diagonals the position belongs to. So it is possible to search all lines with **each position being visited only once** (here's [the proof](./solution.py#L40-L83)). This approach is significantly harder to understand when looking at the code, so is the performance gain from iterating only once at least worth it? No. It's actually slower than the naive approach taking _~0.038s_ compared to _~0.026s_ (without IO). I thought the bad performance might be due to the overhead of initializing all those arrays, but measuring it independently didn't change the time. So my guess would be that switching the currently relevant word index back and forth prevents the CPU cache from being utilized properly, which costs more than doing eight times the work.
+In both cases it's necessary to have a second word index to keep track of what letter should come next. In a similar fashion it's possible to search vertical lines in the same loop as well. But since the loop iterates the letters row by row adding 2 additional word indexes is not enough. Instead one per columns is necessary and not once, but twice to handle backwards search as well. This is starting to look like that wasn't such a good idea. Now for the diagonals. A `n x m` grid has `2 * (n + m - 1)` diagonal lines, with each position being part of two. To track the index for the search word for all those diagonals in both directions 4 arrays with size `n + m - 1` are needed. With that it's possible to use `x + y` and `x - y` to get the correct word index for the two diagonals the position belongs to. So it is possible to search all lines with **each position being visited only once** (here's [the proof](./solution.py#L40-L83)). This approach is significantly harder to understand when looking at the code, so is the performance gain from iterating only once at least worth it? No. It's actually slower than the naive approach taking _~0.038s_ compared to _~0.026s_ (without IO). I thought the bad performance might be due to the overhead of initializing all those arrays, but measuring it independently didn't change the time. My guess would be that switching the currently relevant word index back and forth prevents the CPU cache from being utilized properly, which costs more than doing eight times the work.
 
 ##### Seeking
 
@@ -97,7 +97,7 @@ S.M
 ```
 But I think part 2 is actually easier than part 1. Compared to the last approach for part 1 where it was necessary to search in 8 directions 3 steps deep, here it's enough to check the direct diagonal neighbours for valid combinations of `S` and `M`. I could have solved both parts with a single function, but I had enough _loop combining_ for a day, so [`solve_part2`](./solution.py#L137-L153) stays.
 
-#### Refactoring the original solution
+#### Refactoring the original SQL solution
 
 My original SQL solution for part 1 is pretty close to the naive python approach, except that I'm collecting all 4 letter words in the grid and counting the number of `XMAS`. It'll be interesting to see, if filtering earlier provides a performance gain or if the DBMS is optimizing that under the hood anyway.
 
@@ -113,8 +113,7 @@ And of course there's a lot to be done to make the solution more concise and eas
 
 - Use latest template version
   - Takes **~0.25s** to run, which will be the overall baseline
-  - Running part 1 alone takes _~0.2s_ and part 2 _~0.08s_, looks like I was wrong about where the performance gains are
-- 
+  - Running part 1 alone takes _~0.2s_ and part 2 _~0.08s_, looks like I was wrong about where potential performance gains are
 
 #### Stats
 
