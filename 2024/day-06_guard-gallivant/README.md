@@ -1,7 +1,9 @@
-[**Day 5: Guard Gallivant**](#day-5-guard-gallivant)</br>
+[**Day 6: Guard Gallivant**](#day-5-guard-gallivant)</br>
 &ensp;&ensp;[Part 1](#part-1)</br>
 &ensp;&ensp;[Part 2](#part-2)</br>
 [**Python Solution**](#python-solution)</br>
+&ensp;&ensp;[Part 1](#part-1-1)</br>
+&ensp;&ensp;[Part 2](#part-2-1)</br>
 [**SQL Solution**](#sql-solution)</br>
 &ensp;&ensp;[Original Approach](#original-approach)</br>
 &ensp;&ensp;[Improving the Original SQL Solution](#improving-the-original-sql-solution)</br>
@@ -188,13 +190,32 @@ Revisiting a tile of set O
 ..............      ..............      ..............
 ```
 
-So much (and it is a lot) for the theory, let's see what that actually does in praxis.
+So much for the theory, on to actually doing things.
 
 ### Python Solution
 
-part 1:
-- collecting in set vs collecting in list and only count via set
+#### Part 1
+
+Part 1 is pretty straightforward, but there are still a few things to play around with. The intuitive approach is to simply walk the map according to the rules. The first question is how to collect the visited tiles without overcounting. I see three different ways to do that, the runtimes are the average of 1000 runs using `timeit` excluding IO from reading the input, but including parsing the input:
+1. **Using a set**, letting Python take care of the deduplication 
+    - When creating entries with `f'{x},{y}'`: _0.00320s_
+    - When creating entries with `(x,y)`: _0.00176s_
+2. **Using a list** while walking and deduplicate once after exiting the map with `set`
+    - When creating entries with `f'{x},{y}'`: _0.00300s_
+    - When creating entries with `(x,y)`: _0.00175s_
+3. **Using a boolean grid** to track which tiles have been visited
+    - Collecting positions, creating entries with `f'{x},{y}'`: _0.00280s_
+    - Collecting positions, creating entries with `(x,y)`: _0.00162s_
+    - Only incrementing a counter: _0.00144s_
+
+This shows that using a string to represent a position is a lot more costly than using a tuple and that it doesn't seem to matter, whether a set is used from the start or only at the end to determine the total count of visited tiles. Solving part 1 only requires the number visited tiles, but the list of positions and directions is useful for part 2. This is the main reason to I decided to stick with approach 3, so I that the direction doesn't have to be excluded when calculating the hash during deduplication.
+
+The final implementation of this approach builds a list of visited tiles with the information necessary for part 2 and takes _0.00310s_ in isolation and **~0.075s** with IO.
+
+TODO:
 - naive walking vs "raywalking" / collecting obstacles and iterating them
+
+#### Part 2
 
 part 2: check different optimizations
 
