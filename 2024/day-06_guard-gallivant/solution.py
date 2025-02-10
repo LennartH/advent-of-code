@@ -3,6 +3,8 @@ import math
 from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass
+from itertools import pairwise
+
 
 # region Types and Globals
 @dataclass(frozen=True)
@@ -46,7 +48,36 @@ class VisitedTile:
 
 def solve_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
-    return len(_collect_path(grid))
+    # return len(_collect_path(grid)) # 0.00310s
+
+    # 0.00216s (average of 1000)
+    total_steps = 1
+    ray_steps = _collect_rays(grid)
+    rays = []
+    offset = 1
+    for a, b in pairwise(ray_steps):
+        steps = abs(a.x - b.x) + abs(a.y - b.y)
+        total_steps += steps
+
+        # Change ray representation: (4, 6) -> (4, 1)  to  4, 1 -> 6
+        axis1 = a.x if a.x == b.x else a.y
+        u1, v1 = (a.y, b.y) if a.x == b.x else (a.x, b.x)
+        u1, v1 = (v1, u1) if v1 < u1 else (u1, v1)
+        
+        # Check crossings with previous rays, except last
+        # FIXME crossing the same tile multiple times is subtracted more than once -> Reduce ray length? Start, End, Both?
+        for i, (axis2, u2, v2) in enumerate(rays[:-1]):
+            if i % 2 == offset:
+                if u1 <= axis2 <= v1 and u2 <= axis1 <= v2:
+                    total_steps -= 1
+            else:
+                if axis1 == axis2 and (overlap := min(v1, v2) - max(u1, u2)) > 0:
+                    total_steps -= overlap
+
+        rays.append((axis1, u1, v1))
+        offset = offset ^ 1  # toggle between 0 and 1
+    
+    return total_steps
 
 
 def _collect_path(grid: list[str]) -> list[VisitedTile]:
@@ -82,6 +113,67 @@ def _collect_path(grid: list[str]) -> list[VisitedTile]:
     return visited_tiles
 
 
+def _collect_rays(grid: list[str]) -> list[VisitedTile]:
+    height = len(grid)
+    width = len(grid[0])
+
+    obstacles_by_x = [[] for _ in range(width)]
+    obstacles_by_y = [[] for _ in range(height)]
+    x = -1
+    y = -1
+    direction: Direction = None
+    for tile_y, row in enumerate(grid):
+        for tile_x, symbol in enumerate(row):
+            if symbol == '#':
+                obstacles_by_x[tile_x].append(tile_y)
+                obstacles_by_y[tile_y].append(tile_x)
+            elif symbol != '.':
+                x = tile_x
+                y = tile_y
+                direction = Direction.from_symbol(symbol)
+
+    visited_tiles = [VisitedTile(x, y, direction)]
+    while True:
+        # TODO Cleanup
+        if direction.dx == 0:
+            closest_obstacle = _closest_obstacle(y, direction.dy, obstacles_by_x[x])
+            y = closest_obstacle - direction.dy if closest_obstacle is not None else 0 if direction.dy < 0 else height - 1
+        else:
+            closest_obstacle = _closest_obstacle(x, direction.dx, obstacles_by_y[y])
+            x = closest_obstacle - direction.dx if closest_obstacle is not None else 0 if direction.dx < 0 else width - 1
+        direction = direction.turn_right()
+        visited_tiles.append(VisitedTile(x, y, direction))
+        
+        if closest_obstacle is None:
+            break
+
+    return visited_tiles
+
+
+def _closest_obstacle(position: int, delta: int, obstacles: list[int]) -> int:
+    if not obstacles:
+        return None
+
+    left = 0
+    right = len(obstacles) - 1
+    while abs(left - right) > 1:
+        index = (left + right) // 2
+        if obstacles[index] > position:
+            right = index
+        else:
+            left = index
+    
+    left_value = obstacles[left]
+    right_value = obstacles[right]
+    if delta*position < delta*left_value and delta*position < delta*right_value:
+        return left_value if abs(left_value - position) < abs(right_value - position) else right_value
+    if delta*position < delta*left_value:
+        return left_value
+    if delta*position < delta*right_value:
+        return right_value
+    return None
+
+
 def solve_part2(input: str) -> int:
     lines = [line.strip() for line in input.splitlines()]
     # TODO implement solution
@@ -98,9 +190,9 @@ if __name__ == '__main__':
     print(f'Part 1: {solve_part1(input)}')
     print(f'Part 2: {solve_part2(input)}')
 
-    # import timeit
-    # n = 1000
-    # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
-    # print(f'Part 1: {dur / n:.5f}s (average of {n})')
-    # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
-    # print(f'Part 2: {dur / n:.5f}s (average of {n})')
+    import timeit
+    n = 1000
+    dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
+    print(f'Part 1: {dur / n:.5f}s (average of {n})')
+    dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
+    print(f'Part 2: {dur / n:.5f}s (average of {n})')

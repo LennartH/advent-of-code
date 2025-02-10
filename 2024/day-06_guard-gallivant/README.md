@@ -3,6 +3,8 @@
 &ensp;&ensp;[Part 2](#part-2)</br>
 [**Python Solution**](#python-solution)</br>
 &ensp;&ensp;[Part 1](#part-1-1)</br>
+&ensp;&ensp;&ensp;&ensp;[_Intuitive Approach_](#intuitive-approach)</br>
+&ensp;&ensp;&ensp;&ensp;[_Raywalking Approach_](#raywalking-approach)</br>
 &ensp;&ensp;[Part 2](#part-2-1)</br>
 [**SQL Solution**](#sql-solution)</br>
 &ensp;&ensp;[Original Approach](#original-approach)</br>
@@ -43,11 +45,11 @@ Here is the example when the 4th obstacle is encountered, the movement would be 
 #.........
 ......#E..
 ```
-This goes on until the map is exited (marked as `E`). And no, part 2 is not about wrapping around the edges.
+This goes on until the map is exited at tile `E`. And no, part 2 is not about wrapping around the edges.
 
 #### Part 1
 
-Since this is only day 6, part 1 starts of easy. The task is to count the number of **distinct tiles** that were visited before leaving the map (including the starting position). The only thing to keep in mind is to not count tiles multiple times, so a simple step count won't do. Below is the path when encountering the 4th obstacle and after leaving the map. Visited tiles are marked as `x` or `X`, if visited more than once. A total of **41** distinct tiles are visited.
+Since this is only day 6, part 1 starts off easy. The task is to count the number of **distinct tiles** that were visited before leaving the map (including the starting position). The only thing to keep in mind is to not count tiles multiple times, so a simple step count won't do. Below is the path when encountering the 4th obstacle and after leaving the map. Visited tiles are marked as `x` or `X`, if visited more than once. A total of **41** distinct tiles are visited.
 ```
 ....#.....      ....#.....
 ....xxxxx#      ....xxxxx#
@@ -73,7 +75,7 @@ Map             Path
 
 #### Part 2
 
-Now for the twist of part 2, I already said it's not about wrapping around the map edges, instead it's about introducing loops, by placing a new obstacle on the map. I didn't expect this and usually loops are things to avoid when doing pathfinding related stuff. This is what I meant with that each puzzle brings something novel to this problem class. The answer for part 2 is the total number of loops that can be introduced for the given map. For the small example a total of **6** loops can be created. A few of them are shown below, with `O` marking the obstacle creating the loop and `-`, `|` and `+` showing the path.
+Now for the twist of part 2, where the objective is to introduce loops by placing a (single) new obstacle on the map. I didn't expect this and usually when doing pathfinding stuff loops are something to avoid or to detect and prune. Here it's about provoking them instead. This is what I meant with each puzzle bringing something novel to this class of problems. The solution for part 2 is the total number of loops that can be created by placing a single new obstacle on the given map. For the example the count is **6**. A few of them are shown below, with `O` marking the obstacle creating the loop and `-`, `|` and `+` showing the path.
 ```
 ....#.....      ....#.....      ....#.....
 ....+---+#      ....+---+#      ....+---+#
@@ -196,6 +198,8 @@ So much for the theory, on to actually doing things.
 
 #### Part 1
 
+##### Intuitive Approach
+
 Part 1 is pretty straightforward, but there are still a few things to play around with. The intuitive approach is to simply walk the map according to the rules. The first question is how to collect the visited tiles without overcounting. I see three different ways to do that, the runtimes are the average of 1000 runs using `timeit` excluding IO from reading the input, but including parsing the input:
 1. **Using a set**, letting Python take care of the deduplication 
     - When creating entries with `f'{x},{y}'`: _0.00320s_
@@ -212,8 +216,93 @@ This shows that using a string to represent a position is a lot more costly than
 
 The final implementation of this approach builds a list of visited tiles with the information necessary for part 2 and takes _0.00310s_ in isolation and **~0.075s** with IO.
 
-TODO:
-- naive walking vs "raywalking" / collecting obstacles and iterating them
+##### Raywalking Approach
+
+Since no branching is necessary to traverse the map, one thought is to reduce the number of computational steps by directly jumping to the next obstacle. Of course this requires a different way of storing information and moving on the map. But the bigger issue will be with not overcounting already visited tiles without iterating them, which would defeat the purpose. I wanted to try the approach anyway, because I was curious how the performance would be compared to the intuitive approach. Below is the example using this approach marking jumps with `@`, the rays inbetween with `|` and `-` and tiles visited more than once with `X`.
+```                 
+....#.....      ....#.....      ....#.....
+....@---@#      ....@---@#      ....@---@#
+....|...|.      ....|...|.      ....|...|.
+..#.|...|.      ..#.|...|.      ..#.|...|.
+....|..#|.      ..@-X->#|.      ..@-X-@#|.
+....|...|.      ..|.|...|.      ..|.|.|.|.
+.#..|...v.      .#@-X---@.      .#@-X-X-@.
+........#.      ........#.      .@----X@#.
+#.........      #.........      #@----@|..
+......#...      ......#...      ......#|..
+```
+
+Did I say I was done with theory? Well I lied. The total number of steps is calculated by summing the manhatten distance `abs(x1 - x2) + abs(y1 - y2)` of all rays plus one. What's left is to subtract the number of tiles visited more than once to get the solution. Those can be determined by checking if rays are crossing each other like shown below.
+```
+....#.....    r0: x = 4, y = 1 to 6
+....1....#    r3: y = 6, x = 2 to 8
+....|.....    r5: y = 4, x = 2 to 6
+..#.|.....    r7: y = 8, x = 1 to 6
+..5-+-6#.. 
+....|.....           r0   rn   r0    rn   r0   rn
+.#4-O̶---3.    r3/r0: 1 <= 6 <= 6  ✅ 2 <= 4 <= 8  ✅
+........#.    r5/r0: 1 <= 4 <= 6  ✅ 2 <= 4 <= 6  ✅
+#8----7...    r7/r0: 1 <= 8 <= 6  ❌ 1 <= 4 <= 6  ✅
+......#... 
+```
+TODO All rays need to be checked not just different orientations
+
+In general crossing rays can be found by checking if a rays axis is within another rays length and vice versa and it's sufficient to check rays with different orientations. But there is an edge case for 180° turns, where the complete ray needs to be subtracted from the total number of steps.
+```
+...#......      .|.#......    r1: y = 1, x = 3 to 7
+#.......#.      #3-1---2#.    r2: y = 1, x = 1 to 7
+.......#..      ...|...#..
+...^......      ...0......    The shorter ray r1 needs to be discarded
+..........      ..........
+
+........#....
+.............
+.#...........
+.........#...
+.^..#........
+............#
+.............
+.............
+.......#.....
+...#.......#.
+........#....
+```
+
+For the actual walking it's necessary to get the closest obstacle in the current walking direction. If none is found, the map is exited. This is one of the situations where the declarative nature of SQL is quite handy. One approach to do this in Python is to collect all obstacles and map an (ordered) list of their y/x positions by their x/y position. This requires iterating the whole map to collect all obstacles, but roughly half is already iterated to find the starting position and [day 4](../day-04_ceres-search#day-4-ceres-search) showed that additional iterations aren't necessarily impacting performance. But I don't expect a huge improvement from this approach.
+```
+  012345678    Obstacles by
+0 .#.......    x          y
+1 ....#..#.    0: 7       0: 1
+2 .........    1: 0       1: 4, 7
+3 ....#....    3: 4       3: 4
+4 ...#....#    4: 1, 3    4: 3, 8
+5 .........    7: 1, 8    7: 0
+6 ....^....    8: 4       8: 7
+7 #........
+8 .......#.
+```
+
+The closest obstacle in the current direction can be found by simply iterating the list of obstacles for the current position or with an [adapted binary search](https://en.wikipedia.org/wiki/Binary_search#Approximate_matches). An example doesn't really help when there are only a few obstacles in a line, so below is one line from a larger map.
+```
+..#........#....#.......#......#..>.#..#..#.......
+
+Position and direction
+x: 34, dx: 1
+
+           0  1   2   3   4   5   6   7
+Obstacles: 2, 11, 16, 24, 31, 36, 39, 42
+Midpoint is 3 (or 4)
+
+O[3]: 24 < 34 -> continue to right
+O[5]: 36 > 34 -> continue to left
+O[4]: 31 < 34
+
+Predecessor: 31, Successor: 36
+Next position: 36 - 1 = 35
+```
+This already feels a lot like handrolling tables and indexes in DB. There probably is a tree structure that is more efficient, but I find this more accessible.
+
+TODO ... data for part 2 ...
 
 #### Part 2
 
