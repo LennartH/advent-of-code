@@ -48,39 +48,12 @@ class VisitedTile:
 
 def solve_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
-    # return len(_collect_path(grid)) # 0.00310s
-
-    # 0.00216s (average of 1000)
-    total_steps = 1
-    ray_steps = _collect_rays(grid)
-    rays = []
-    offset = 1
-    for a, b in pairwise(ray_steps):
-        steps = abs(a.x - b.x) + abs(a.y - b.y)
-        total_steps += steps
-
-        # Change ray representation: (4, 6) -> (4, 1)  to  4, 1 -> 6
-        axis1 = a.x if a.x == b.x else a.y
-        u1, v1 = (a.y, b.y) if a.x == b.x else (a.x, b.x)
-        u1, v1 = (v1, u1) if v1 < u1 else (u1, v1)
-        
-        # Check crossings with previous rays, except last
-        # FIXME crossing the same tile multiple times is subtracted more than once -> Reduce ray length? Start, End, Both?
-        for i, (axis2, u2, v2) in enumerate(rays[:-1]):
-            if i % 2 == offset:
-                if u1 <= axis2 <= v1 and u2 <= axis1 <= v2:
-                    total_steps -= 1
-            else:
-                if axis1 == axis2 and (overlap := min(v1, v2) - max(u1, u2)) > 0:
-                    total_steps -= overlap
-
-        rays.append((axis1, u1, v1))
-        offset = offset ^ 1  # toggle between 0 and 1
-    
-    return total_steps
+    # return len(_collect_visited_tiles(grid))  # 0.00310s (average of 1000)
+    return _raywalk_visited_count(grid)  # 0.00214s (average of 1000)
 
 
-def _collect_path(grid: list[str]) -> list[VisitedTile]:
+# region Part 1 - Intuitive
+def _collect_visited_tiles(grid: list[str]) -> list[VisitedTile]:
     height = len(grid)
     width = len(grid[0])
     (x, y), direction = next(
@@ -111,7 +84,45 @@ def _collect_path(grid: list[str]) -> list[VisitedTile]:
             y = next_y
 
     return visited_tiles
+# endregion
 
+
+# region Part 1 - Raywalking
+def _raywalk_visited_count(grid: list[str]) -> int:
+    total_steps = 0
+    ray_steps = _collect_rays(grid)  # 0.00108s (average of 1000)
+    rays = []
+    offset = 1
+    for a, b in pairwise(ray_steps):
+        steps = abs(a.x - b.x) + abs(a.y - b.y) + 1
+        total_steps += steps
+
+        #                            A x  y    B x  y     axis  u    v
+        # Change ray representation:  (4, 6) -> (4, 1)  to  4,  1 -> 6
+        axis1 = a.x if a.x == b.x else a.y
+        u1, v1 = (a.y, b.y) if a.x == b.x else (a.x, b.x)
+        u1, v1 = (v1, u1) if v1 < u1 else (u1, v1)
+
+        # Collect all distinct overlaps with previous rays
+        ray_overlaps = set()
+        for i, (axis2, u2, v2) in enumerate(rays):
+            if i % 2 == offset:
+                # Opposite orientation: Overlap is combination of both axis values
+                if u1 <= axis2 <= v1 and u2 <= axis1 <= v2:
+                    ray_overlaps.add((axis1, axis2) if a.x == b.x else (axis2, axis1))
+            else:
+                # Same orientation: Overlaps are along the same line
+                if axis1 == axis2 and (overlap_end := min(v1, v2)) - (overlap_start := max(u1, u2)) > 0:
+                    ray_overlaps.update(
+                        (axis1, w) if a.x == b.x else (w, axis1)
+                        for w in range(overlap_start, overlap_end)
+                    )
+        total_steps -= len(ray_overlaps)
+
+        rays.append((axis1, u1, v1))
+        offset = offset ^ 1  # toggle between 0 and 1
+    
+    return total_steps
 
 def _collect_rays(grid: list[str]) -> list[VisitedTile]:
     height = len(grid)
@@ -172,6 +183,7 @@ def _closest_obstacle(position: int, delta: int, obstacles: list[int]) -> int:
     if delta*position < delta*right_value:
         return right_value
     return None
+# endregion
 
 
 def solve_part2(input: str) -> int:
