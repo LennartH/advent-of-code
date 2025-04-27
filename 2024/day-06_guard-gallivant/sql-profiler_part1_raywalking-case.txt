@@ -1,0 +1,268 @@
+┌─────────────────────────────────────┐
+│┌───────────────────────────────────┐│
+││    Query Profiling Information    ││
+│└───────────────────────────────────┘│
+└─────────────────────────────────────┘
+EXPLAIN ANALYZE      WITH RECURSIVE         steps AS (             FROM tiles t             JOIN directions d ON d.dir = symbol             SELECT                 step_index: 0,                 prev_x: NULL,                 prev_y: NULL,                 prev_dir: NULL::STRING,                 x, y, dir,             UNION ALL             FROM closest_wall w             JOIN directions d USING (dir)             SELECT                 step_index + 1,                 prev_x: w.x,                 prev_y: w.y,                 prev_dir: w.dir,                 x: w.wall_x - d.dx,                 y: w.wall_y - d.dy,                 dir: d.next_dir,         ),          -- -- TODO is this the best way to use ASOF joins here?         -- closest_wall AS (  -- 0.88820 +- 0.00596 seconds time elapsed  (+- 0.67%)         --     FROM steps s         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.x = s.x AND w.y < s.y         --     SELECT s.*, w.x as wall_x, w.y as wall_y         --     WHERE s.dir = '^'          --     UNION ALL          --     FROM steps s         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.y = s.y AND w.x > s.x         --     SELECT s.*, w.x as wall_x, w.y as wall_y         --     WHERE s.dir = '>'          --     UNION ALL          --     FROM steps s         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.x = s.x AND w.y > s.y         --     SELECT s.*, w.x as wall_x, w.y as wall_y         --     WHERE s.dir = 'v'          --     UNION ALL          --     FROM steps s         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.y = s.y AND w.x < s.x         --     SELECT s.*, w.x as wall_x, w.y as wall_y         --     WHERE s.dir = '<'         -- ),          closest_wall AS (  -- 0.20916 +- 0.00379 seconds time elapsed  (+- 1.81%)             FROM steps s             INNER JOIN tiles w ON w.symbol = '#' AND CASE dir                 WHEN '^' THEN s.x = w.x AND s.y > w.y                 WHEN '>' THEN s.y = w.y AND s.x < w.x                 WHEN 'v' THEN s.x = w.x AND s.y < w.y                 WHEN '<' THEN s.y = w.y AND s.x > w.x             END             SELECT s.*, w.x as wall_x, w.y as wall_y             ORDER BY abs(s.x - w.x) + abs(s.y - w.y) ASC             LIMIT 1         ),          -- closest_wall AS (  -- 0.25766 +- 0.00381 seconds time elapsed  (+- 1.48%)         --     FROM steps s         --     JOIN directions d USING (dir)         --     INNER JOIN tiles w          --             ON w.symbol = '#'         --            -- in line with current direction (either x-x/y-y is 0 or dy/dx is 0)         --            AND (w.y - s.y) * d.dx + (w.x - s.x) * d.dy = 0         --            -- is after current position in current direction         --            AND (w.y * d.dy > s.y * d.dy OR w.x * d.dx > s.x * d.dx)         --     SELECT s.*, w.x as wall_x, w.y as wall_y         --     ORDER BY abs(s.x - w.x) + abs(s.y - w.y) ASC         --     LIMIT 1         -- ),          final_step AS (             FROM steps s             JOIN directions d USING (dir)             SELECT                 step_index: step_index + 1,                 prev_x: x,                 prev_y: y,                 prev_dir: dir,                 x: coalesce(d.edge_x, x),                 y: coalesce(d.edge_y, y),                 dir: next_dir,             ORDER BY step_index DESC             LIMIT 1         ),         visited_tiles AS (             FROM (FROM steps UNION ALL FROM final_step) s             JOIN directions d ON d.dir = s.prev_dir             SELECT                 x: if(dx = 0, prev_x, unnest(generate_series(prev_x, x, dx))),                 y: if(dy = 0, prev_y, unnest(generate_series(prev_y, y, dy))),                 dir: s.prev_dir,             WHERE step_index != 0         )      FROM visited_tiles ;
+┌────────────────────────────────────────────────┐
+│┌──────────────────────────────────────────────┐│
+││              Total Time: 0.240s              ││
+│└──────────────────────────────────────────────┘│
+└────────────────────────────────────────────────┘
+┌─────────────────┐
+│      QUERY      │
+└────────┬────────┘
+┌────────┴────────┐
+│ EXPLAIN_ANALYZE │
+│    ──────────   │
+│      0 Rows     │
+│     (0.00s)     │
+└────────┬────────┘
+┌────────┴────────┐
+│    PROJECTION   │
+│    ──────────   │
+│        x        │
+│        y        │
+│       dir       │
+│                 │
+│    4960 Rows    │
+│     (0.00s)     │
+└────────┬────────┘
+┌────────┴────────┐
+│      UNNEST     │
+│    ──────────   │
+│    4960 Rows    │
+│     (0.00s)     │
+└────────┬────────┘
+┌────────┴────────┐
+│    HASH_JOIN    │
+│    ──────────   │
+│    Join Type:   │
+│      INNER      │
+│                 │
+│   Conditions:   ├───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  prev_dir = dir │                                                                                                                                                                                                       │
+│                 │                                                                                                                                                                                                       │
+│     138 Rows    │                                                                                                                                                                                                       │
+│     (0.00s)     │                                                                                                                                                                                                       │
+└────────┬────────┘                                                                                                                                                                                                       │
+┌────────┴────────┐                                                                                                                                                                                              ┌────────┴────────┐
+│      UNION      │                                                                                                                                                                                              │    TABLE_SCAN   │
+│    ──────────   │                                                                                                                                                                                              │    ──────────   │
+│                 │                                                                                                                                                                                              │      Table:     │
+│                 │                                                                                                                                                                                              │    directions   │
+│                 │                                                                                                                                                                                              │                 │
+│                 │                                                                                                                                                                                              │      Type:      │
+│                 │                                                                                                                                                                                              │ Sequential Scan │
+│                 ├─────────────────────────────────────────────────────────────────────────────────────┐                                                                                                        │                 │
+│                 │                                                                                     │                                                                                                        │   Projections:  │
+│                 │                                                                                     │                                                                                                        │       dir       │
+│                 │                                                                                     │                                                                                                        │        dx       │
+│                 │                                                                                     │                                                                                                        │        dy       │
+│                 │                                                                                     │                                                                                                        │                 │
+│      0 Rows     │                                                                                     │                                                                                                        │      4 Rows     │
+│     (0.00s)     │                                                                                     │                                                                                                        │     (0.00s)     │
+└────────┬────────┘                                                                                     │                                                                                                        └─────────────────┘
+┌────────┴────────┐                                                                            ┌────────┴────────┐
+│    PROJECTION   │                                                                            │    PROJECTION   │
+│    ──────────   │                                                                            │    ──────────   │
+│      prev_x     │                                                                            │        #1       │
+│      prev_y     │                                                                            │        #2       │
+│     prev_dir    │                                                                            │        #3       │
+│        x        │                                                                            │        #4       │
+│        y        │                                                                            │        #5       │
+│                 │                                                                            │                 │
+│     137 Rows    │                                                                            │      1 Rows     │
+│     (0.00s)     │                                                                            │     (0.00s)     │
+└────────┬────────┘                                                                            └────────┬────────┘
+┌────────┴────────┐                                                                            ┌────────┴────────┐
+│    PROJECTION   │                                                                            │      FILTER     │
+│    ──────────   │                                                                            │    ──────────   │
+│        #1       │                                                                            │(step_index != 0)│
+│        #2       │                                                                            │                 │
+│        #3       │                                                                            │                 │
+│        #4       │                                                                            │                 │
+│        #5       │                                                                            │                 │
+│                 │                                                                            │                 │
+│     137 Rows    │                                                                            │      1 Rows     │
+│     (0.00s)     │                                                                            │     (0.00s)     │
+└────────┬────────┘                                                                            └────────┬────────┘
+┌────────┴────────┐                                                                            ┌────────┴────────┐
+│      FILTER     │                                                                            │      TOP_N      │
+│    ──────────   │                                                                            │    ──────────   │
+│(step_index != 0)│                                                                            │      Top: 1     │
+│                 │                                                                            │                 │
+│                 │                                                                            │    Order By:    │
+│                 │                                                                            │ (s.step_index + │
+│                 │                                                                            │      1) DESC    │
+│                 │                                                                            │                 │
+│     137 Rows    │                                                                            │      1 Rows     │
+│     (0.00s)     │                                                                            │     (0.00s)     │
+└────────┬────────┘                                                                            └────────┬────────┘
+┌────────┴────────┐                                                                            ┌────────┴────────┐
+│  RECURSIVE_CTE  │                                                                            │    PROJECTION   │
+│    ──────────   │                                                                            │    ──────────   │
+│    CTE Name:    │                                                                            │    step_index   │
+│      steps      │                                                                            │      prev_x     │
+│                 │                                                                            │      prev_y     │
+│   Table Index:  ├────────────────────────────┐                                               │     prev_dir    │
+│        1        │                            │                                               │        x        │
+│                 │                            │                                               │        y        │
+│                 │                            │                                               │                 │
+│     138 Rows    │                            │                                               │     138 Rows    │
+│     (0.23s)     │                            │                                               │     (0.00s)     │
+└────────┬────────┘                            │                                               └────────┬────────┘
+┌────────┴────────┐                   ┌────────┴────────┐                                      ┌────────┴────────┐
+│    PROJECTION   │                   │    PROJECTION   │                                      │    HASH_JOIN    │
+│    ──────────   │                   │    ──────────   │                                      │    ──────────   │
+│    step_index   │                   │ (step_index + 1)│                                      │    Join Type:   │
+│       NULL      │                   │      prev_x     │                                      │      INNER      │
+│       NULL      │                   │      prev_y     │                                      │                 │
+│     prev_dir    │                   │     prev_dir    │                                      │   Conditions:   │
+│        x        │                   │        x        │                                      │    dir = dir    ├─────────────────────────────────────────────────────────────────────────────────────┐
+│        y        │                   │        y        │                                      │                 │                                                                                     │
+│       dir       │                   │       dir       │                                      │                 │                                                                                     │
+│                 │                   │                 │                                      │                 │                                                                                     │
+│      1 Rows     │                   │     137 Rows    │                                      │     138 Rows    │                                                                                     │
+│     (0.00s)     │                   │     (0.00s)     │                                      │     (0.00s)     │                                                                                     │
+└────────┬────────┘                   └────────┬────────┘                                      └────────┬────────┘                                                                                     │
+┌────────┴────────┐                   ┌────────┴────────┐                                      ┌────────┴────────┐                                                                            ┌────────┴────────┐
+│    HASH_JOIN    │                   │    HASH_JOIN    │                                      │  RECURSIVE_CTE  │                                                                            │    TABLE_SCAN   │
+│    ──────────   │                   │    ──────────   │                                      │    ──────────   │                                                                            │    ──────────   │
+│    Join Type:   │                   │    Join Type:   │                                      │    CTE Name:    │                                                                            │      Table:     │
+│      INNER      │                   │      INNER      │                                      │      steps      │                                                                            │    directions   │
+│                 │                   │                 │                                      │                 │                                                                            │                 │
+│   Conditions:   ├─────────┐         │   Conditions:   ├─────────┐                            │   Table Index:  ├────────────────────────────┐                                               │      Type:      │
+│   symbol = dir  │         │         │    dir = dir    │         │                            │        31       │                            │                                               │ Sequential Scan │
+│                 │         │         │                 │         │                            │                 │                            │                                               │                 │
+│      1 Rows     │         │         │     137 Rows    │         │                            │     138 Rows    │                            │                                               │      4 Rows     │
+│     (0.00s)     │         │         │     (0.01s)     │         │                            │     (0.23s)     │                            │                                               │     (0.00s)     │
+└────────┬────────┘         │         └────────┬────────┘         │                            └────────┬────────┘                            │                                               └─────────────────┘
+┌────────┴────────┐┌────────┴────────┐┌────────┴────────┐┌────────┴────────┐                   ┌────────┴────────┐                   ┌────────┴────────┐
+│    TABLE_SCAN   ││    TABLE_SCAN   ││    TABLE_SCAN   ││    PROJECTION   │                   │    PROJECTION   │                   │    PROJECTION   │
+│    ──────────   ││    ──────────   ││    ──────────   ││    ──────────   │                   │    ──────────   │                   │    ──────────   │
+│      Table:     ││      Table:     ││      Table:     ││        #0       │                   │    step_index   │                   │ (step_index + 1)│
+│      tiles      ││    directions   ││    directions   ││        #1       │                   │       NULL      │                   │      prev_x     │
+│                 ││                 ││                 ││        #2       │                   │       NULL      │                   │      prev_y     │
+│      Type:      ││      Type:      ││      Type:      ││        #3       │                   │     prev_dir    │                   │     prev_dir    │
+│ Sequential Scan ││ Sequential Scan ││ Sequential Scan ││        #4       │                   │        x        │                   │        x        │
+│                 ││                 ││                 ││        #5       │                   │        y        │                   │        y        │
+│   Projections:  ││   Projections:  ││   Projections:  ││                 │                   │       dir       │                   │       dir       │
+│      symbol     ││       dir       ││       dir       ││                 │                   │                 │                   │                 │
+│        x        ││                 ││        dx       ││                 │                   │                 │                   │                 │
+│        y        ││                 ││        dy       ││                 │                   │                 │                   │                 │
+│                 ││                 ││     next_dir    ││                 │                   │                 │                   │                 │
+│                 ││                 ││                 ││                 │                   │                 │                   │                 │
+│      1 Rows     ││      4 Rows     ││     141 Rows    ││     137 Rows    │                   │      1 Rows     │                   │     137 Rows    │
+│     (0.00s)     ││     (0.00s)     ││     (0.00s)     ││     (0.00s)     │                   │     (0.00s)     │                   │     (0.00s)     │
+└─────────────────┘└─────────────────┘└─────────────────┘└────────┬────────┘                   └────────┬────────┘                   └────────┬────────┘
+                                                         ┌────────┴────────┐                   ┌────────┴────────┐                   ┌────────┴────────┐
+                                                         │      TOP_N      │                   │    HASH_JOIN    │                   │    HASH_JOIN    │
+                                                         │    ──────────   │                   │    ──────────   │                   │    ──────────   │
+                                                         │      Top: 1     │                   │    Join Type:   │                   │    Join Type:   │
+                                                         │                 │                   │      INNER      │                   │      INNER      │
+                                                         │    Order By:    │                   │                 │                   │                 │
+                                                         │      #6 ASC     │                   │   Conditions:   ├─────────┐         │   Conditions:   ├─────────┐
+                                                         │                 │                   │   symbol = dir  │         │         │    dir = dir    │         │
+                                                         │                 │                   │                 │         │         │                 │         │
+                                                         │     137 Rows    │                   │      1 Rows     │         │         │     137 Rows    │         │
+                                                         │     (0.00s)     │                   │     (0.00s)     │         │         │     (0.01s)     │         │
+                                                         └────────┬────────┘                   └────────┬────────┘         │         └────────┬────────┘         │
+                                                         ┌────────┴────────┐                   ┌────────┴────────┐┌────────┴────────┐┌────────┴────────┐┌────────┴────────┐
+                                                         │    PROJECTION   │                   │    TABLE_SCAN   ││    TABLE_SCAN   ││    TABLE_SCAN   ││    PROJECTION   │
+                                                         │    ──────────   │                   │    ──────────   ││    ──────────   ││    ──────────   ││    ──────────   │
+                                                         │    step_index   │                   │      Table:     ││      Table:     ││      Table:     ││        #0       │
+                                                         │        x        │                   │      tiles      ││    directions   ││    directions   ││        #1       │
+                                                         │        y        │                   │                 ││                 ││                 ││        #2       │
+                                                         │       dir       │                   │      Type:      ││      Type:      ││      Type:      ││        #3       │
+                                                         │      wall_x     │                   │ Sequential Scan ││ Sequential Scan ││ Sequential Scan ││        #4       │
+                                                         │      wall_y     │                   │                 ││                 ││                 ││        #5       │
+                                                         │ (abs((x - x)) + │                   │   Projections:  ││   Projections:  ││   Projections:  ││                 │
+                                                         │   abs((y - y))) │                   │      symbol     ││       dir       ││       dir       ││                 │
+                                                         │                 │                   │        x        ││                 ││        dx       ││                 │
+                                                         │                 │                   │        y        ││                 ││        dy       ││                 │
+                                                         │                 │                   │                 ││                 ││     next_dir    ││                 │
+                                                         │                 │                   │                 ││                 ││                 ││                 │
+                                                         │     460 Rows    │                   │      1 Rows     ││      4 Rows     ││     141 Rows    ││     137 Rows    │
+                                                         │     (0.00s)     │                   │     (0.00s)     ││     (0.00s)     ││     (0.00s)     ││     (0.00s)     │
+                                                         └────────┬────────┘                   └─────────────────┘└─────────────────┘└─────────────────┘└────────┬────────┘
+                                                         ┌────────┴────────┐                                                                            ┌────────┴────────┐
+                                                         │BLOCKWISE_NL_JOIN│                                                                            │      TOP_N      │
+                                                         │    ──────────   │                                                                            │    ──────────   │
+                                                         │    Join Type:   │                                                                            │      Top: 1     │
+                                                         │      INNER      │                                                                            │                 │
+                                                         │                 │                                                                            │    Order By:    │
+                                                         │    Condition:   │                                                                            │      #6 ASC     │
+                                                         │ CASE  WHEN ((dir│                                                                            │                 │
+                                                         │  = '^')) THEN ((│                                                                            │                 │
+                                                         │ (x = x) AND (y >│                                                                            │                 │
+                                                         │  y))) WHEN ((dir│                                                                            │                 │
+                                                         │  = '>')) THEN ((│                                                                            │                 │
+                                                         │ (y = y) AND (x <├─────────┐                                                                  │                 │
+                                                         │  x))) WHEN ((dir│         │                                                                  │                 │
+                                                         │  = 'v')) THEN ((│         │                                                                  │                 │
+                                                         │ (x = x) AND (y <│         │                                                                  │                 │
+                                                         │  y))) WHEN ((dir│         │                                                                  │                 │
+                                                         │  = '<')) THEN ((│         │                                                                  │                 │
+                                                         │ (y = y) AND (x >│         │                                                                  │                 │
+                                                         │  x))) ELSE NULL │         │                                                                  │                 │
+                                                         │        END      │         │                                                                  │                 │
+                                                         │                 │         │                                                                  │                 │
+                                                         │     460 Rows    │         │                                                                  │     137 Rows    │
+                                                         │     (0.02s)     │         │                                                                  │     (0.00s)     │
+                                                         └────────┬────────┘         │                                                                  └────────┬────────┘
+                                                         ┌────────┴────────┐┌────────┴────────┐                                                         ┌────────┴────────┐
+                                                         │    TABLE_SCAN   ││RECURSIVE_CT...  │                                                         │    PROJECTION   │
+                                                         │    ──────────   ││    ──────────   │                                                         │    ──────────   │
+                                                         │      Table:     ││    CTE Index:   │                                                         │    step_index   │
+                                                         │      tiles      ││        1        │                                                         │        x        │
+                                                         │                 ││                 │                                                         │        y        │
+                                                         │      Type:      ││                 │                                                         │       dir       │
+                                                         │ Sequential Scan ││                 │                                                         │      wall_x     │
+                                                         │                 ││                 │                                                         │      wall_y     │
+                                                         │     Filters:    ││                 │                                                         │ (abs((x - x)) + │
+                                                         │    symbol='#'   ││                 │                                                         │   abs((y - y))) │
+                                                         │                 ││                 │                                                         │                 │
+                                                         │   112884 Rows   ││     138 Rows    │                                                         │     460 Rows    │
+                                                         │     (0.04s)     ││     (0.00s)     │                                                         │     (0.00s)     │
+                                                         └─────────────────┘└─────────────────┘                                                         └────────┬────────┘
+                                                                                                                                                        ┌────────┴────────┐
+                                                                                                                                                        │BLOCKWISE_NL_JOIN│
+                                                                                                                                                        │    ──────────   │
+                                                                                                                                                        │    Join Type:   │
+                                                                                                                                                        │      INNER      │
+                                                                                                                                                        │                 │
+                                                                                                                                                        │    Condition:   │
+                                                                                                                                                        │ CASE  WHEN ((dir│
+                                                                                                                                                        │  = '^')) THEN ((│
+                                                                                                                                                        │ (x = x) AND (y >│
+                                                                                                                                                        │  y))) WHEN ((dir│
+                                                                                                                                                        │  = '>')) THEN ((│
+                                                                                                                                                        │ (y = y) AND (x <├─────────┐
+                                                                                                                                                        │  x))) WHEN ((dir│         │
+                                                                                                                                                        │  = 'v')) THEN ((│         │
+                                                                                                                                                        │ (x = x) AND (y <│         │
+                                                                                                                                                        │  y))) WHEN ((dir│         │
+                                                                                                                                                        │  = '<')) THEN ((│         │
+                                                                                                                                                        │ (y = y) AND (x >│         │
+                                                                                                                                                        │  x))) ELSE NULL │         │
+                                                                                                                                                        │        END      │         │
+                                                                                                                                                        │                 │         │
+                                                                                                                                                        │     460 Rows    │         │
+                                                                                                                                                        │     (0.02s)     │         │
+                                                                                                                                                        └────────┬────────┘         │
+                                                                                                                                                        ┌────────┴────────┐┌────────┴────────┐
+                                                                                                                                                        │    TABLE_SCAN   ││RECURSIVE_CT...  │
+                                                                                                                                                        │    ──────────   ││    ──────────   │
+                                                                                                                                                        │      Table:     ││    CTE Index:   │
+                                                                                                                                                        │      tiles      ││        31       │
+                                                                                                                                                        │                 ││                 │
+                                                                                                                                                        │      Type:      ││                 │
+                                                                                                                                                        │ Sequential Scan ││                 │
+                                                                                                                                                        │                 ││                 │
+                                                                                                                                                        │     Filters:    ││                 │
+                                                                                                                                                        │    symbol='#'   ││                 │
+                                                                                                                                                        │                 ││                 │
+                                                                                                                                                        │   112884 Rows   ││     138 Rows    │
+                                                                                                                                                        │     (0.04s)     ││     (0.00s)     │
+                                                                                                                                                        └─────────────────┘└─────────────────┘
