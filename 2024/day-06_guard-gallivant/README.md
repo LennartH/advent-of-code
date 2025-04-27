@@ -312,7 +312,36 @@ part 2: check different optimizations
 
 #### Original Approach
 
-#### Improving the Original SQL Solution
+- Runtime for both parts with DuckDB v1.2.2 7c039464e4: **13.9773** +- 0.0794 seconds time elapsed  (+- 0.57%)
+  - Via `perf stat -r 10 -B duckdb -f solution.sql`
+  - Only part 1: **0.43588** +- 0.00360 seconds time elapsed  (+- 0.83%)
+    - Roughly 3% of total runtime
+- Datengrundlage: Table with x, y coordinates and the symbol in the grid
+- Rough approach part 1
+  - Raywalking with collecting "steps on the axis" on the fly (generate_series)
+    - Limited to single cursor while walking
+    - Complex "cross join" (case when, order by limit 1) to find nearest obstacle
+  - Collect all visited tiles (including duplicate positions) by exploding previous "steps on axis" to a table
+  - Count distinct on visited tiles is result for part 1
+- Rough approach part 2
+  - Build dataset of all viable obstacle positions, direction at that time and the previous positions on the path
+    - Based on dataset of all visited tiles
+    - Entries of path are encoded as strings `x|y|dir` via `MACRO` (no trust in tuples at the time I guess)
+    - Obstacles need to be deduplicated for each positions based on order of occurence to satisfy condition that obstacle must be placed before walking starts
+  - Place obstacle and perform same raywalking approach from part 1 until loop is detected or walking terminates
+    - New obstacle must be considered when finding nearest obstacle since it can be hit more than the one time at the start
+    - Only considered previously visited tiles, not future tiles that guarantee termination without loop (tile of set `E`)
+    - Runs all obstacles in parallel
+
+#### Reworking Part 1
+
+- Runtime of naive approach: 3.764 +- 0.105 seconds time elapsed  (+- 2.78%)
+  - `INNER JOIN` on set of all tiles on next position terminates recursive CTE
+  - Slightly faster than using a `LEFT JOIN` and `WHERE` clause
+    - 4.0564 +- 0.0933 seconds time elapsed  (+- 2.30%)
+  - Using a `VIEW` for tiles instead of a `TABLE` increases runtime to ~22s
+
+#### Reworking Part 2
 
 ### Stats
 
