@@ -214,7 +214,7 @@ Part 1 is pretty straightforward, but there are still a few things to play aroun
 
 This shows that using a string to represent a position is a lot more costly than using a tuple and that it doesn't seem to matter, whether a set is used from the start or only at the end to determine the total count of visited tiles. Solving part 1 only requires the number visited tiles, but the list of positions and directions is useful for part 2. This is the main reason to I decided to stick with approach 3, so I that the direction doesn't have to be excluded when calculating the hash during deduplication.
 
-The final implementation of this approach builds a list of visited tiles with the information necessary for part 2 and takes _0.00310s_ in isolation and **~0.075s** with IO.
+The final implementation of this approach builds a list of visited tiles with the information necessary for part 2 and takes _0.00310s_ in isolation and **~0.065s** with IO.
 
 ##### Raywalking Approach
 
@@ -312,11 +312,14 @@ part 2: check different optimizations
 
 #### Original Approach
 
-- Runtime for both parts with DuckDB v1.2.2 7c039464e4: **13.9773** +- 0.0794 seconds time elapsed  (+- 0.57%)
-  - Via `perf stat -r 10 -B duckdb -f solution.sql`
-  - Only part 1: **0.43588** +- 0.00360 seconds time elapsed  (+- 0.83%)
-    - Roughly 3% of total runtime
-- Datengrundlage: Table with x, y coordinates and the symbol in the grid
+- Runtime via `perf stat -r 10 -B duckdb -f solution.original.sql`
+  - DuckDB v1.2.2 7c039464e4
+    - Both parts: **14.645** +- 0.114 seconds (+- 0.78%)
+    - Only part 1: **0.49385** +- 0.00488 seconds (+- 0.99%)
+  - DuckDB v1.3.1 2063dda3e6
+    - Both parts: **13.187** +- 0.126 seconds (+- 0.96%)
+    - Only part 1: **0.51725** +- 0.00533 seconds (+- 1.03%)
+- Input data: Table with x, y coordinates and the symbol in the grid
 - Rough approach part 1
   - Raywalking with collecting "steps on the axis" on the fly (generate_series)
     - Limited to single cursor while walking
@@ -335,11 +338,9 @@ part 2: check different optimizations
 
 #### Reworking Part 1
 
-- Runtime of naive approach: 3.764 +- 0.105 seconds time elapsed  (+- 2.78%)
+- Runtime of naive approach: **4.5222** +- 0.0780 seconds (+- 1.72%)
   - `INNER JOIN` on set of all tiles on next position terminates recursive CTE
-  - Slightly faster than using a `LEFT JOIN` and `WHERE` clause
-    - 4.0564 +- 0.0933 seconds time elapsed  (+- 2.30%)
-  - Using a `VIEW` for tiles instead of a `TABLE` increases runtime to ~22s
+  - Using a `VIEW` for tiles instead of a `TABLE` increases runtime to ~18s
 
 #### Reworking Part 2
 
