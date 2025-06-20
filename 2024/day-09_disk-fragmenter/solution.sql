@@ -124,7 +124,7 @@ CASE
             {'key': pos, 'value': size}
         ))
 END;
-CREATE OR REPLACE MACRO used_size(history, pos) AS coalesce(history[pos][1], 0);
+CREATE OR REPLACE MACRO used_size(history, pos) AS coalesce(history[pos], 0);
 CREATE OR REPLACE TABLE defragmented_chunks AS (
 WITH RECURSIVE
     file_chunks AS (FROM chunks WHERE id NOT NULL),

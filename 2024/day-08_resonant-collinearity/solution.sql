@@ -21,7 +21,8 @@ SELECT regexp_split_to_table(trim(content, E'\n '), '\n') as line FROM read_text
 SET VARIABLE solution1 = 256;
 SET VARIABLE solution2 = 1005;
 
-SET VARIABLE mode = 'input'; -- example or input
+SET VARIABLE mode = 'example';
+-- SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE VIEW grid AS (
 WITH
