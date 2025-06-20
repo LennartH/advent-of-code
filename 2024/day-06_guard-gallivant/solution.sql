@@ -10,6 +10,9 @@ SET VARIABLE example = '
     #.........
     ......#...
 ';
+SET VARIABLE exampleSolution1 = 41;
+SET VARIABLE exampleSolution2 = 6;
+
 -- -- Loop when placing obstacle on visited cell
 -- SET VARIABLE example = '
 --     .#............
@@ -37,9 +40,21 @@ SET VARIABLE example = '
 --    ............
 -- ';
 
+-- SET VARIABLE example = '
+--     .#.......
+--     ....#..#.
+--     .........
+--     ....#....
+--     ...#....#
+--     .........
+--     ....^....
+--     #........
+--     .......#.
+-- ';
+-- SET VARIABLE exampleSolution1 = 27;
+-- SET VARIABLE exampleSolution2 = 3;
+
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
-SET VARIABLE exampleSolution1 = 41;
-SET VARIABLE exampleSolution2 = 6;
 
 CREATE OR REPLACE TABLE input AS
 FROM read_text('input') SELECT regexp_split_to_table(trim(content, E'\n '), '\n\s*') as line;
@@ -51,6 +66,7 @@ SET VARIABLE solution2 = 1516;
 SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE TABLE tiles AS (
+-- CREATE OR REPLACE VIEW tiles AS (
     SELECT
         y,
         x: generate_subscripts(symbols, 1),
@@ -64,6 +80,7 @@ CREATE OR REPLACE TABLE tiles AS (
 );
 
 CREATE OR REPLACE TABLE directions AS (
+-- CREATE OR REPLACE VIEW directions AS (
     FROM (VALUES 
         ('^', '>', '<',  0, -1, NULL, 1),
         ('>', 'v', '^',  1,  0, (SELECT max(x) FROM tiles), NULL),
@@ -254,6 +271,7 @@ CREATE OR REPLACE TABLE directions AS (
 -- v1.3.1 2063dda3e6: 0.27661 +- 0.00385 seconds (+- 1.39%)
 
 CREATE OR REPLACE TABLE edges AS (
+-- CREATE OR REPLACE VIEW edges AS (
     WITH
         walls AS (
             FROM tiles WHERE symbol = '#'
@@ -299,6 +317,7 @@ CREATE OR REPLACE TABLE edges AS (
 );
 
 CREATE OR REPLACE TABLE paths AS (
+-- CREATE OR REPLACE VIEW paths AS (
     WITH RECURSIVE
         paths USING KEY (start) AS (
             FROM edges
@@ -325,6 +344,7 @@ CREATE OR REPLACE TABLE paths AS (
 );
 
 CREATE OR REPLACE TABLE visited_tiles AS (
+-- CREATE OR REPLACE VIEW visited_tiles AS (
     WITH
         path AS (
             FROM tiles t
@@ -344,43 +364,105 @@ CREATE OR REPLACE TABLE visited_tiles AS (
             FROM (
                 FROM path p
                 SELECT 
-                    pos: generate_subscripts(path, 1),
+                    step_index: generate_subscripts(path, 1),
                     step: unnest(path, recursive := true),
+                    path: path[:step_index-1],
             ) s
             SELECT
-                pos,
+                step_index,
                 from_y: lag(y) OVER step_order,
                 from_x: lag(x) OVER step_order,
                 to_y: y,
                 to_x: x,
                 dir,
+                path,
             WINDOW
-                step_order AS (ORDER BY pos ASC)
+                step_order AS (ORDER BY step_index ASC)
             QUALIFY from_x IS NOT NULL
         ),
         visited_tiles AS (
             FROM steps s
             JOIN directions d USING (dir)
             SELECT
-                y: if(dy = 0, from_y, unnest(range(from_y, to_y, dy))),
-                x: if(dx = 0, from_x, unnest(range(from_x, to_x, dx))),
+                step_index: step_index - 1,
+                tile_index: unnest(generate_series(0, abs(if(dy = 0, from_x - to_x, from_y - to_y)))) + 1,
+                y: if(dy = 0, from_y, unnest(generate_series(from_y, to_y, dy))),
+                x: if(dx = 0, from_x, unnest(generate_series(from_x, to_x, dx))),
                 dir,
-            UNION ALL
-            FROM (FROM steps s ORDER BY pos DESC LIMIT 1)
-            SELECT
-                y: to_y,
-                x: to_x,
-                dir,
+                path
         )
-    
+        
     FROM visited_tiles
+    SELECT
+        index: row_number() OVER (ORDER BY step_index, tile_index),
+        * EXCLUDE (step_index, tile_index),
+);
+-- #endregion
+
+-- #region Part 2 - Path Collapse
+CREATE OR REPLACE TABLE loops AS (
+-- CREATE OR REPLACE VIEW loops AS (
+    WITH
+        guard_paths AS (
+            FROM paths p
+            SELECT
+                p.*,
+                guard: p.start IN (FROM visited_tiles SELECT position: {'y': y, 'x': x, 'dir': dir}),
+        ),
+        obstacles AS (
+            FROM visited_tiles v
+            JOIN directions d USING (dir)
+            SELECT
+                index,
+                y, x, dir,
+                obstacle_y: y + d.dy,
+                obstacle_x: x + d.dx,
+                d.next_dir,
+                path_before: path,
+            WHERE obstacle_y > 0 AND obstacle_y <= (FROM tiles SELECT max(y))
+              AND obstacle_x > 0 AND obstacle_x <= (FROM tiles SELECT max(x))
+              AND '#' != (FROM tiles SELECT symbol WHERE y = obstacle_y AND x = obstacle_x)
+            QUALIFY
+                row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
+        ),
+        obstacle_paths AS (
+            FROM obstacles o
+            JOIN guard_paths p ON p.start.dir = o.next_dir AND CASE o.next_dir
+                WHEN '^' THEN o.x = p.start.x AND o.y >= p.start.y
+                WHEN '>' THEN o.y = p.start.y AND o.x <= p.start.x
+                WHEN 'v' THEN o.x = p.start.x AND o.y <= p.start.y
+                WHEN '<' THEN o.y = p.start.y AND o.x >= p.start.x
+            END
+            SELECT
+                index,
+                obstacle: {'y': obstacle_y, 'x': obstacle_x},
+                position: {'y': y, 'x': x, 'dir': next_dir},
+                path_before,
+                p.*
+            QUALIFY
+                row_number() OVER (PARTITION BY index ORDER BY abs(y - p.start.y) + abs(x - p.start.x)) = 1
+        ),
+        loops AS (
+            FROM obstacle_paths
+            SELECT
+                index, obstacle, position,
+                -- previous_step: path_before[-1],
+                -- path_index: list_position(path, previous_step),
+                path_before,
+                obstacle_path: path,
+                obstacle_loop: list_has_any(path_before, path),
+                loop: obstacle_loop or loop,
+        )
+
+    FROM loops
+    WHERE loop
 );
 -- #endregion
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM visited_tiles SELECT count(distinct (x, y))),
-        part2: NULL
+        part2: (FROM loops SELECT count(*))
 );
 
 
