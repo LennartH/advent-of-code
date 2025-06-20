@@ -17,34 +17,34 @@ SET VARIABLE mode = 'example';
 CREATE OR REPLACE VIEW parser AS (
     FROM query_table(getvariable('mode'))
     SELECT
-        row_number() OVER () as idx,
-        string_split(line, ' ') as parts,
-        cast(string_split(line, ' ') as INTEGER[]) as values
+        idx: row_number() OVER (),
+        parts: string_split(line, ' '),
+        values: cast(string_split(line, ' ') as INTEGER[]),
 );
 
 -- Do stuff
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        NULL as part1,
-        NULL as part2
+        part1: (FROM visited_tiles SELECT count(distinct (x, y))),
+        part2: NULL
 );
 
 
 CREATE OR REPLACE VIEW solution AS (
     FROM results
     SELECT 
-        'Part 1' as part,
-        part1 as result,
-        if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')) as expected,
-        result = expected as correct
+        part: 'Part 1',
+        result: part1,
+        expected: if(getvariable('mode') = 'example', getvariable('exampleSolution1'), getvariable('solution1')),
+        correct: result = expected,
     UNION
     FROM results
     SELECT 
-        'Part 2' as part,
-        part2 as result,
-        if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')) as expected,
-        result = expected as correct
+        part: 'Part 2',
+        result: part2,
+        expected: if(getvariable('mode') = 'example', getvariable('exampleSolution2'), getvariable('solution2')),
+        correct: result = expected,
     ORDER BY part
 );
 FROM solution;
