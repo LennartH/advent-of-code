@@ -13,33 +13,7 @@ SET VARIABLE example = '
 SET VARIABLE exampleSolution1 = 41;
 SET VARIABLE exampleSolution2 = 6;
 
--- -- Loop when placing obstacle on visited cell
--- SET VARIABLE example = '
---     .#............
---     .............#
---     .^...........#
---     .....#........
---     ............#.
--- ';
--- -- Loop between 2 points
--- SET VARIABLE example = '
---    ......
---    .#..#.
---    .....#
---    .^#...
---    ....#.
--- ';
--- -- Loop outside of original path
--- SET VARIABLE example = '
---    ............
---    ......#.....
---    .........#..
---    .....#......
---    ........#...
---    ..^.........
---    ............
--- ';
-
+-- -- Example with multiple obstacles in same line
 -- SET VARIABLE example = '
 --     .#.......
 --     ....#..#.
@@ -53,6 +27,85 @@ SET VARIABLE exampleSolution2 = 6;
 -- ';
 -- SET VARIABLE exampleSolution1 = 27;
 -- SET VARIABLE exampleSolution2 = 3;
+
+-- -- Loop when placing obstacle on visited cell
+-- SET VARIABLE example = '
+--     .#............
+--     ......x......#
+--     .^...........#
+--     .....#........
+--     ............#.
+-- ';
+-- SET VARIABLE exampleSolution1 = 23;
+-- SET VARIABLE exampleSolution2 = 1;
+
+-- -- Loop between 2 points
+-- SET VARIABLE example = '
+--    ......
+--    .#..#.
+--    .....#
+--    .^#x..
+--    ....#.
+-- ';
+-- SET VARIABLE exampleSolution1 = 9;
+-- SET VARIABLE exampleSolution2 = 2;
+
+-- -- Loop outside of original path
+-- SET VARIABLE example = '
+--    ............
+--    ..x...#.....
+--    .........#..
+--    .....#......
+--    ........#...
+--    ..^.........
+--    ............
+-- ';
+-- SET VARIABLE exampleSolution1 = 6;  -- 0
+-- SET VARIABLE exampleSolution2 = 1;  -- 0
+
+-- -- Loop without steps in original path
+-- SET VARIABLE example = '
+--     .#.........
+--     ...........
+--     .x.........
+--     .........#.
+--     ...........
+--     #..........
+--     ........#..
+--     ...........
+--     .^.........
+--     ...........
+-- ';
+-- SET VARIABLE exampleSolution1 = 17;
+-- SET VARIABLE exampleSolution2 = 2;
+
+-- -- Encountering obstacle multiple times without loop
+-- SET VARIABLE example = '
+--     .............
+--     ......#......
+--     ..#..........
+--     ......x......
+--     ...........#.
+--     .............
+--     .#....^......
+--     ..........#..
+-- ';
+-- SET VARIABLE exampleSolution1 = 11;
+-- SET VARIABLE exampleSolution2 = 0;
+
+-- -- Loop after second obstacle encounter
+-- SET VARIABLE example = '
+--     ......#....
+--     ..#........
+--     ......x....
+--     .........#.
+--     .#....^....
+--     ........#..
+--     .#.........
+--     .....#.....
+-- ';
+-- SET VARIABLE exampleSolution1 = 8;
+-- SET VARIABLE exampleSolution2 = 1;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
@@ -400,6 +453,9 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 -- #endregion
 
 -- #region Part 2 - Path Collapse
+-- FIXME: Doesn't work for paths encountering the obstacle multiple times
+-- v1.3.1 2063dda3e6: 2.9660 +- 0.0109 seconds (+- 0.37%)
+
 CREATE OR REPLACE TABLE loops AS (
 -- CREATE OR REPLACE VIEW loops AS (
     WITH
@@ -435,14 +491,14 @@ CREATE OR REPLACE TABLE loops AS (
             END
             SELECT
                 index,
-                obstacle: {'y': obstacle_y, 'x': obstacle_x},
+                obstacle: {'y': obstacle_y, 'x': obstacle_x, 'dir': dir},
                 position: {'y': y, 'x': x, 'dir': next_dir},
                 path_before,
                 p.*
             QUALIFY
                 row_number() OVER (PARTITION BY index ORDER BY abs(y - p.start.y) + abs(x - p.start.x)) = 1
         ),
-        loops AS (
+        partial_loops AS (
             FROM obstacle_paths
             SELECT
                 index, obstacle, position,
@@ -450,19 +506,63 @@ CREATE OR REPLACE TABLE loops AS (
                 -- path_index: list_position(path, previous_step),
                 path_before,
                 obstacle_path: path,
-                obstacle_loop: list_has_any(path_before, path),
-                loop: obstacle_loop or loop,
+                backward_loop: list_has_any(path_before, path),
+                natural_loop: loop,
+        ),
+        obstacle_path_steps AS (
+            WITH
+                unnest_loops AS (
+                    FROM partial_loops
+                    SELECT
+                        index, obstacle, position,
+                        step_index: generate_subscripts(obstacle_path, 1),
+                        step: unnest(obstacle_path),
+                    WHERE NOT backward_loop AND NOT natural_loop
+                ),
+                unnest_loops_steps AS (
+                    FROM unnest_loops
+                    SELECT
+                        index, obstacle, position, step_index, step,
+                        previous_step: lag(step) OVER (PARTITION BY index ORDER BY step_index),
+                    QUALIFY previous_step IS NOT NULL
+                )
+
+            FROM unnest_loops_steps
+            SELECT
+                index, obstacle, position, step_index, step, previous_step,
+                -- loop: (
+                --     step.y = previous_step.y AND step.y = obstacle.y AND
+                --     ((step.x <= obstacle.x AND previous_step.x >= obstacle.x) OR
+                --     (step.x >= obstacle.x AND previous_step.x <= obstacle.x))
+                -- ) OR (
+                --     step.x = previous_step.x AND step.x = obstacle.x AND
+                --     ((step.y <= obstacle.y AND previous_step.y >= obstacle.y) OR
+                --     (step.y >= obstacle.y AND previous_step.y <= obstacle.y))
+                -- ),
+                distance_stop_obstacle: abs(step.x - obstacle.x) + abs(step.y - obstacle.y),
+                distance_obstacle_previous_step: abs(obstacle.x - previous_step.x) + abs(obstacle.y - previous_step.y),
+                distance_previous_step_step: abs(step.x - previous_step.x) + abs(step.y - previous_step.y),
+                forward_loop: step.dir = obstacle.dir AND distance_stop_obstacle + distance_obstacle_previous_step = distance_previous_step_step,
+        ),
+        loops AS (
+            FROM partial_loops l
+            SELECT
+                l.*,
+                forward_loop: true = ANY (FROM obstacle_path_steps s SELECT forward_loop WHERE s.index = l.index),
         )
 
     FROM loops
-    WHERE loop
+    SELECT
+        *,
+        loop: backward_loop OR natural_loop OR forward_loop,
 );
 -- #endregion
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM visited_tiles SELECT count(distinct (x, y))),
-        part2: (FROM loops SELECT count(*))
+        part2: (FROM loops SELECT count(*) WHERE loop)
+        -- part2: NULL
 );
 
 

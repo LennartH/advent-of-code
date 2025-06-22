@@ -1,4 +1,6 @@
 *.tmp
 *.duckdb
+*.db
 runtimes.md
 scratchpad.md
+notes.md
