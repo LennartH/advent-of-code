@@ -63,21 +63,21 @@ SET VARIABLE exampleSolution2 = 6;
 -- SET VARIABLE exampleSolution1 = 6;  -- 0
 -- SET VARIABLE exampleSolution2 = 1;  -- 0
 
--- -- Loop without steps in original path
--- SET VARIABLE example = '
---     .#.........
---     ...........
---     .x.........
---     .........#.
---     ...........
---     #..........
---     ........#..
---     ...........
---     .^.........
---     ...........
--- ';
--- SET VARIABLE exampleSolution1 = 17;
--- SET VARIABLE exampleSolution2 = 2;
+-- Loop without steps in original path
+SET VARIABLE example = '
+    .#.........
+    ...........
+    .x.........
+    .........#.
+    ...........
+    #..........
+    ........#..
+    ...........
+    .^.........
+    ...........
+';
+SET VARIABLE exampleSolution1 = 17;
+SET VARIABLE exampleSolution2 = 2;  -- 1
 
 -- -- Encountering obstacle multiple times without loop
 -- SET VARIABLE example = '
@@ -93,19 +93,19 @@ SET VARIABLE exampleSolution2 = 6;
 -- SET VARIABLE exampleSolution1 = 11;
 -- SET VARIABLE exampleSolution2 = 0;
 
--- -- Loop after second obstacle encounter
--- SET VARIABLE example = '
---     ......#....
---     ..#........
---     ......x....
---     .........#.
---     .#....^....
---     ........#..
---     .#.........
---     .....#.....
--- ';
--- SET VARIABLE exampleSolution1 = 8;
--- SET VARIABLE exampleSolution2 = 1;
+-- Loop after second obstacle encounter
+SET VARIABLE example = '
+    ......#....
+    ..#........
+    ......x....
+    .........#.
+    .#....^....
+    ........#..
+    .#.........
+    .....#.....
+';
+SET VARIABLE exampleSolution1 = 8;
+SET VARIABLE exampleSolution2 = 1;  -- 0
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
@@ -115,8 +115,8 @@ SET VARIABLE solution1 = 4433;
 SET VARIABLE solution2 = 1516;
 
 .maxrows 75
--- SET VARIABLE mode = 'example';
-SET VARIABLE mode = 'input';
+SET VARIABLE mode = 'example';
+-- SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE TABLE tiles AS (
 -- CREATE OR REPLACE VIEW tiles AS (
@@ -172,397 +172,492 @@ CREATE OR REPLACE TABLE directions AS (
 -- #endregion
 
 -- #region Part 1 - Raywalking
--- v1.2.2 7c039464e4: 4.3820 +- 0.1090 seconds (+- 2.50%)
+-- v1.2.2 7c039464e4:
 --    ASOF: 0.68808 +- 0.00510 seconds (+- 0.74%)
 --    CASE: 0.17569 +- 0.00397 seconds (+- 2.26%)
 --   mathy: 0.24673 +- 0.00552 seconds (+- 2.24%)
--- v1.3.1 2063dda3e6: 4.5222 +- 0.0780 seconds (+- 1.72%)
+-- v1.3.1 2063dda3e6:
 --    ASOF: 0.30670 +- 0.01700 seconds (+- 5.54%)
 --    CASE: 0.19088 +- 0.00316 seconds (+- 1.65%)
 --   mathy: 0.23788 +- 0.00743 seconds (+- 3.13%)
+--
+-- Changes for part 2 (v1.3.1 2063dda3e6)
+--   CASE: 0.3922 +- 0.0181 seconds time elapsed  ( +-  4.61% )
 
--- CREATE OR REPLACE TABLE visited_tiles AS (
---     WITH RECURSIVE
---         -- Materialized CTE significantly improves performance
---         -- v1.2.2 7c039464e4
---         --    ASOF: 1.06263 -> 0.68808 (-54%)
---         --    CASE: 0.23304 -> 0.17569 (-32%)
---         --   mathy: 0.28054 -> 0.24673 (-13%)
---         -- v1.3.1 2063dda3e6
---         --    ASOF: 0.30670 -> 0.73319 (+139%)
---         --    CASE: 0.22260 -> 0.19088 (-16%)
---         --   mathy: 0.28820 -> 0.23788 (-21%)
---         steps AS MATERIALIZED (
---             FROM tiles t
---             JOIN directions d ON d.dir = symbol
---             SELECT
---                 step_index: 0,
---                 prev_x: NULL,
---                 prev_y: NULL,
---                 prev_dir: NULL::STRING,
---                 x, y, dir,
---             UNION ALL
---             FROM closest_wall w
---             JOIN directions d USING (dir)
---             SELECT
---                 step_index + 1,
---                 prev_x: w.x,
---                 prev_y: w.y,
---                 prev_dir: w.dir,
---                 x: w.wall_x - d.dx,
---                 y: w.wall_y - d.dy,
---                 dir: d.next_dir,
---         ),
+CREATE OR REPLACE TABLE ray_steps AS (
+-- CREATE OR REPLACE VIEW ray_steps AS (
+    WITH RECURSIVE
+        -- Materialized CTE significantly improves performance
+        -- v1.2.2 7c039464e4
+        --    ASOF: 1.06263 -> 0.68808 (-54%)
+        --    CASE: 0.23304 -> 0.17569 (-32%)
+        --   mathy: 0.28054 -> 0.24673 (-13%)
+        -- v1.3.1 2063dda3e6
+        --    ASOF: 0.30670 -> 0.73319 (+139%)
+        --    CASE: 0.22260 -> 0.19088 (-16%)
+        --   mathy: 0.28820 -> 0.23788 (-21%)
+        steps AS MATERIALIZED (
+            FROM tiles t
+            JOIN directions d ON d.dir = symbol
+            SELECT
+                step_index: 0,
+                prev_y: NULL,
+                prev_x: NULL,
+                prev_dir: NULL::STRING,
+                y, x, dir,
+                -- path: [{'y': y, 'x': x, 'dir': dir}],
+            UNION ALL
+            FROM closest_wall w
+            JOIN directions d USING (dir)
+            SELECT
+                step_index + 1,
+                prev_y: w.y,
+                prev_x: w.x,
+                prev_dir: w.dir,
+                y: w.wall_y - d.dy,
+                x: w.wall_x - d.dx,
+                dir: d.next_dir,
+                -- path: list_append(path, {'y': w.wall_y - d.dy, 'x': w.wall_x - d.dx, 'dir': d.next_dir}),
+        ),
 
---         -- -- ASOF
---         -- -- v1.2.2 7c039464e4
---         -- --   Not Materialized: 1.06263 +- 0.00580 seconds (+- 0.55%)
---         -- --       Materialized: 0.68808 +- 0.00510 seconds (+- 0.74%)
---         -- -- v1.3.1 2063dda3e6
---         -- --   Not Materialized: 0.30670 +- 0.01700 seconds (+- 5.54%)
---         -- --       Materialized: 0.73319 +- 0.00650 seconds (+- 0.89%)
---         -- closest_wall AS (
---         --     -- TODO is this the best way to use ASOF joins here?
---         --     FROM steps s
---         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.x = s.x AND w.y < s.y
---         --     SELECT s.*, w.x as wall_x, w.y as wall_y
---         --     WHERE s.dir = '^'
+        -- -- ASOF
+        -- -- v1.2.2 7c039464e4
+        -- --   Not Materialized: 1.06263 +- 0.00580 seconds (+- 0.55%)
+        -- --       Materialized: 0.68808 +- 0.00510 seconds (+- 0.74%)
+        -- -- v1.3.1 2063dda3e6
+        -- --   Not Materialized: 0.30670 +- 0.01700 seconds (+- 5.54%)
+        -- --       Materialized: 0.73319 +- 0.00650 seconds (+- 0.89%)
+        -- closest_wall AS (
+        --     -- TODO is this the best way to use ASOF joins here?
+        --     FROM steps s
+        --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.x = s.x AND w.y < s.y
+        --     SELECT s.*, w.x as wall_x, w.y as wall_y
+        --     WHERE s.dir = '^'
 
---         --     UNION ALL
+        --     UNION ALL
 
---         --     FROM steps s
---         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.y = s.y AND w.x > s.x
---         --     SELECT s.*, w.x as wall_x, w.y as wall_y
---         --     WHERE s.dir = '>'
+        --     FROM steps s
+        --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.y = s.y AND w.x > s.x
+        --     SELECT s.*, w.x as wall_x, w.y as wall_y
+        --     WHERE s.dir = '>'
 
---         --     UNION ALL
+        --     UNION ALL
 
---         --     FROM steps s
---         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.x = s.x AND w.y > s.y
---         --     SELECT s.*, w.x as wall_x, w.y as wall_y
---         --     WHERE s.dir = 'v'
+        --     FROM steps s
+        --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.x = s.x AND w.y > s.y
+        --     SELECT s.*, w.x as wall_x, w.y as wall_y
+        --     WHERE s.dir = 'v'
 
---         --     UNION ALL
+        --     UNION ALL
 
---         --     FROM steps s
---         --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.y = s.y AND w.x < s.x
---         --     SELECT s.*, w.x as wall_x, w.y as wall_y
---         --     WHERE s.dir = '<'
---         -- ),
+        --     FROM steps s
+        --     ASOF INNER JOIN tiles w ON w.symbol = '#' AND w.y = s.y AND w.x < s.x
+        --     SELECT s.*, w.x as wall_x, w.y as wall_y
+        --     WHERE s.dir = '<'
+        -- ),
 
---         -- CASE
---         -- v1.2.2 7c039464e4
---         --   Not Materialized: 0.23304 +- 0.00968 seconds (+- 4.15%)
---         --       Materialized: 0.17569 +- 0.00397 seconds (+- 2.26%)
---         -- v1.3.1 2063dda3e6
---         --   Not Materialized: 0.22260 +- 0.01500 seconds (+- 6.75%)
---         --       Materialized: 0.19088 +- 0.00316 seconds (+- 1.65%)
---         closest_wall AS (
---             FROM steps s
---             INNER JOIN tiles w ON w.symbol = '#' AND CASE dir
---                 WHEN '^' THEN s.x = w.x AND s.y > w.y
---                 WHEN '>' THEN s.y = w.y AND s.x < w.x
---                 WHEN 'v' THEN s.x = w.x AND s.y < w.y
---                 WHEN '<' THEN s.y = w.y AND s.x > w.x
---             END
---             SELECT s.*, w.x as wall_x, w.y as wall_y
---             ORDER BY abs(s.x - w.x) + abs(s.y - w.y) ASC
---             LIMIT 1
---         ),
+        -- CASE
+        -- v1.2.2 7c039464e4
+        --   Not Materialized: 0.23304 +- 0.00968 seconds (+- 4.15%)
+        --       Materialized: 0.17569 +- 0.00397 seconds (+- 2.26%)
+        -- v1.3.1 2063dda3e6
+        --   Not Materialized: 0.22260 +- 0.01500 seconds (+- 6.75%)
+        --       Materialized: 0.19088 +- 0.00316 seconds (+- 1.65%)
+        closest_wall AS (
+            FROM steps s
+            INNER JOIN tiles w ON w.symbol = '#' AND CASE dir
+                WHEN '^' THEN s.x = w.x AND s.y > w.y
+                WHEN '>' THEN s.y = w.y AND s.x < w.x
+                WHEN 'v' THEN s.x = w.x AND s.y < w.y
+                WHEN '<' THEN s.y = w.y AND s.x > w.x
+            END
+            SELECT 
+                s.*, 
+                wall_x: w.x,
+                wall_y: w.y,
+            ORDER BY abs(s.x - w.x) + abs(s.y - w.y) ASC
+            LIMIT 1
+        ),
 
---         -- -- mathy
---         -- -- v1.2.2 7c039464e4
---         -- --   Not Materialized: 0.28054 +- 0.00902 seconds (+- 3.22%)
---         -- --       Materialized: 0.24673 +- 0.00552 seconds (+- 2.24%)
---         -- -- v1.3.1 2063dda3e6
---         -- --   Not Materialized: 0.28820 +- 0.02280 seconds (+- 7.91%)
---         -- --       Materialized: 0.23788 +- 0.00743 seconds (+- 3.13%)
---         -- closest_wall AS (
---         --     FROM steps s
---         --     JOIN directions d USING (dir)
---         --     INNER JOIN tiles w 
---         --             ON w.symbol = '#'
---         --            -- in line with current direction (either x-x/y-y is 0 or dy/dx is 0)
---         --            AND (w.y - s.y) * d.dx + (w.x - s.x) * d.dy = 0
---         --            -- is after current position in current direction
---         --            AND (w.y * d.dy > s.y * d.dy OR w.x * d.dx > s.x * d.dx)
---         --     SELECT s.*, w.x as wall_x, w.y as wall_y
---         --     ORDER BY abs(s.x - w.x) + abs(s.y - w.y) ASC
---         --     LIMIT 1
---         -- ),
+        -- -- mathy
+        -- -- v1.2.2 7c039464e4
+        -- --   Not Materialized: 0.28054 +- 0.00902 seconds (+- 3.22%)
+        -- --       Materialized: 0.24673 +- 0.00552 seconds (+- 2.24%)
+        -- -- v1.3.1 2063dda3e6
+        -- --   Not Materialized: 0.28820 +- 0.02280 seconds (+- 7.91%)
+        -- --       Materialized: 0.23788 +- 0.00743 seconds (+- 3.13%)
+        -- closest_wall AS (
+        --     FROM steps s
+        --     JOIN directions d USING (dir)
+        --     INNER JOIN tiles w 
+        --             ON w.symbol = '#'
+        --            -- in line with current direction (either x-x/y-y is 0 or dy/dx is 0)
+        --            AND (w.y - s.y) * d.dx + (w.x - s.x) * d.dy = 0
+        --            -- is after current position in current direction
+        --            AND (w.y * d.dy > s.y * d.dy OR w.x * d.dx > s.x * d.dx)
+        --     SELECT s.*, w.x as wall_x, w.y as wall_y
+        --     ORDER BY abs(s.x - w.x) + abs(s.y - w.y) ASC
+        --     LIMIT 1
+        -- ),
 
---         final_step AS (
---             FROM steps s
---             JOIN directions d USING (dir)
---             SELECT
---                 step_index: step_index + 1,
---                 prev_x: x,
---                 prev_y: y,
---                 prev_dir: dir,
---                 x: coalesce(d.edge_x, x),
---                 y: coalesce(d.edge_y, y),
---                 dir: next_dir,
---             ORDER BY step_index DESC
---             LIMIT 1
---         ),
---         visited_tiles AS (
---             FROM (FROM steps UNION ALL FROM final_step) s
---             JOIN directions d ON d.dir = s.prev_dir
---             SELECT
---                 x: if(dx = 0, prev_x, unnest(generate_series(prev_x, x, dx))),
---                 y: if(dy = 0, prev_y, unnest(generate_series(prev_y, y, dy))),
---                 dir: s.prev_dir,
---             WHERE step_index != 0
---         )
+        final_step AS (
+            FROM steps s
+            JOIN directions d USING (dir)
+            SELECT
+                step_index: step_index + 1,
+                prev_y: y,
+                prev_x: x,
+                prev_dir: dir,
+                y: coalesce(d.edge_y, y),
+                x: coalesce(d.edge_x, x),
+                dir,
+                -- path: list_append(path, {'y': coalesce(d.edge_y, y), 'x': coalesce(d.edge_x, x), 'dir': dir}),
+            ORDER BY step_index DESC
+            LIMIT 1
+        )
 
---     FROM visited_tiles
--- );
+    FROM steps
+    UNION ALL
+    FROM final_step
+    ORDER BY step_index
+);
+
+CREATE OR REPLACE TABLE visited_tiles AS (
+-- CREATE OR REPLACE ViEW visited_tiles AS (
+    WITH
+        visited_tiles AS (
+            FROM ray_steps s
+            JOIN directions d ON d.dir = s.prev_dir
+            SELECT
+                step_index,
+                tile_index: unnest(generate_series(0, abs(if(dy = 0, prev_x - x, prev_y - y)))) + 1,
+                y: if(dy = 0, prev_y, unnest(generate_series(prev_y, y, dy))),
+                x: if(dx = 0, prev_x, unnest(generate_series(prev_x, x, dx))),
+                dir: s.prev_dir,
+                -- path: (FROM ray_steps SELECT path ORDER BY step_index DESC LIMIT 1),
+            WHERE step_index != 0
+        )
+
+    FROM visited_tiles
+    SELECT
+        index: row_number() OVER (ORDER BY step_index, tile_index),
+        *,
+);
+-- #endregion
+
+-- #region Part 2 - Raywalking
+
+-- CREATE OR REPLACE TABLE loops AS (
+CREATE OR REPLACE VIEW loops AS (
+    WITH RECURSIVE
+        visited_tiles_with_path AS (
+            FROM visited_tiles
+            SELECT
+                *,
+                path: (FROM ray_steps SELECT list({'y': y, 'x': x, 'dir': dir} ORDER BY step_index)),
+        ),
+        obstacles AS (
+            FROM visited_tiles_with_path t
+            JOIN directions d USING (dir)
+            SELECT
+                index, step_index, tile_index,
+                y, x, dir,
+                obstacle_y: y + dy,
+                obstacle_x: x + dx,
+                next_dir,
+                path_before: path[:step_index],
+                path_after: path[step_index+1:],
+            -- TODO: Compare with window function (not last tile in step)
+            WHERE '#' != (FROM tiles SELECT symbol WHERE y = obstacle_y AND x = obstacle_x)
+            QUALIFY
+                row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
+        ),
+        loops USING KEY (index) AS (
+            FROM obstacles
+            SELECT
+                it: 0,
+                index,
+                obstacle_y, obstacle_x,
+                y, x,
+                dir: next_dir,
+                original_path: path_after,
+                path: list_append(path_before, {'y': y, 'x': x, 'dir': next_dir}),
+                loop: false,
+                done: false,
+            UNION
+            FROM loops l
+            JOIN directions d USING (dir)
+            -- FIXME: obstacle collisions
+            JOIN tiles w ON w.symbol = '#' AND CASE l.dir
+                WHEN '^' THEN l.x = w.x AND l.y > w.y
+                WHEN '>' THEN l.y = w.y AND l.x < w.x
+                WHEN 'v' THEN l.x = w.x AND l.y < w.y
+                WHEN '<' THEN l.y = w.y AND l.x > w.x
+            END
+            SELECT
+                it: it + 1,
+                index,
+                obstacle_y, obstacle_x,
+                y: w.y - d.dy,
+                x: w.x - d.dx,
+                dir: d.next_dir,
+                original_path,
+                path: list_append(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
+                loop: list_contains(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
+                done: list_contains(original_path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
+            WHERE NOT l.loop AND NOT l.done
+            QUALIFY
+                row_number() OVER (PARTITION BY index ORDER BY abs(l.y - w.y) + abs(l.x - w.x)) = 1
+        )
+    
+    FROM loops
+);
 -- #endregion
 
 -- #region Part 1 - Path Collapse
 -- v1.2.2 7c039464e4: recursive CTE with USING KEY not supported
 -- v1.3.1 2063dda3e6: 0.27661 +- 0.00385 seconds (+- 1.39%)
 
-CREATE OR REPLACE TABLE edges AS (
--- CREATE OR REPLACE VIEW edges AS (
-    WITH
-        walls AS (
-            FROM tiles WHERE symbol = '#'
-        ),
-        wall_hits AS (
-            FROM walls w, directions d
-            SELECT
-                from_y: w.y - d.dy,
-                from_x: w.x - d.dx,
-                from_dir: d.dir,
-                next_dir: d.next_dir,
-            WHERE from_y > 0 AND from_y <= (FROM tiles SELECT max(y))
-              AND from_x > 0 AND from_x <= (FROM tiles SELECT max(x))
-              AND (FROM tiles SELECT symbol WHERE y = from_y AND x = from_x) != '#'
-        ),
-        edges AS (
-            FROM wall_hits t1
-            LEFT JOIN wall_hits t2 ON t1.next_dir = t2.from_dir AND CASE t1.next_dir
-                WHEN '^' THEN t1.from_x = t2.from_x AND t1.from_y >= t2.from_y
-                WHEN '>' THEN t1.from_y = t2.from_y AND t1.from_x <= t2.from_x
-                WHEN 'v' THEN t1.from_x = t2.from_x AND t1.from_y <= t2.from_y
-                WHEN '<' THEN t1.from_y = t2.from_y AND t1.from_x >= t2.from_x
-            END
-            JOIN directions d ON t1.next_dir = d.dir
-            SELECT
-                t1.from_y, t1.from_x, t1.from_dir,
-                to_y: coalesce(t2.from_y, d.edge_y, t1.from_y),
-                to_x: coalesce(t2.from_x, d.edge_x, t1.from_x),
-                to_dir: t1.next_dir,
-                exit: t2.from_y IS NULL,
-        ),
-        valid_edges AS (
-            FROM edges
-            WINDOW
-                closest AS (
-                    PARTITION BY from_y, from_x, from_dir
-                    ORDER BY abs(from_y - to_y) + abs(from_x - to_x) ASC
-                )
-            QUALIFY row_number() OVER closest = 1
-        )
+-- CREATE OR REPLACE TABLE edges AS (
+-- -- CREATE OR REPLACE VIEW edges AS (
+--     WITH
+--         walls AS (
+--             FROM tiles WHERE symbol = '#'
+--         ),
+--         wall_hits AS (
+--             FROM walls w, directions d
+--             SELECT
+--                 from_y: w.y - d.dy,
+--                 from_x: w.x - d.dx,
+--                 from_dir: d.dir,
+--                 next_dir: d.next_dir,
+--             WHERE from_y > 0 AND from_y <= (FROM tiles SELECT max(y))
+--               AND from_x > 0 AND from_x <= (FROM tiles SELECT max(x))
+--               AND (FROM tiles SELECT symbol WHERE y = from_y AND x = from_x) != '#'
+--         ),
+--         edges AS (
+--             FROM wall_hits t1
+--             LEFT JOIN wall_hits t2 ON t1.next_dir = t2.from_dir AND CASE t1.next_dir
+--                 WHEN '^' THEN t1.from_x = t2.from_x AND t1.from_y >= t2.from_y
+--                 WHEN '>' THEN t1.from_y = t2.from_y AND t1.from_x <= t2.from_x
+--                 WHEN 'v' THEN t1.from_x = t2.from_x AND t1.from_y <= t2.from_y
+--                 WHEN '<' THEN t1.from_y = t2.from_y AND t1.from_x >= t2.from_x
+--             END
+--             JOIN directions d ON t1.next_dir = d.dir
+--             SELECT
+--                 t1.from_y, t1.from_x, t1.from_dir,
+--                 to_y: coalesce(t2.from_y, d.edge_y, t1.from_y),
+--                 to_x: coalesce(t2.from_x, d.edge_x, t1.from_x),
+--                 to_dir: t1.next_dir,
+--                 exit: t2.from_y IS NULL,
+--         ),
+--         valid_edges AS (
+--             FROM edges
+--             WINDOW
+--                 closest AS (
+--                     PARTITION BY from_y, from_x, from_dir
+--                     ORDER BY abs(from_y - to_y) + abs(from_x - to_x) ASC
+--                 )
+--             QUALIFY row_number() OVER closest = 1
+--         )
 
-    FROM valid_edges
-);
+--     FROM valid_edges
+-- );
 
-CREATE OR REPLACE TABLE paths AS (
--- CREATE OR REPLACE VIEW paths AS (
-    WITH RECURSIVE
-        paths USING KEY (start) AS (
-            FROM edges
-            SELECT
-                start: {'y': from_y, 'x': from_x, 'dir': from_dir},
-                current: {'y': to_y, 'x': to_x, 'dir': to_dir},
-                path: [start, current],
-                loop: FALSE,
-                final: exit,
-            UNION
-            FROM paths p1
-            JOIN recurring.paths p2 ON p1.current = p2.start
-            SELECT
-                p1.start,
-                p2.current,
-                path: p1.path || p2.path[2:],
-                loop: list_has_any(p1.path[:-1], p2.path[2:]),
-                p2.final,
-            WHERE NOT p1.final AND NOT p1.loop
-        )
+-- CREATE OR REPLACE TABLE paths AS (
+-- -- CREATE OR REPLACE VIEW paths AS (
+--     WITH RECURSIVE
+--         paths USING KEY (start) AS (
+--             FROM edges
+--             SELECT
+--                 start: {'y': from_y, 'x': from_x, 'dir': from_dir},
+--                 current: {'y': to_y, 'x': to_x, 'dir': to_dir},
+--                 path: [start, current],
+--                 loop: FALSE,
+--                 final: exit,
+--             UNION
+--             FROM paths p1
+--             JOIN recurring.paths p2 ON p1.current = p2.start
+--             SELECT
+--                 p1.start,
+--                 p2.current,
+--                 path: p1.path || p2.path[2:],
+--                 loop: list_has_any(p1.path[:-1], p2.path[2:]),
+--                 p2.final,
+--             WHERE NOT p1.final AND NOT p1.loop
+--         )
 
-    FROM paths
-    SELECT start, path, loop
-);
+--     FROM paths
+--     SELECT start, path, loop
+-- );
 
-CREATE OR REPLACE TABLE visited_tiles AS (
--- CREATE OR REPLACE VIEW visited_tiles AS (
-    WITH
-        path AS (
-            FROM tiles t
-            JOIN paths p ON t.symbol = p.start.dir AND CASE t.symbol
-                WHEN '^' THEN t.x = p.start.x AND t.y >= p.start.y
-                WHEN '>' THEN t.y = p.start.y AND t.x <= p.start.x
-                WHEN 'v' THEN t.x = p.start.x AND t.y <= p.start.y
-                WHEN '<' THEN t.y = p.start.y AND t.x >= p.start.x
-            END
-            SELECT
-                path: list_prepend((t.y, t.x, t.symbol), p.path)
-            WHERE t.symbol IN ('^', '>', 'v', '<')
-            ORDER BY abs(t.y - p.start.y) + abs(t.x - p.start.x) ASC
-            LIMIT 1
-        ),
-        steps AS (
-            FROM (
-                FROM path p
-                SELECT 
-                    step_index: generate_subscripts(path, 1),
-                    step: unnest(path, recursive := true),
-                    path: path[:step_index-1],
-            ) s
-            SELECT
-                step_index,
-                from_y: lag(y) OVER step_order,
-                from_x: lag(x) OVER step_order,
-                to_y: y,
-                to_x: x,
-                dir,
-                path,
-            WINDOW
-                step_order AS (ORDER BY step_index ASC)
-            QUALIFY from_x IS NOT NULL
-        ),
-        visited_tiles AS (
-            FROM steps s
-            JOIN directions d USING (dir)
-            SELECT
-                step_index: step_index - 1,
-                tile_index: unnest(generate_series(0, abs(if(dy = 0, from_x - to_x, from_y - to_y)))) + 1,
-                y: if(dy = 0, from_y, unnest(generate_series(from_y, to_y, dy))),
-                x: if(dx = 0, from_x, unnest(generate_series(from_x, to_x, dx))),
-                dir,
-                path
-        )
+-- CREATE OR REPLACE TABLE visited_tiles AS (
+-- -- CREATE OR REPLACE VIEW visited_tiles AS (
+--     WITH
+--         path AS (
+--             FROM tiles t
+--             JOIN paths p ON t.symbol = p.start.dir AND CASE t.symbol
+--                 WHEN '^' THEN t.x = p.start.x AND t.y >= p.start.y
+--                 WHEN '>' THEN t.y = p.start.y AND t.x <= p.start.x
+--                 WHEN 'v' THEN t.x = p.start.x AND t.y <= p.start.y
+--                 WHEN '<' THEN t.y = p.start.y AND t.x >= p.start.x
+--             END
+--             SELECT
+--                 path: list_prepend((t.y, t.x, t.symbol), p.path)
+--             WHERE t.symbol IN ('^', '>', 'v', '<')
+--             ORDER BY abs(t.y - p.start.y) + abs(t.x - p.start.x) ASC
+--             LIMIT 1
+--         ),
+--         steps AS (
+--             FROM (
+--                 FROM path p
+--                 SELECT 
+--                     step_index: generate_subscripts(path, 1),
+--                     step: unnest(path, recursive := true),
+--                     path: path[:step_index-1],
+--             ) s
+--             SELECT
+--                 step_index,
+--                 from_y: lag(y) OVER step_order,
+--                 from_x: lag(x) OVER step_order,
+--                 to_y: y,
+--                 to_x: x,
+--                 dir,
+--                 path,
+--             WINDOW
+--                 step_order AS (ORDER BY step_index ASC)
+--             QUALIFY from_x IS NOT NULL
+--         ),
+--         visited_tiles AS (
+--             FROM steps s
+--             JOIN directions d USING (dir)
+--             SELECT
+--                 step_index: step_index - 1,
+--                 tile_index: unnest(generate_series(0, abs(if(dy = 0, from_x - to_x, from_y - to_y)))) + 1,
+--                 y: if(dy = 0, from_y, unnest(generate_series(from_y, to_y, dy))),
+--                 x: if(dx = 0, from_x, unnest(generate_series(from_x, to_x, dx))),
+--                 dir,
+--                 path
+--         )
         
-    FROM visited_tiles
-    SELECT
-        index: row_number() OVER (ORDER BY step_index, tile_index),
-        * EXCLUDE (step_index, tile_index),
-);
+--     FROM visited_tiles
+--     SELECT
+--         index: row_number() OVER (ORDER BY step_index, tile_index),
+--         * EXCLUDE (step_index, tile_index),
+-- );
 -- #endregion
 
 -- #region Part 2 - Path Collapse
 -- FIXME: Doesn't work for paths encountering the obstacle multiple times
 -- v1.3.1 2063dda3e6: 2.9660 +- 0.0109 seconds (+- 0.37%)
 
-CREATE OR REPLACE TABLE loops AS (
--- CREATE OR REPLACE VIEW loops AS (
-    WITH
-        guard_paths AS (
-            FROM paths p
-            SELECT
-                p.*,
-                guard: p.start IN (FROM visited_tiles SELECT position: {'y': y, 'x': x, 'dir': dir}),
-        ),
-        obstacles AS (
-            FROM visited_tiles v
-            JOIN directions d USING (dir)
-            SELECT
-                index,
-                y, x, dir,
-                obstacle_y: y + d.dy,
-                obstacle_x: x + d.dx,
-                d.next_dir,
-                path_before: path,
-            WHERE obstacle_y > 0 AND obstacle_y <= (FROM tiles SELECT max(y))
-              AND obstacle_x > 0 AND obstacle_x <= (FROM tiles SELECT max(x))
-              AND '#' != (FROM tiles SELECT symbol WHERE y = obstacle_y AND x = obstacle_x)
-            QUALIFY
-                row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
-        ),
-        obstacle_paths AS (
-            FROM obstacles o
-            JOIN guard_paths p ON p.start.dir = o.next_dir AND CASE o.next_dir
-                WHEN '^' THEN o.x = p.start.x AND o.y >= p.start.y
-                WHEN '>' THEN o.y = p.start.y AND o.x <= p.start.x
-                WHEN 'v' THEN o.x = p.start.x AND o.y <= p.start.y
-                WHEN '<' THEN o.y = p.start.y AND o.x >= p.start.x
-            END
-            SELECT
-                index,
-                obstacle: {'y': obstacle_y, 'x': obstacle_x, 'dir': dir},
-                position: {'y': y, 'x': x, 'dir': next_dir},
-                path_before,
-                p.*
-            QUALIFY
-                row_number() OVER (PARTITION BY index ORDER BY abs(y - p.start.y) + abs(x - p.start.x)) = 1
-        ),
-        partial_loops AS (
-            FROM obstacle_paths
-            SELECT
-                index, obstacle, position,
-                -- previous_step: path_before[-1],
-                -- path_index: list_position(path, previous_step),
-                path_before,
-                obstacle_path: path,
-                backward_loop: list_has_any(path_before, path),
-                natural_loop: loop,
-        ),
-        obstacle_path_steps AS (
-            WITH
-                unnest_loops AS (
-                    FROM partial_loops
-                    SELECT
-                        index, obstacle, position,
-                        step_index: generate_subscripts(obstacle_path, 1),
-                        step: unnest(obstacle_path),
-                    WHERE NOT backward_loop AND NOT natural_loop
-                ),
-                unnest_loops_steps AS (
-                    FROM unnest_loops
-                    SELECT
-                        index, obstacle, position, step_index, step,
-                        previous_step: lag(step) OVER (PARTITION BY index ORDER BY step_index),
-                    QUALIFY previous_step IS NOT NULL
-                )
+-- CREATE OR REPLACE TABLE loops AS (
+-- -- CREATE OR REPLACE VIEW loops AS (
+--     WITH
+--         guard_paths AS (
+--             FROM paths p
+--             SELECT
+--                 p.*,
+--                 guard: p.start IN (FROM visited_tiles SELECT position: {'y': y, 'x': x, 'dir': dir}),
+--         ),
+--         obstacles AS (
+--             FROM visited_tiles v
+--             JOIN directions d USING (dir)
+--             SELECT
+--                 index,
+--                 y, x, dir,
+--                 obstacle_y: y + d.dy,
+--                 obstacle_x: x + d.dx,
+--                 d.next_dir,
+--                 path_before: path,
+--             WHERE obstacle_y > 0 AND obstacle_y <= (FROM tiles SELECT max(y))
+--               AND obstacle_x > 0 AND obstacle_x <= (FROM tiles SELECT max(x))
+--               AND '#' != (FROM tiles SELECT symbol WHERE y = obstacle_y AND x = obstacle_x)
+--             QUALIFY
+--                 row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
+--         ),
+--         obstacle_paths AS (
+--             FROM obstacles o
+--             JOIN guard_paths p ON p.start.dir = o.next_dir AND CASE o.next_dir
+--                 WHEN '^' THEN o.x = p.start.x AND o.y >= p.start.y
+--                 WHEN '>' THEN o.y = p.start.y AND o.x <= p.start.x
+--                 WHEN 'v' THEN o.x = p.start.x AND o.y <= p.start.y
+--                 WHEN '<' THEN o.y = p.start.y AND o.x >= p.start.x
+--             END
+--             SELECT
+--                 index,
+--                 obstacle: {'y': obstacle_y, 'x': obstacle_x, 'dir': dir},
+--                 position: {'y': y, 'x': x, 'dir': next_dir},
+--                 path_before,
+--                 p.*
+--             QUALIFY
+--                 row_number() OVER (PARTITION BY index ORDER BY abs(y - p.start.y) + abs(x - p.start.x)) = 1
+--         ),
+--         partial_loops AS (
+--             FROM obstacle_paths
+--             SELECT
+--                 index, obstacle, position,
+--                 -- previous_step: path_before[-1],
+--                 -- path_index: list_position(path, previous_step),
+--                 path_before,
+--                 obstacle_path: path,
+--                 backward_loop: list_has_any(path_before, path),
+--                 natural_loop: loop,
+--         ),
+--         obstacle_path_steps AS (
+--             WITH
+--                 unnest_loops AS (
+--                     FROM partial_loops
+--                     SELECT
+--                         index, obstacle, position,
+--                         step_index: generate_subscripts(obstacle_path, 1),
+--                         step: unnest(obstacle_path),
+--                     WHERE NOT backward_loop AND NOT natural_loop
+--                 ),
+--                 unnest_loops_steps AS (
+--                     FROM unnest_loops
+--                     SELECT
+--                         index, obstacle, position, step_index, step,
+--                         previous_step: lag(step) OVER (PARTITION BY index ORDER BY step_index),
+--                     QUALIFY previous_step IS NOT NULL
+--                 )
 
-            FROM unnest_loops_steps
-            SELECT
-                index, obstacle, position, step_index, step, previous_step,
-                -- loop: (
-                --     step.y = previous_step.y AND step.y = obstacle.y AND
-                --     ((step.x <= obstacle.x AND previous_step.x >= obstacle.x) OR
-                --     (step.x >= obstacle.x AND previous_step.x <= obstacle.x))
-                -- ) OR (
-                --     step.x = previous_step.x AND step.x = obstacle.x AND
-                --     ((step.y <= obstacle.y AND previous_step.y >= obstacle.y) OR
-                --     (step.y >= obstacle.y AND previous_step.y <= obstacle.y))
-                -- ),
-                distance_stop_obstacle: abs(step.x - obstacle.x) + abs(step.y - obstacle.y),
-                distance_obstacle_previous_step: abs(obstacle.x - previous_step.x) + abs(obstacle.y - previous_step.y),
-                distance_previous_step_step: abs(step.x - previous_step.x) + abs(step.y - previous_step.y),
-                forward_loop: step.dir = obstacle.dir AND distance_stop_obstacle + distance_obstacle_previous_step = distance_previous_step_step,
-        ),
-        loops AS (
-            FROM partial_loops l
-            SELECT
-                l.*,
-                forward_loop: true = ANY (FROM obstacle_path_steps s SELECT forward_loop WHERE s.index = l.index),
-        )
+--             FROM unnest_loops_steps
+--             SELECT
+--                 index, obstacle, position, step_index, step, previous_step,
+--                 -- loop: (
+--                 --     step.y = previous_step.y AND step.y = obstacle.y AND
+--                 --     ((step.x <= obstacle.x AND previous_step.x >= obstacle.x) OR
+--                 --     (step.x >= obstacle.x AND previous_step.x <= obstacle.x))
+--                 -- ) OR (
+--                 --     step.x = previous_step.x AND step.x = obstacle.x AND
+--                 --     ((step.y <= obstacle.y AND previous_step.y >= obstacle.y) OR
+--                 --     (step.y >= obstacle.y AND previous_step.y <= obstacle.y))
+--                 -- ),
+--                 distance_stop_obstacle: abs(step.x - obstacle.x) + abs(step.y - obstacle.y),
+--                 distance_obstacle_previous_step: abs(obstacle.x - previous_step.x) + abs(obstacle.y - previous_step.y),
+--                 distance_previous_step_step: abs(step.x - previous_step.x) + abs(step.y - previous_step.y),
+--                 forward_loop: step.dir = obstacle.dir AND distance_stop_obstacle + distance_obstacle_previous_step = distance_previous_step_step,
+--         ),
+--         loops AS (
+--             FROM partial_loops l
+--             SELECT
+--                 l.*,
+--                 forward_loop: true = ANY (FROM obstacle_path_steps s SELECT forward_loop WHERE s.index = l.index),
+--         )
 
-    FROM loops
-    SELECT
-        *,
-        loop: backward_loop OR natural_loop OR forward_loop,
-);
+--     FROM loops
+--     SELECT
+--         *,
+--         loop: backward_loop OR natural_loop OR forward_loop,
+-- );
 -- #endregion
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM visited_tiles SELECT count(distinct (x, y))),
-        part2: (FROM loops SELECT count(*) WHERE loop)
-        -- part2: NULL
+        part2: (FROM loops SELECT count(*) WHERE loop),
+        -- part2: NULL,
 );
 
 
