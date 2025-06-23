@@ -60,24 +60,24 @@ SET VARIABLE exampleSolution2 = 6;
 --    ..^.........
 --    ............
 -- ';
--- SET VARIABLE exampleSolution1 = 6;  -- 0
--- SET VARIABLE exampleSolution2 = 1;  -- 0
+-- SET VARIABLE exampleSolution1 = 6;
+-- SET VARIABLE exampleSolution2 = 1;
 
--- Loop without steps in original path
-SET VARIABLE example = '
-    .#.........
-    ...........
-    .x.........
-    .........#.
-    ...........
-    #..........
-    ........#..
-    ...........
-    .^.........
-    ...........
-';
-SET VARIABLE exampleSolution1 = 17;
-SET VARIABLE exampleSolution2 = 2;  -- 1
+-- -- Loop without steps in original path
+-- SET VARIABLE example = '
+--     .#.........
+--     ...........
+--     .x.........
+--     .........#.
+--     ...........
+--     #..........
+--     ........#..
+--     ...........
+--     .^.........
+--     ...........
+-- ';
+-- SET VARIABLE exampleSolution1 = 17;
+-- SET VARIABLE exampleSolution2 = 2;
 
 -- -- Encountering obstacle multiple times without loop
 -- SET VARIABLE example = '
@@ -93,19 +93,19 @@ SET VARIABLE exampleSolution2 = 2;  -- 1
 -- SET VARIABLE exampleSolution1 = 11;
 -- SET VARIABLE exampleSolution2 = 0;
 
--- Loop after second obstacle encounter
-SET VARIABLE example = '
-    ......#....
-    ..#........
-    ......x....
-    .........#.
-    .#....^....
-    ........#..
-    .#.........
-    .....#.....
-';
-SET VARIABLE exampleSolution1 = 8;
-SET VARIABLE exampleSolution2 = 1;  -- 0
+-- -- Loop after second obstacle encounter
+-- SET VARIABLE example = '
+--     ......#....
+--     ..#........
+--     ......x....
+--     .........#.
+--     .#....^....
+--     ........#..
+--     .#.........
+--     .....#.....
+-- ';
+-- SET VARIABLE exampleSolution1 = 8;
+-- SET VARIABLE exampleSolution2 = 1;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
@@ -115,8 +115,8 @@ SET VARIABLE solution1 = 4433;
 SET VARIABLE solution2 = 1516;
 
 .maxrows 75
-SET VARIABLE mode = 'example';
--- SET VARIABLE mode = 'input';
+-- SET VARIABLE mode = 'example';
+SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE TABLE tiles AS (
 -- CREATE OR REPLACE VIEW tiles AS (
@@ -346,9 +346,19 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 -- #endregion
 
 -- #region Part 2 - Raywalking
+-- v1.2.2 7c039464e4 (no USING KEY):
+--   without early pathfinding termination: 7.5202 +- 0.0539 seconds time elapsed  ( +-  0.72% )
+--   broken early pathfinding termination: 1.4767 +- 0.0268 seconds time elapsed  ( +-  1.81% )
+--    ^-- result: 1473, expected: 1516
+-- v1.3.1 2063dda3e6:
+--   without early pathfinding termination: 6.23000 +- 0.03600 seconds time elapsed  ( +-  0.58% )
+--    ^-- without loops USING KEY: 6.4490 +- 0.0100 seconds time elapsed  ( +-  0.16% )
+--    ^-- without tiles_and_obstacles materialization: 16.9771 +- 0.0874 seconds time elapsed  ( +-  0.51% )
+--   broken early pathfinding termination: 1.25312 +- 0.00599 seconds time elapsed  ( +-  0.48% )
+--    ^-- result: 1473, expected: 1516
 
--- CREATE OR REPLACE TABLE loops AS (
-CREATE OR REPLACE VIEW loops AS (
+CREATE OR REPLACE TABLE loops AS (
+-- CREATE OR REPLACE VIEW loops AS (
     WITH RECURSIVE
         visited_tiles_with_path AS (
             FROM visited_tiles
@@ -372,7 +382,15 @@ CREATE OR REPLACE VIEW loops AS (
             QUALIFY
                 row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
         ),
+        tiles_and_obstacles AS MATERIALIZED (
+            FROM tiles t
+            LEFT JOIN obstacles o ON o.obstacle_y = t.y AND o.obstacle_x = t.x
+            SELECT
+                t.y, t.x, t.symbol,
+                obstacle_index: o.index,
+        ),
         loops USING KEY (index) AS (
+        -- loops AS (
             FROM obstacles
             SELECT
                 it: 0,
@@ -383,12 +401,11 @@ CREATE OR REPLACE VIEW loops AS (
                 original_path: path_after,
                 path: list_append(path_before, {'y': y, 'x': x, 'dir': next_dir}),
                 loop: false,
-                done: false,
+                -- done: false,
             UNION
             FROM loops l
             JOIN directions d USING (dir)
-            -- FIXME: obstacle collisions
-            JOIN tiles w ON w.symbol = '#' AND CASE l.dir
+            JOIN tiles_and_obstacles w ON (w.symbol = '#' OR w.obstacle_index = l.index) AND CASE l.dir
                 WHEN '^' THEN l.x = w.x AND l.y > w.y
                 WHEN '>' THEN l.y = w.y AND l.x < w.x
                 WHEN 'v' THEN l.x = w.x AND l.y < w.y
@@ -404,8 +421,10 @@ CREATE OR REPLACE VIEW loops AS (
                 original_path,
                 path: list_append(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
                 loop: list_contains(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
-                done: list_contains(original_path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
-            WHERE NOT l.loop AND NOT l.done
+            --     -- FIXME: Check if remaining steps will encounter obstacle again?
+            --     done: list_contains(original_path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
+            -- WHERE NOT l.loop AND NOT l.done
+            WHERE NOT l.loop
             QUALIFY
                 row_number() OVER (PARTITION BY index ORDER BY abs(l.y - w.y) + abs(l.x - w.x)) = 1
         )
