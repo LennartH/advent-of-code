@@ -107,18 +107,18 @@ SET VARIABLE exampleSolution2 = 6;
 -- SET VARIABLE exampleSolution1 = 8;
 -- SET VARIABLE exampleSolution2 = 1;
 
--- Loop with wall from original path
-SET VARIABLE example = '
-    .#.#.........
-    .......#.....
-    .............
-    #.x.......<..
-    .........#...
-    .#...........
-    ......#.#....
-';
-SET VARIABLE exampleSolution1 = 27;
-SET VARIABLE exampleSolution2 = 4;
+-- -- Loop with wall from original path
+-- SET VARIABLE example = '
+--     .#.#.........
+--     .......#.....
+--     .............
+--     #.x.......<..
+--     .........#...
+--     .#...........
+--     ......#.#....
+-- ';
+-- SET VARIABLE exampleSolution1 = 27;
+-- SET VARIABLE exampleSolution2 = 4;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
@@ -193,9 +193,6 @@ CREATE OR REPLACE TABLE directions AS (
 --    ASOF: 0.30670 +- 0.01700 seconds (+- 5.54%)
 --    CASE: 0.19088 +- 0.00316 seconds (+- 1.65%)
 --   mathy: 0.23788 +- 0.00743 seconds (+- 3.13%)
---
--- Changes for part 2 (v1.3.1 2063dda3e6)
---   CASE: 0.3922 +- 0.0181 seconds time elapsed  ( +-  4.61% )
 
 CREATE OR REPLACE TABLE ray_steps AS (
 -- CREATE OR REPLACE VIEW ray_steps AS (
@@ -356,18 +353,25 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 
 -- #region Part 2 - Raywalking
 -- v1.2.2 7c039464e4 (no USING KEY):
---   without early pathfinding termination: 7.5202 +- 0.0539 seconds time elapsed  ( +-  0.72% )
---   broken early pathfinding termination: 1.4767 +- 0.0268 seconds time elapsed  ( +-  1.81% )
+--   without early pathfinding termination: 7.5202 +- 0.0539 seconds (+- 0.72%)
+--   broken early pathfinding termination: 1.4767 +- 0.0268 seconds (+- 1.81%)
 --    ^-- result: 1473, expected: 1516
+--   early pathfinding termination: 2.4430 +- 0.0166 seconds (+- 0.68%)
 -- v1.3.1 2063dda3e6:
---   without early pathfinding termination: 6.23000 +- 0.03600 seconds time elapsed  ( +-  0.58% )
---    ^-- without loops USING KEY: 6.4490 +- 0.0100 seconds time elapsed  ( +-  0.16% )
---    ^-- without tiles_and_obstacles materialization: 16.9771 +- 0.0874 seconds time elapsed  ( +-  0.51% )
---   broken early pathfinding termination: 1.25312 +- 0.00599 seconds time elapsed  ( +-  0.48% )
+--   without early pathfinding termination: 6.23000 +- 0.03600 seconds (+- 0.58%)
+--    ^-- without loops USING KEY: 6.4490 +- 0.0100 seconds (+- 0.16%)
+--    ^-- without tiles_and_obstacles materialization: 16.9771 +- 0.0874 seconds (+- 0.51%)
+--   broken early pathfinding termination: 1.25312 +- 0.00599 seconds (+- 0.48%)
 --    ^-- result: 1473, expected: 1516
---   hacky early pathfinding termination: 7.2873 +- 0.0463 seconds time elapsed  ( +-  0.63% )
---    ^-- max it 116 compared to 136
---    ^-- 39 loops where it > 50 compared to 748
+--   hacky early pathfinding termination: 7.2873 +- 0.0463 seconds (+- 0.63%)
+--    ^-- max it: 116 vs. 136 | loops where it > 50: 39 vs. 748
+--   early pathfinding termination: 2.07755 +- 0.00920 seconds (+- 0.44%)
+--    ^-- max it: 116 vs. 136 | loops where it > 50: 39 vs. 748
+--    ^-- with loops USING KEY: 2.12875 +- 0.00603 seconds (+- 0.28%)
+--    ^-- without tiles_and_obstacles materialization: 4.2334 +- 0.0152 seconds (+- 0.36%)
+--    ^-- without obstacles materialization: 2.1791 +- 0.0371 seconds (+- 1.70%)
+--    ^-- obstacle pruning with window function instead of join: 2.15847 +- 0.00823 seconds (+- 0.38%)
+--    ^-- everything materialized: 2.12748 +- 0.00813 seconds (+- 0.38%)
 
 CREATE OR REPLACE TABLE loops AS (
 -- CREATE OR REPLACE VIEW loops AS (
@@ -378,7 +382,7 @@ CREATE OR REPLACE TABLE loops AS (
                 *,
                 path: (FROM ray_steps SELECT list({'y': y, 'x': x, 'dir': dir} ORDER BY step_index)),
         ),
-        obstacles AS (
+        obstacles AS MATERIALIZED (
             FROM visited_tiles_with_path t
             JOIN directions d USING (dir)
             SELECT
@@ -388,13 +392,45 @@ CREATE OR REPLACE TABLE loops AS (
                 obstacle_x: x + dx,
                 next_dir,
                 path_before: path[:step_index],
-                -- TODO: path after last obstacle encounter instead of hacky early termination
-                -- TODO: OR obstacle hit in remaining original path as CTE for all loops simultaneously
                 path_after: path[step_index+1:],
-            -- TODO: Compare with window function (not last tile in step)
             WHERE '#' != (FROM tiles SELECT symbol WHERE y = obstacle_y AND x = obstacle_x)
             QUALIFY
+                -- TODO: expensive, roughly same time but 200 more loops. Push to final projection?
                 row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
+            -- QUALIFY row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
+            --     AND row_number() OVER (PARTITION BY step_index ORDER BY tile_index DESC) != 1
+        ),
+        obstacle_path_after_unnested AS (
+            FROM (
+                FROM obstacles
+                SELECT
+                    index, obstacle_y, obstacle_x,
+                    path_index: generate_subscripts(path_after, 1),
+                    path_step: unnest(path_after),
+            )
+            SELECT
+                *,
+                previous_step: lag(path_step) OVER (PARTITION BY index ORDER BY path_index),
+            QUALIFY previous_step IS NOT NULL
+        ),
+        obstacle_path_after_subsequent_hits AS (
+            FROM obstacle_path_after_unnested
+            SELECT
+                *,
+                distance_step_obstacle: abs(path_step.y - obstacle_y) + abs(path_step.x - obstacle_x),
+                distance_obstacle_prev: abs(obstacle_y - previous_step.y) + abs(obstacle_x - previous_step.x),
+                distance_step_prev: abs(path_step.y - previous_step.y) + abs(path_step.x - previous_step.x),
+                obstacle_hit: distance_step_obstacle + distance_obstacle_prev = distance_step_prev,
+            WHERE obstacle_hit
+            QUALIFY
+                row_number() OVER (PARTITION BY index ORDER BY path_index DESC) = 1
+        ),
+        obstacles_with_path_after_hit AS (
+            FROM obstacles o
+            LEFT JOIN obstacle_path_after_subsequent_hits h USING (index)
+            SELECT
+                o.* EXCLUDE (path_after),
+                path_after: if(h.path_index IS NULL, o.path_after, o.path_after[h.path_index+1:]),
         ),
         tiles_and_obstacles AS MATERIALIZED (
             FROM tiles t
@@ -403,9 +439,8 @@ CREATE OR REPLACE TABLE loops AS (
                 t.y, t.x, t.symbol,
                 obstacle_index: o.index,
         ),
-        loops USING KEY (index) AS (
-        -- loops AS (
-            FROM obstacles
+        loops AS (
+            FROM obstacles_with_path_after_hit
             SELECT
                 it: 0,
                 index,
@@ -436,150 +471,16 @@ CREATE OR REPLACE TABLE loops AS (
                 original_path,
                 path: list_append(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
                 loop: list_contains(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
-                -- FIXME: Check if remaining steps will encounter obstacle again?
-                -- done: list_contains(original_path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
-                done: (
-                    WITH
-                        foo AS (
-                            SELECT next_pos: {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}
-                        ),
-                        original_path_info AS (
-                            FROM foo
-                            SELECT 
-                                next_pos,
-                                original_path_index: list_position(original_path, next_pos),
-                                -- remaining_original_path: original_path[original_path_index:],
-                                remaining_original_path: original_path[list_position(original_path, next_pos):],
-                        ),
-                        original_path_steps AS (
-                            FROM (
-                                FROM original_path_info
-                                SELECT step_index: generate_subscripts(remaining_original_path, 1),
-                                    step: unnest(remaining_original_path)
-                            )
-                            SELECT step_index,
-                                step,
-                                previous_step: lag(step) OVER (ORDER BY step_index),
-                            QUALIFY previous_step IS NOT NULL
-                        ),
-                        checked_original_path_steps AS (
-                            FROM original_path_steps
-                            SELECT *,
-                                -- distance_step_obstacle: abs(step.y - obstacle_y) + abs(step.x - obstacle_x),
-                                -- distance_obstacle_prev: abs(obstacle_y - previous_step.y) + abs(obstacle_x - previous_step.x),
-                                -- distance_step_prev: abs(step.y - previous_step.y) + abs(step.x - previous_step.x),
-                                -- obstacle_hit: step.dir = obstacle_dir AND distance_step_obstacle + distance_obstacle_prev = distance_step_prev,
-                                
-                                -- obstacle_hit: step.dir = obstacle_dir AND abs(step.y - obstacle_y) + abs(step.x - obstacle_x) + abs(obstacle_y - previous_step.y) + abs(obstacle_x - previous_step.x) = abs(step.y - previous_step.y) + abs(step.x - previous_step.x),
-                                obstacle_hit: abs(step.y - obstacle_y) + abs(step.x - obstacle_x) + abs(obstacle_y - previous_step.y) + abs(obstacle_x - previous_step.x) = abs(step.y - previous_step.y) + abs(step.x - previous_step.x),
-                        )
-
-                    SELECT done: (FROM original_path_info SELECT original_path_index IS NOT NULL)
-                        AND
-                        NOT EXISTS (FROM checked_original_path_steps WHERE obstacle_hit)
-                ),
+                done: list_contains(original_path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
             WHERE NOT l.loop AND NOT l.done
-            -- WHERE NOT l.loop
             QUALIFY
+                -- TODO: expensive, ORDER BY ... LIMIT 1?
                 row_number() OVER (PARTITION BY index ORDER BY abs(l.y - w.y) + abs(l.x - w.x)) = 1
         )
     
     FROM loops
 );
 -- #endregion
-
-
-
-
-
--- WITH
---     visited_tiles_with_path AS (
---         FROM visited_tiles
---         SELECT
---             *,
---             path: (FROM ray_steps SELECT list({'y': y, 'x': x, 'dir': dir} ORDER BY step_index)),
---     ),
---     obstacles AS (
---         FROM visited_tiles_with_path t
---         JOIN directions d USING (dir)
---         SELECT
---             index, step_index, tile_index,
---             y, x, dir,
---             obstacle_y: y + dy,
---             obstacle_x: x + dx,
---             next_dir,
---             path_before: path[:step_index],
---             path_after: path[step_index+1:],
---         -- TODO: Compare with window function (not last tile in step)
---         WHERE '#' != (FROM tiles SELECT symbol WHERE y = obstacle_y AND x = obstacle_x)
---         QUALIFY
---             row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
---     ),
---     tiles_and_obstacles AS MATERIALIZED (
---         FROM tiles t
---         LEFT JOIN obstacles o ON o.obstacle_y = t.y AND o.obstacle_x = t.x
---         SELECT
---             t.y, t.x, t.symbol,
---             obstacle_index: o.index,
---     ),
---     seed AS (
---         SELECT
---             it: 1,
---             index: 8,
---             obstacle_y: 4,
---             obstacle_x: 3,
---             y: 2,
---             x: 4,
---             dir: '>',
---             original_path: [
---                 { 'y': 4, 'x': 2, 'dir': '^' },
---                 { 'y': 2, 'x': 2, 'dir': '>' },
---                 { 'y': 2, 'x': 7, 'dir': 'v' },
---                 { 'y': 6, 'x': 7, 'dir': '<' },
---                 { 'y': 6, 'x': 3, 'dir': '^' },
---                 { 'y': 1, 'x': 3, 'dir': '^' }
---             ],
---             path: [
---                 { 'y': 4, 'x': 11, 'dir': '<' },
---                 { 'y': 4, 'x': 4, 'dir': '^' },
---                 { 'y': 2, 'x': 4, 'dir': '>' },
---             ],
---     ),
---     seedd AS (
---         FROM seed l
---         JOIN directions d USING (dir)
---         JOIN tiles_and_obstacles w ON (w.symbol = '#' OR w.obstacle_index = l.index) AND CASE l.dir
---             WHEN '^' THEN l.x = w.x AND l.y > w.y
---             WHEN '>' THEN l.y = w.y AND l.x < w.x
---             WHEN 'v' THEN l.x = w.x AND l.y < w.y
---             WHEN '<' THEN l.y = w.y AND l.x > w.x
---         END
---         SELECT
---             it: it + 1,
---             index,
---             obstacle_y, obstacle_x, obstacle_dir,
---             y: w.y - d.dy,
---             x: w.x - d.dx,
---             dir: d.next_dir,
---             original_path,
---             path: list_append(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
---             loop: list_contains(path, {'y': w.y - d.dy, 'x': w.x - d.dx, 'dir': d.next_dir}),
---     )
-
--- FROM seedd
--- ;
-
-
-
-
-
-
-
-
-
-
-
-
 
 -- #region Part 1 - Path Collapse
 -- v1.2.2 7c039464e4: recursive CTE with USING KEY not supported
@@ -824,7 +725,6 @@ CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM visited_tiles SELECT count(distinct (x, y))),
         part2: (FROM loops SELECT count(*) WHERE loop),
-        -- part2: NULL,
 );
 
 

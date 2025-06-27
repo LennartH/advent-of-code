@@ -6,6 +6,10 @@ input.*
 *input.txt
 bin/
 
+*.json
+!package*.json
+!tsconfig*.json
+
 # Created by https://www.toptal.com/developers/gitignore/api/node,webstorm
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,webstorm
 
