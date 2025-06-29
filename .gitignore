@@ -10,6 +10,9 @@ bin/
 !package*.json
 !tsconfig*.json
 
+*.csv
+*.parquet
+
 # Created by https://www.toptal.com/developers/gitignore/api/node,webstorm
 # Edit at https://www.toptal.com/developers/gitignore?templates=node,webstorm
 
