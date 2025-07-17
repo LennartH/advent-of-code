@@ -1,4 +1,5 @@
 import math
+import dataclasses
 
 from pathlib import Path
 from enum import Enum
@@ -24,6 +25,7 @@ class Direction(DirectionDataMixin, Enum):
     def from_symbol(cls, symbol: str) -> "Direction":
         return next(d for d in Direction if d.symbol == symbol)
     
+    # TODO compare with dict or list
     def turn_right(self) -> "Direction":
         if self is Direction.Up:
             return Direction.Right
@@ -38,7 +40,9 @@ class Direction(DirectionDataMixin, Enum):
             return Direction.Up
 
 
-@dataclass(slots=True)
+# TODO compare with frozen dataclass
+# @dataclass(slots=True, frozen=True)
+@dataclass(slots=True, unsafe_hash=True)
 class VisitedTile:
     x: int
     y: int
@@ -57,31 +61,38 @@ def solve_part2(input: str) -> int:
 
 
 # region Naive Solution
+# 2025-07-17
+#   Part 1:
+#     count tiles: 0.00261s (average of 1000)
+#     collect tiles: 0.00378s (average of 1000)
+#     with IO: 0.054109 +- 0.000431 seconds time elapsed  ( +-  0.80% )
+#   Part 2:
+#     set with every tile: 21.08159s (average of 10)
+#      ^-- with IO: 21.9483 +- 0.0579 seconds time elapsed  ( +-  0.26% )
+#      ^-- Part 1 & 2 with IO: 21.9025 +- 0.0261 seconds time elapsed  ( +-  0.12% )
+
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
     start = next(
         VisitedTile(x, y, Direction.from_symbol(symbol))
         for y, row in enumerate(grid)
         for x, symbol in enumerate(row)
-        if symbol != '.' and symbol != '#'
+        if symbol in ['^', '>', 'v', '<']
     )
-    visited_tiles = _naive_collect_visited_tiles(start, grid)
-    return len(visited_tiles)
-    # return _naive_count_visited_tiles(start, grid)
+    return _naive_count_visited_tiles(start, grid)
 
 
+# TODO Compare with reusing visited_tiles for part 1
 def _naive_part2(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
     start = next(
         VisitedTile(x, y, Direction.from_symbol(symbol))
         for y, row in enumerate(grid)
         for x, symbol in enumerate(row)
-        if symbol != '.' and symbol != '#'
+        if symbol in ['^', '>', 'v', '<']
     )
     visited_tiles = _naive_collect_visited_tiles(start, grid)
-
-    # TODO implement solution
-    return math.nan
+    return _naive_count_loops(start, grid, visited_tiles)
 
 
 def _naive_count_visited_tiles(start: VisitedTile, grid: list[str]) -> int:
@@ -161,6 +172,52 @@ def _naive_collect_visited_tiles(start: VisitedTile, grid: list[str]) -> list[Vi
         y = next_y
 
     return visited_tiles
+
+
+def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[VisitedTile]) -> int:
+    loop_count = 0
+
+    for visited_tile in visited_tiles[1:]:
+        obstacle = (visited_tile.x, visited_tile.y)
+        if _naive_detect_loop(start, grid, obstacle):
+            loop_count += 1
+
+    return loop_count
+
+
+def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
+    height = len(grid)
+    width = len(grid[0])
+    obstacle_x, obstacle_y = obstacle
+
+    current_tile = dataclasses.replace(start)
+    # TODO compare with array + list/set
+    # TODO compare with only storing tile when hitting wall/obstacle
+    visited_tiles: set(VisitedTile) = {current_tile}
+    while True:
+        direction = current_tile.direction
+
+        next_x = current_tile.x + direction.dx
+        next_y = current_tile.y + direction.dy
+        next_direction = direction
+
+        # TODO compare with try-except
+        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+            break
+        next_symbol = grid[next_y][next_x]
+        if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
+            next_x = current_tile.x
+            next_y = current_tile.y
+            next_direction = direction.turn_right()
+
+        next_tile = VisitedTile(next_x, next_y, next_direction)
+        if next_tile in visited_tiles:
+            return True
+
+        current_tile = next_tile
+        visited_tiles.add(current_tile)
+
+    return False
 # endregion
 
 
@@ -282,5 +339,6 @@ if __name__ == '__main__':
     # n = 1000
     # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
     # print(f'Part 1: {dur / n:.5f}s (average of {n})')
+    # n = 10
     # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
     # print(f'Part 2: {dur / n:.5f}s (average of {n})')
