@@ -67,9 +67,11 @@ def solve_part2(input: str) -> int:
 #     collect tiles: 0.00378s (average of 1000)
 #     with IO: 0.054109 +- 0.000431 seconds time elapsed  ( +-  0.80% )
 #   Part 2:
-#     set with every tile: 21.08159s (average of 10)
+#     set with every tile: 21.08159s (average of 10)  |  commit 20a86de0cd0f5633ef37c3e8faa8c3cacdab21ca
 #      ^-- with IO: 21.9483 +- 0.0579 seconds time elapsed  ( +-  0.26% )
 #      ^-- Part 1 & 2 with IO: 21.9025 +- 0.0261 seconds time elapsed  ( +-  0.12% )
+#     set with only wall hit tiles: 7.88889s (average of 10)
+#      ^-- with IO: 7.9586 +- 0.0259 seconds time elapsed  ( +-  0.33% )
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -192,8 +194,7 @@ def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int,
 
     current_tile = dataclasses.replace(start)
     # TODO compare with array + list/set
-    # TODO compare with only storing tile when hitting wall/obstacle
-    visited_tiles: set(VisitedTile) = {current_tile}
+    visited_tiles: set(VisitedTile) = set()
     while True:
         direction = current_tile.direction
 
@@ -210,12 +211,12 @@ def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int,
             next_y = current_tile.y
             next_direction = direction.turn_right()
 
-        next_tile = VisitedTile(next_x, next_y, next_direction)
-        if next_tile in visited_tiles:
-            return True
+            if current_tile in visited_tiles:
+                return True
+            else:
+                visited_tiles.add(current_tile)
 
-        current_tile = next_tile
-        visited_tiles.add(current_tile)
+        current_tile = VisitedTile(next_x, next_y, next_direction)
 
     return False
 # endregion
@@ -332,13 +333,13 @@ def _closest_obstacle(position: int, delta: int, obstacles: list[int]) -> int:
 
 if __name__ == '__main__':
     input = Path(__file__).parent.joinpath('input').read_text()
-    print(f'Part 1: {solve_part1(input)}')
-    print(f'Part 2: {solve_part2(input)}')
+    # print(f'Part 1: {solve_part1(input)}')
+    # print(f'Part 2: {solve_part2(input)}')
 
-    # import timeit
-    # n = 1000
-    # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
-    # print(f'Part 1: {dur / n:.5f}s (average of {n})')
-    # n = 10
-    # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
-    # print(f'Part 2: {dur / n:.5f}s (average of {n})')
+    import timeit
+    n = 1000
+    dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
+    print(f'Part 1: {dur / n:.5f}s (average of {n})')
+    n = 10
+    dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
+    print(f'Part 2: {dur / n:.5f}s (average of {n})')
