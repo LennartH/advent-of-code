@@ -47,29 +47,54 @@ class VisitedTile:
 
 
 def solve_part1(input: str) -> int:
+    return _naive_part1(input)
+    # return _raywalking_part1(input)
+
+
+def solve_part2(input: str) -> int:
+    return _naive_part2(input)
+    # return _raywalking_part2(input)
+
+
+# region Naive Solution
+def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
-    # return len(_collect_visited_tiles(grid))  # 0.00310s (average of 1000)
-    return _raywalk_visited_count(grid)  # 0.00214s (average of 1000)
-
-
-# region Part 1 - Intuitive
-def _collect_visited_tiles(grid: list[str]) -> list[VisitedTile]:
-    height = len(grid)
-    width = len(grid[0])
-    (x, y), direction = next(
-        ((x, y), Direction.from_symbol(symbol))
-        for y, row in enumerate(grid) 
-        for x, symbol in enumerate(row) 
+    start = next(
+        VisitedTile(x, y, Direction.from_symbol(symbol))
+        for y, row in enumerate(grid)
+        for x, symbol in enumerate(row)
         if symbol != '.' and symbol != '#'
     )
+    visited_tiles = _naive_collect_visited_tiles(start, grid)
+    return len(visited_tiles)
+    # return _naive_count_visited_tiles(start, grid)
+
+
+def _naive_part2(input: str) -> int:
+    grid = [line.strip() for line in input.splitlines()]
+    start = next(
+        VisitedTile(x, y, Direction.from_symbol(symbol))
+        for y, row in enumerate(grid)
+        for x, symbol in enumerate(row)
+        if symbol != '.' and symbol != '#'
+    )
+    visited_tiles = _naive_collect_visited_tiles(start, grid)
+
+    # TODO implement solution
+    return math.nan
+
+
+def _naive_count_visited_tiles(start: VisitedTile, grid: list[str]) -> int:
+    height = len(grid)
+    width = len(grid[0])
+    x, y, direction = (start.x, start.y, start.direction)
 
     visited = [[False] * width for _ in grid]
-    visited_tiles = list()
+    visited_count = 0
     while True:
-        visited_tile = VisitedTile(x, y, direction)
         if not visited[y][x]:
             visited[y][x] = True
-            visited_tiles.append(visited_tile)
+            visited_count += 1
 
         next_x = x + direction.dx
         next_y = y + direction.dy
@@ -78,16 +103,77 @@ def _collect_visited_tiles(grid: list[str]) -> list[VisitedTile]:
         next_symbol = grid[next_y][next_x]
         if next_symbol == '#':
             direction = direction.turn_right()
-            visited_tile.direction = direction  # Overwriting direction or the new obstacle would be placed over an existing one
         else:
             x = next_x
             y = next_y
+
+    return visited_count
+
+
+def _naive_collect_visited_tiles(start: VisitedTile, grid: list[str]) -> list[VisitedTile]:
+    height = len(grid)
+    width = len(grid[0])
+    x, y, direction = (start.x, start.y, start.direction)
+
+    within_grid = True
+    visited = [[False] * width for _ in grid]
+    visited_tiles = list()
+    # while within_grid:
+    #     wall_hit = False
+
+    #     next_x = x + direction.dx
+    #     next_y = y + direction.dy
+    #     if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+    #         within_grid = False
+    #     else:
+    #         next_symbol = grid[next_y][next_x]
+    #         if next_symbol == '#':
+    #             wall_hit = True
+    #             next_x = x
+    #             next_y = y
+    #             direction = direction.turn_right()
+        
+    #     if not visited[y][x] and not wall_hit:
+    #         visited[y][x] = True
+    #         visited_tiles.append(VisitedTile(x, y, direction))
+    #     x = next_x
+    #     y = next_y
+    while within_grid:
+        wall_hit = False
+        next_x = x + direction.dx
+        next_y = y + direction.dy
+
+        try:
+            next_symbol = grid[next_y][next_x]
+            if next_symbol == '#':
+                wall_hit = True
+                next_x = x
+                next_y = y
+                direction = direction.turn_right()
+        except IndexError:
+            within_grid = False
+        
+        if not visited[y][x] and not wall_hit:
+            # Do not add visited tile after hitting a wall or obstacle placement for part 2 gets tricky (wrong direction)
+            visited[y][x] = True
+            visited_tiles.append(VisitedTile(x, y, direction))
+        x = next_x
+        y = next_y
 
     return visited_tiles
 # endregion
 
 
-# region Part 1 - Raywalking
+# region Raywalking
+def _raywalking_part1(input: str) -> int:
+    return _raywalk_visited_count(grid)  # 0.00214s (average of 1000)
+
+
+def _raywalking_part2(input: str) -> int:
+    # TODO implement solution
+    return math.nan
+
+
 def _raywalk_visited_count(grid: list[str]) -> int:
     total_steps = 0
     ray_steps = _collect_rays(grid)  # 0.00108s (average of 1000)
@@ -123,6 +209,7 @@ def _raywalk_visited_count(grid: list[str]) -> int:
         offset = offset ^ 1  # toggle between 0 and 1
     
     return total_steps
+
 
 def _collect_rays(grid: list[str]) -> list[VisitedTile]:
     height = len(grid)
@@ -186,25 +273,14 @@ def _closest_obstacle(position: int, delta: int, obstacles: list[int]) -> int:
 # endregion
 
 
-def solve_part2(input: str) -> int:
-    lines = [line.strip() for line in input.splitlines()]
-    # TODO implement solution
-    return math.nan
-
-
-# region Shared Code
-
-# endregion
-
-
 if __name__ == '__main__':
     input = Path(__file__).parent.joinpath('input').read_text()
     print(f'Part 1: {solve_part1(input)}')
     print(f'Part 2: {solve_part2(input)}')
 
-    import timeit
-    n = 1000
-    dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
-    print(f'Part 1: {dur / n:.5f}s (average of {n})')
-    dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
-    print(f'Part 2: {dur / n:.5f}s (average of {n})')
+    # import timeit
+    # n = 1000
+    # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
+    # print(f'Part 1: {dur / n:.5f}s (average of {n})')
+    # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
+    # print(f'Part 2: {dur / n:.5f}s (average of {n})')
