@@ -72,8 +72,14 @@ def solve_part2(input: str) -> int:
 #      ^-- Part 1 & 2 with IO: 21.9025 +- 0.0261 seconds time elapsed  ( +-  0.12% )
 #     set with only wall hit tiles: 7.88889s (average of 10)  |  commit 7a1b99460cbfd0ddf8550ee227ca3986b1d0d393
 #      ^-- with IO: 7.9586 +- 0.0259 seconds time elapsed  ( +-  0.33% )
-#      ^-- without VisitedTile dataclass: 2.22718s (average of 10)  |  commit
+#      ^-- without VisitedTile dataclass: 2.22718s (average of 10)  |  commit 2f26676cf73e91f01ad5f42cc3f430cfac72e9ed
 #           ^-- with IO: 2.32758 +- 0.00676 seconds time elapsed  ( +-  0.29% )
+# 2025-07-18
+#   Part 2 (everything with IO, only Part 2):
+#     set with every tile: 22.0239 +- 0.0402 seconds time elapsed  ( +-  0.18% )
+#      ^-- without VisitedTile dataclass: 4.8451 +- 0.0174 seconds time elapsed  ( +-  0.36% )  |  
+#     set with only wall hit tiles: 7.8365 +- 0.0424 seconds time elapsed  ( +-  0.54% )
+#      ^-- without VisitedTile dataclass: 2.35328 +- 0.00521 seconds time elapsed  ( +-  0.22% )
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -189,42 +195,42 @@ def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[
     return loop_count
 
 
-def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
-    height = len(grid)
-    width = len(grid[0])
-    obstacle_x, obstacle_y = obstacle
+# def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
+#     height = len(grid)
+#     width = len(grid[0])
+#     obstacle_x, obstacle_y = obstacle
 
-    x, y, direction = (start.x, start.y, start.direction)
+#     x, y, direction = (start.x, start.y, start.direction)
 
-    # TODO compare with array + list/set
-    visited_tiles: set[tuple[int, int, str]] = set()
-    while True:
-        next_x = x + direction.dx
-        next_y = y + direction.dy
-        next_direction = direction
+#     # TODO compare with array + list/set
+#     visited_tiles: set[tuple[int, int, str]] = set()
+#     while True:
+#         next_x = x + direction.dx
+#         next_y = y + direction.dy
+#         next_direction = direction
 
-        # TODO compare with try-except
-        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
-            break
-        next_symbol = grid[next_y][next_x]
-        if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
-            next_x = x
-            next_y = y
-            next_direction = direction.turn_right()
+#         # TODO compare with try-except
+#         if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+#             break
+#         next_symbol = grid[next_y][next_x]
+#         if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
+#             next_x = x
+#             next_y = y
+#             next_direction = direction.turn_right()
 
-            position = (x, y, direction.symbol)
-            if position in visited_tiles:
-                return True
-            else:
-                visited_tiles.add(position)
+#             position = (x, y, direction.symbol)
+#             if position in visited_tiles:
+#                 return True
+#             else:
+#                 visited_tiles.add(position)
 
-        x = next_x
-        y = next_y
-        direction = next_direction
+#         x = next_x
+#         y = next_y
+#         direction = next_direction
 
-    return False
+#     return False
 
-
+# # set with only wall hit tiles using VisitedTile dataclass
 # def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
 #     height = len(grid)
 #     width = len(grid[0])
@@ -255,6 +261,39 @@ def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int,
 #         current_tile = VisitedTile(next_x, next_y, next_direction)
 
 #     return False
+
+
+# set with all visited tiles without using VisitedTile dataclass
+def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
+    height = len(grid)
+    width = len(grid[0])
+    obstacle_x, obstacle_y = obstacle
+
+    x, y, direction = (start.x, start.y, start.direction)
+    visited_tiles: set[tuple[int, int, str]] = {(x, y, direction.symbol)}
+    while True:
+        next_x = x + direction.dx
+        next_y = y + direction.dy
+        next_direction = direction
+
+        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+            break
+        next_symbol = grid[next_y][next_x]
+        if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
+            next_x = x
+            next_y = y
+            next_direction = direction.turn_right()
+
+        next_tile = (next_x, next_y, next_direction.symbol)
+        if next_tile in visited_tiles:
+            return True
+
+        visited_tiles.add(next_tile)
+        x = next_x
+        y = next_y
+        direction = next_direction
+
+    return False
 
 # endregion
 
