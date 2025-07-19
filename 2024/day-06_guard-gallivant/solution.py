@@ -84,11 +84,12 @@ def solve_part2(input: str) -> int:
 #     two-dimensional array + list with only wall hit tiles without dataclass: 12.5950 +- 0.0434 seconds time elapsed  ( +-  0.34% )  |  commit 7717fad78c9e9d5652e58a2928b91720eca158a2
 # 2025-07-19
 #   Part 2 (everything only wall hit tiles, without using dataclass, with IO, only Part 2):
-#     set: 2.3840 +- 0.0106 seconds time elapsed  ( +-  0.45% )
+#     set: 2.39504 +- 0.00939 seconds time elapsed  ( +-  0.39% )
 #     two-dimensional array + list: 14.654 +- 0.146 seconds time elapsed  ( +-  1.00% )
 #      ^-- set instead of list: 27.498 +- 0.336 seconds time elapsed  ( +-  1.22% )
-#     one-dimensional defaultdict + list: 2.5774 +- 0.0108 seconds time elapsed  ( +-  0.42% )
-#     two-dimensional defaultdict + list: 2.7110 +- 0.0331 seconds time elapsed  ( +-  1.22% )
+#      ^-- one-dimensional defaultdict + list: 2.5774 +- 0.0108 seconds time elapsed  ( +-  0.42% )
+#      ^-- two-dimensional defaultdict + list: 2.7110 +- 0.0331 seconds time elapsed  ( +-  1.22% )
+#     starting loop check from current position (without context): 2.39941 +- 0.00839 seconds time elapsed  ( +-  0.35% )
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -129,7 +130,6 @@ def _naive_count_visited_tiles(start: VisitedTile, grid: list[str]) -> int:
     return visited_count
 
 
-# TODO compare with: start from current/obstacle position (without context)
 # TODO compare with: start from current/obstacle position with information about past/future wall hits
 def _naive_part2(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -176,15 +176,33 @@ def _naive_collect_visited_tiles(start: VisitedTile, grid: list[str]) -> list[Vi
     return visited_tiles
 
 
+# Starting loop check from current position (without context)
 def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[VisitedTile]) -> int:
     loop_count = 0
 
     for visited_tile in visited_tiles[1:]:
+        position = VisitedTile(
+            visited_tile.x - visited_tile.direction.dx,
+            visited_tile.y - visited_tile.direction.dy,
+            visited_tile.direction,
+        )
         obstacle = (visited_tile.x, visited_tile.y)
         if _naive_detect_loop(start, grid, obstacle):
             loop_count += 1
 
     return loop_count
+
+
+# # Starting loop check from global starting position
+# def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[VisitedTile]) -> int:
+#     loop_count = 0
+
+#     for visited_tile in visited_tiles[1:]:
+#         obstacle = (visited_tile.x, visited_tile.y)
+#         if _naive_detect_loop(start, grid, obstacle):
+#             loop_count += 1
+
+#     return loop_count
 
 
 # set with only wall hit tiles without using VisitedTile dataclass
