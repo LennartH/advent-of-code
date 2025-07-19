@@ -40,8 +40,7 @@ class Direction(DirectionDataMixin, Enum):
             return Direction.Up
 
 
-# TODO compare with frozen dataclass
-# @dataclass(slots=True, frozen=True)
+# @dataclass(slots=True, frozen=True)  # not good 7.83 to 17.18 (see below)
 @dataclass(slots=True, unsafe_hash=True)
 class VisitedTile:
     x: int
@@ -77,9 +76,11 @@ def solve_part2(input: str) -> int:
 # 2025-07-18
 #   Part 2 (everything with IO, only Part 2):
 #     set with every tile: 22.0239 +- 0.0402 seconds time elapsed  ( +-  0.18% )
-#      ^-- without VisitedTile dataclass: 4.8451 +- 0.0174 seconds time elapsed  ( +-  0.36% )  |  
+#      ^-- without VisitedTile dataclass: 4.8451 +- 0.0174 seconds time elapsed  ( +-  0.36% )  |  commit e25d4d14c15764d0b30ca0f820ada6a5d1e10b56
 #     set with only wall hit tiles: 7.8365 +- 0.0424 seconds time elapsed  ( +-  0.54% )
+#      ^-- with frozen VisitedTile dataclass: 17.1875 +- 0.0475 seconds time elapsed  ( +-  0.28% )
 #      ^-- without VisitedTile dataclass: 2.35328 +- 0.00521 seconds time elapsed  ( +-  0.22% )
+#     array with only wall hit tiles without dataclass: 12.5950 +- 0.0434 seconds time elapsed  ( +-  0.34% )
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -139,40 +140,20 @@ def _naive_collect_visited_tiles(start: VisitedTile, grid: list[str]) -> list[Vi
     within_grid = True
     visited = [[False] * width for _ in grid]
     visited_tiles = list()
-    # while within_grid:
-    #     wall_hit = False
-
-    #     next_x = x + direction.dx
-    #     next_y = y + direction.dy
-    #     if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
-    #         within_grid = False
-    #     else:
-    #         next_symbol = grid[next_y][next_x]
-    #         if next_symbol == '#':
-    #             wall_hit = True
-    #             next_x = x
-    #             next_y = y
-    #             direction = direction.turn_right()
-        
-    #     if not visited[y][x] and not wall_hit:
-    #         visited[y][x] = True
-    #         visited_tiles.append(VisitedTile(x, y, direction))
-    #     x = next_x
-    #     y = next_y
     while within_grid:
         wall_hit = False
+
         next_x = x + direction.dx
         next_y = y + direction.dy
-
-        try:
+        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+            within_grid = False
+        else:
             next_symbol = grid[next_y][next_x]
             if next_symbol == '#':
                 wall_hit = True
                 next_x = x
                 next_y = y
                 direction = direction.turn_right()
-        except IndexError:
-            within_grid = False
         
         if not visited[y][x] and not wall_hit:
             # Do not add visited tile after hitting a wall or obstacle placement for part 2 gets tricky (wrong direction)
@@ -195,21 +176,53 @@ def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[
     return loop_count
 
 
+def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
+    height = len(grid)
+    width = len(grid[0])
+    obstacle_x, obstacle_y = obstacle
+
+    x, y, direction = (start.x, start.y, start.direction)
+    # TODO compare with array + set
+    # TODO compare with defaultdict
+    visited_tiles = [[list() for x in range(width)] for y in range(height)]
+    while True:
+        next_x = x + direction.dx
+        next_y = y + direction.dy
+        next_direction = direction
+
+        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+            break
+        next_symbol = grid[next_y][next_x]
+        if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
+            next_x = x
+            next_y = y
+            next_direction = direction.turn_right()
+
+            if direction.symbol in visited_tiles[y][x]:
+                return True
+            else:
+                visited_tiles[y][x].append(direction.symbol)
+
+        x = next_x
+        y = next_y
+        direction = next_direction
+
+    return False
+
+
+# # set with only wall hit tiles without using VisitedTile dataclass
 # def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
 #     height = len(grid)
 #     width = len(grid[0])
 #     obstacle_x, obstacle_y = obstacle
 
 #     x, y, direction = (start.x, start.y, start.direction)
-
-#     # TODO compare with array + list/set
 #     visited_tiles: set[tuple[int, int, str]] = set()
 #     while True:
 #         next_x = x + direction.dx
 #         next_y = y + direction.dy
 #         next_direction = direction
 
-#         # TODO compare with try-except
 #         if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
 #             break
 #         next_symbol = grid[next_y][next_x]
@@ -263,37 +276,37 @@ def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[
 #     return False
 
 
-# set with all visited tiles without using VisitedTile dataclass
-def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
-    height = len(grid)
-    width = len(grid[0])
-    obstacle_x, obstacle_y = obstacle
+# # set with all visited tiles without using VisitedTile dataclass
+# def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
+#     height = len(grid)
+#     width = len(grid[0])
+#     obstacle_x, obstacle_y = obstacle
 
-    x, y, direction = (start.x, start.y, start.direction)
-    visited_tiles: set[tuple[int, int, str]] = {(x, y, direction.symbol)}
-    while True:
-        next_x = x + direction.dx
-        next_y = y + direction.dy
-        next_direction = direction
+#     x, y, direction = (start.x, start.y, start.direction)
+#     visited_tiles: set[tuple[int, int, str]] = {(x, y, direction.symbol)}
+#     while True:
+#         next_x = x + direction.dx
+#         next_y = y + direction.dy
+#         next_direction = direction
 
-        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
-            break
-        next_symbol = grid[next_y][next_x]
-        if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
-            next_x = x
-            next_y = y
-            next_direction = direction.turn_right()
+#         if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+#             break
+#         next_symbol = grid[next_y][next_x]
+#         if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
+#             next_x = x
+#             next_y = y
+#             next_direction = direction.turn_right()
 
-        next_tile = (next_x, next_y, next_direction.symbol)
-        if next_tile in visited_tiles:
-            return True
+#         next_tile = (next_x, next_y, next_direction.symbol)
+#         if next_tile in visited_tiles:
+#             return True
 
-        visited_tiles.add(next_tile)
-        x = next_x
-        y = next_y
-        direction = next_direction
+#         visited_tiles.add(next_tile)
+#         x = next_x
+#         y = next_y
+#         direction = next_direction
 
-    return False
+#     return False
 
 # endregion
 
