@@ -5,6 +5,7 @@ from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass
 from itertools import pairwise
+from collections import defaultdict
 
 
 # region Types and Globals
@@ -80,7 +81,14 @@ def solve_part2(input: str) -> int:
 #     set with only wall hit tiles: 7.8365 +- 0.0424 seconds time elapsed  ( +-  0.54% )
 #      ^-- with frozen VisitedTile dataclass: 17.1875 +- 0.0475 seconds time elapsed  ( +-  0.28% )
 #      ^-- without VisitedTile dataclass: 2.35328 +- 0.00521 seconds time elapsed  ( +-  0.22% )
-#     array with only wall hit tiles without dataclass: 12.5950 +- 0.0434 seconds time elapsed  ( +-  0.34% )
+#     two-dimensional array + list with only wall hit tiles without dataclass: 12.5950 +- 0.0434 seconds time elapsed  ( +-  0.34% )  |  commit 7717fad78c9e9d5652e58a2928b91720eca158a2
+# 2025-07-19
+#   Part 2 (everything only wall hit tiles, without using dataclass, with IO, only Part 2):
+#     set: 2.3840 +- 0.0106 seconds time elapsed  ( +-  0.45% )
+#     two-dimensional array + list: 14.654 +- 0.146 seconds time elapsed  ( +-  1.00% )
+#      ^-- set instead of list: 27.498 +- 0.336 seconds time elapsed  ( +-  1.22% )
+#     one-dimensional defaultdict + list: 2.5774 +- 0.0108 seconds time elapsed  ( +-  0.42% )
+#     two-dimensional defaultdict + list: 2.7110 +- 0.0331 seconds time elapsed  ( +-  1.22% )
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -176,40 +184,6 @@ def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[
     return loop_count
 
 
-def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
-    height = len(grid)
-    width = len(grid[0])
-    obstacle_x, obstacle_y = obstacle
-
-    x, y, direction = (start.x, start.y, start.direction)
-    # TODO compare with array + set
-    # TODO compare with defaultdict
-    visited_tiles = [[list() for x in range(width)] for y in range(height)]
-    while True:
-        next_x = x + direction.dx
-        next_y = y + direction.dy
-        next_direction = direction
-
-        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
-            break
-        next_symbol = grid[next_y][next_x]
-        if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
-            next_x = x
-            next_y = y
-            next_direction = direction.turn_right()
-
-            if direction.symbol in visited_tiles[y][x]:
-                return True
-            else:
-                visited_tiles[y][x].append(direction.symbol)
-
-        x = next_x
-        y = next_y
-        direction = next_direction
-
-    return False
-
-
 # # set with only wall hit tiles without using VisitedTile dataclass
 # def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
 #     height = len(grid)
@@ -242,6 +216,46 @@ def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int,
 #         direction = next_direction
 
 #     return False
+
+
+# different data structures to store visited tiles
+def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
+    height = len(grid)
+    width = len(grid[0])
+    obstacle_x, obstacle_y = obstacle
+
+    x, y, direction = (start.x, start.y, start.direction)
+    # visited_tiles = [[list() for x in range(width)] for y in range(height)]
+    # visited_tiles = [[set() for x in range(width)] for y in range(height)]
+    # visited_tiles = defaultdict(list)
+    visited_tiles = defaultdict(lambda: defaultdict(list))
+    while True:
+        next_x = x + direction.dx
+        next_y = y + direction.dy
+        next_direction = direction
+
+        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+            break
+        next_symbol = grid[next_y][next_x]
+        if next_symbol == '#' or (next_x == obstacle_x and next_y == obstacle_y):
+            next_x = x
+            next_y = y
+            next_direction = direction.turn_right()
+
+            if direction.symbol in visited_tiles[y][x]:
+            # if direction.symbol in visited_tiles[(x, y)]:
+                return True
+            else:
+                # visited_tiles[y][x].append(direction.symbol)
+                # visited_tiles[y][x].add(direction.symbol)
+                # visited_tiles[(x, y)].append(direction.symbol)
+                visited_tiles[y][x].append(direction.symbol)
+
+        x = next_x
+        y = next_y
+        direction = next_direction
+
+    return False
 
 # # set with only wall hit tiles using VisitedTile dataclass
 # def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
