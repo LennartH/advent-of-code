@@ -116,6 +116,12 @@ def solve_part2(input: str) -> int:
 #     starting loop check from current position (no context) (refactored): 0.77087 +- 0.00204 seconds (+- 0.26%)
 #      ^-- with previous wall hits: 0.52177 +- 0.00122 seconds (+- 0.23%)
 #           ^-- without IO: 0.46522s (average of 20)
+#      ^-- [BROKEN] with previous and future wall hits: 0.164658 +- 0.000851 seconds time elapsed  ( +-  0.52% )
+#           ^-- result: 1473, expected: 1516
+#           ^-- without IO: 0.10805s (average of 50)
+#      ^-- [less broken] with previous and future wall hits: 0.34602 +- 0.00975 seconds time elapsed  ( +-  2.82% )
+#           ^-- works for input, but not for example
+#           ^-- without IO: Part 2: 0.27051s (average of 50)
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -156,7 +162,6 @@ def _naive_count_visited_tiles(start: VisitedTile, grid: list[str]) -> int:
     return visited_count
 
 
-# TODO compare with: start from current/obstacle position with information about past/future wall hits
 def _naive_part2(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
     start = next(
@@ -232,15 +237,49 @@ def _naive_collect_guard_path_context(start: Position, grid: list[str]) -> tuple
 #     return loop_count
 
 
-# Starting loop check from current position with previous wall hits
+# # Starting loop check from current position with previous wall hits
+# def _naive_count_loops(grid: list[str], step_contexts: list[StepContext], wall_hits: list[RawPosition]) -> int:
+#     loop_count = 0
+
+#     for position, obstacle, wall_hit_index in step_contexts:
+#         if _naive_detect_loop(position, grid, obstacle, wall_hits[:wall_hit_index]):
+#             loop_count += 1
+
+#     return loop_count
+
+
+# Starting loop check from current position with previous and future wall hits
 def _naive_count_loops(grid: list[str], step_contexts: list[StepContext], wall_hits: list[RawPosition]) -> int:
     loop_count = 0
 
     for position, obstacle, wall_hit_index in step_contexts:
-        if _naive_detect_loop(position, grid, obstacle, wall_hits[:wall_hit_index]):
+        last_obstacle_index = _naive_last_index_of_obstacle(wall_hits, wall_hit_index, obstacle)
+        if _naive_detect_loop(
+            position,
+            grid,
+            obstacle,
+            wall_hits[:wall_hit_index],
+            wall_hits[last_obstacle_index:],
+        ):
             loop_count += 1
 
     return loop_count
+
+
+def _naive_last_index_of_obstacle(wall_hits: list[RawPosition], wall_hit_index: int, obstacle: Point) -> int:
+    # FIXME needs start and exit position to catch all cases
+    # Works for actual input, but not for example
+    obstacle_x, obstacle_y = obstacle
+    for pos, (a, b) in enumerate(pairwise(reversed(wall_hits[wall_hit_index:]))):
+        (ax, ay, _) = a
+        (bx, by, _) = b
+        d_ao = abs(obstacle_x - ax) + abs(obstacle_y - ay)
+        d_ob = abs(bx - obstacle_x) + abs(by - obstacle_y)
+        d_ab = abs(bx - ax) + abs(by - ay)
+        if (d_ao + d_ob) == d_ab:
+            return len(wall_hits) - pos - 1
+
+    return wall_hit_index
 
 
 # set with only wall hit tiles without using VisitedTile dataclass
@@ -248,7 +287,8 @@ def _naive_detect_loop(
     start: Position,
     grid: list[str],
     obstacle: tuple[int, int],
-    previous_wall_hits: Iterable[tuple[int, int, str]] = None
+    previous_wall_hits: Iterable[RawPosition] = None,
+    future_wall_hits: Iterable[RawPosition] = None,
 ) -> bool:
 
     height = len(grid)
@@ -256,7 +296,8 @@ def _naive_detect_loop(
     obstacle_x, obstacle_y = obstacle
 
     x, y, direction = start 
-    visited_tiles: set[RawPosition] = set(previous_wall_hits) if previous_wall_hits is not None else set()
+    wall_hits: set[RawPosition] = set(previous_wall_hits) if previous_wall_hits is not None else set()
+    original_wall_hits: set[RawPosition] = set(future_wall_hits) if future_wall_hits is not None else set()
     while True:
         next_x = x + direction.dx
         next_y = y + direction.dy
@@ -271,10 +312,12 @@ def _naive_detect_loop(
             next_direction = direction.turn_right()
 
             position = (x, y, direction.symbol)
-            if position in visited_tiles:
+            if position in wall_hits:
                 return True
+            if position in original_wall_hits:
+                return False
             else:
-                visited_tiles.add(position)
+                wall_hits.add(position)
 
         x = next_x
         y = next_y
@@ -544,12 +587,12 @@ def _closest_obstacle(position: int, delta: int, obstacles: list[int]) -> int:
 if __name__ == '__main__':
     input = Path(__file__).parent.joinpath('input').read_text()
     # print(f'Part 1: {solve_part1(input)}')
-    print(f'Part 2: {solve_part2(input)}')
+    # print(f'Part 2: {solve_part2(input)}')
 
-    # import timeit
-    # # n = 1000
-    # # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
-    # # print(f'Part 1: {dur / n:.5f}s (average of {n})')
-    # n = 20
-    # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
-    # print(f'Part 2: {dur / n:.5f}s (average of {n})')
+    import timeit
+    # n = 1000
+    # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
+    # print(f'Part 1: {dur / n:.5f}s (average of {n})')
+    n = 50
+    dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
+    print(f'Part 2: {dur / n:.5f}s (average of {n})')
