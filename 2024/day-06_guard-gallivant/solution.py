@@ -53,6 +53,7 @@ class VisitedTile:
 type Point = tuple[int, int]
 type Position = tuple[int, int, Direction]
 type RawPosition = tuple[int, int, str]
+type StepContext = tuple[Position, Point, int]
 # Position = namedtuple('Position', ['x', 'y', 'direction'])
 # class Position(NamedTuple):
 #     x: int
@@ -76,42 +77,45 @@ def solve_part2(input: str) -> int:
 #   Part 1:
 #     count tiles: 0.00261s (average of 1000)
 #     collect tiles: 0.00378s (average of 1000)
-#     with IO: 0.054109 +- 0.000431 seconds time elapsed  ( +-  0.80% )
+#     with IO: 0.054109 +- 0.000431 seconds (+- 0.80%)
 #   Part 2:
 #     set with every tile: 21.08159s (average of 10)  |  commit 20a86de0cd0f5633ef37c3e8faa8c3cacdab21ca
-#      ^-- with IO: 21.9483 +- 0.0579 seconds time elapsed  ( +-  0.26% )
-#      ^-- Part 1 & 2 with IO: 21.9025 +- 0.0261 seconds time elapsed  ( +-  0.12% )
+#      ^-- with IO: 21.9483 +- 0.0579 seconds (+- 0.26%)
+#      ^-- Part 1 & 2 with IO: 21.9025 +- 0.0261 seconds (+- 0.12%)
 #     set with only wall hit tiles: 7.88889s (average of 10)  |  commit 7a1b99460cbfd0ddf8550ee227ca3986b1d0d393
-#      ^-- with IO: 7.9586 +- 0.0259 seconds time elapsed  ( +-  0.33% )
+#      ^-- with IO: 7.9586 +- 0.0259 seconds (+- 0.33%)
 #      ^-- without VisitedTile dataclass: 2.22718s (average of 10)  |  commit 2f26676cf73e91f01ad5f42cc3f430cfac72e9ed
-#           ^-- with IO: 2.32758 +- 0.00676 seconds time elapsed  ( +-  0.29% )
+#           ^-- with IO: 2.32758 +- 0.00676 seconds (+- 0.29%)
 # 2025-07-18
 #   Part 2 (everything with IO, only Part 2):
-#     set with every tile: 22.0239 +- 0.0402 seconds time elapsed  ( +-  0.18% )
-#      ^-- without VisitedTile dataclass: 4.8451 +- 0.0174 seconds time elapsed  ( +-  0.36% )  |  commit e25d4d14c15764d0b30ca0f820ada6a5d1e10b56
-#     set with only wall hit tiles: 7.8365 +- 0.0424 seconds time elapsed  ( +-  0.54% )
-#      ^-- with frozen VisitedTile dataclass: 17.1875 +- 0.0475 seconds time elapsed  ( +-  0.28% )
-#      ^-- without VisitedTile dataclass: 2.35328 +- 0.00521 seconds time elapsed  ( +-  0.22% )
-#     two-dimensional array + list with only wall hit tiles without dataclass: 12.5950 +- 0.0434 seconds time elapsed  ( +-  0.34% )  |  commit 7717fad78c9e9d5652e58a2928b91720eca158a2
+#     set with every tile: 22.0239 +- 0.0402 seconds (+- 0.18%)
+#      ^-- without VisitedTile dataclass: 4.8451 +- 0.0174 seconds (+- 0.36%)  |  commit e25d4d14c15764d0b30ca0f820ada6a5d1e10b56
+#     set with only wall hit tiles: 7.8365 +- 0.0424 seconds (+- 0.54%)
+#      ^-- with frozen VisitedTile dataclass: 17.1875 +- 0.0475 seconds (+- 0.28%)
+#      ^-- without VisitedTile dataclass: 2.35328 +- 0.00521 seconds (+- 0.22%)
+#     two-dimensional array + list with only wall hit tiles without dataclass: 12.5950 +- 0.0434 seconds (+- 0.34%)  |  commit 7717fad78c9e9d5652e58a2928b91720eca158a2
 # 2025-07-19
 #   Part 2 (only wall hit tiles, without using dataclass, with IO, only Part 2):
-#     set: 2.39504 +- 0.00939 seconds time elapsed  ( +-  0.39% )
-#     two-dimensional array + list: 14.654 +- 0.146 seconds time elapsed  ( +-  1.00% )
-#      ^-- set instead of list: 27.498 +- 0.336 seconds time elapsed  ( +-  1.22% )
-#      ^-- one-dimensional defaultdict + list: 2.5774 +- 0.0108 seconds time elapsed  ( +-  0.42% )
-#      ^-- two-dimensional defaultdict + list: 2.7110 +- 0.0331 seconds time elapsed  ( +-  1.22% )
-#     starting loop check from current position (no context): 0.78459 +- 0.00278 seconds time elapsed  ( +-  0.35% )
-#      ^-- with previous wall hits: 0.86610 +- 0.00281 seconds time elapsed  ( +-  0.32% )
+#     set: 2.39504 +- 0.00939 seconds (+- 0.39%)
+#     two-dimensional array + list: 14.654 +- 0.146 seconds (+- 1.00%)
+#      ^-- set instead of list: 27.498 +- 0.336 seconds (+- 1.22%)
+#      ^-- one-dimensional defaultdict + list: 2.5774 +- 0.0108 seconds (+- 0.42%)
+#      ^-- two-dimensional defaultdict + list: 2.7110 +- 0.0331 seconds (+- 1.22%)
+#     starting loop check from current position (no context): 0.78459 +- 0.00278 seconds (+- 0.35%)
+#      ^-- [BUGGED] with previous wall hits: 0.86610 +- 0.00281 seconds (+- 0.32%)
 # 2025-07-20
 #   Part 2 (only wall hit tiles, without using dataclass, with IO, only Part 2):
-#     set: 2.41075 +- 0.00890 seconds time elapsed  ( +-  0.37% )
-#      ^-- with namedtuple: 2.87063 +- 0.00825 seconds time elapsed  ( +-  0.29% )
-#      ^-- with "primitive" namedtuple: 2.65190 +- 0.00865 seconds time elapsed  ( +-  0.33% )
-#      ^-- with typed NamedTuple: 2.8704 +- 0.0249 seconds time elapsed  ( +-  0.87% )
-#     starting loop check from current position (no context): 0.78544 +- 0.00345 seconds time elapsed  ( +-  0.44% )
-#      ^-- with previous wall hits: 0.87183 +- 0.00408 seconds time elapsed  ( +-  0.47% )
-#     set (refactored): 2.3963 +- 0.0125 seconds time elapsed  ( +-  0.52% )
-#      ^-- full context: 2.41534 +- 0.00851 seconds time elapsed  ( +-  0.35% )
+#     set: 2.41075 +- 0.00890 seconds (+- 0.37%)
+#      ^-- with namedtuple: 2.87063 +- 0.00825 seconds (+- 0.29%)
+#      ^-- with "primitive" namedtuple: 2.65190 +- 0.00865 seconds (+- 0.33%)
+#      ^-- with typed NamedTuple: 2.8704 +- 0.0249 seconds (+- 0.87%)
+#     starting loop check from current position (no context): 0.75876 +- 0.00133 seconds (+- 0.18%)
+#      ^-- with previous wall hits: 0.51796 +- 0.00191 seconds (+- 0.37%)
+#     set (refactored): 2.32845 +- 0.00555 seconds (+- 0.24%)
+#      ^-- full context: 2.32969 +- 0.00452 seconds (+- 0.19%)
+#     starting loop check from current position (no context) (refactored): 0.77087 +- 0.00204 seconds (+- 0.26%)
+#      ^-- with previous wall hits: 0.52177 +- 0.00122 seconds (+- 0.23%)
+#           ^-- without IO: 0.46522s (average of 20)
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -162,19 +166,18 @@ def _naive_part2(input: str) -> int:
         if symbol in ['^', '>', 'v', '<']
     )
 
-    positions, obstacles, wall_hits = _naive_collect_guard_path_context(start, grid)
-    return _naive_count_loops(start, grid, obstacles)
+    step_contexts, wall_hits = _naive_collect_guard_path_context(start, grid)
+    # return _naive_count_loops(start, grid, step_contexts)
+    # return _naive_count_loops(grid, step_contexts)
+    return _naive_count_loops(grid, step_contexts, wall_hits)
 
-    # return _naive_count_loops_with_context(start, grid)
 
-
-def _naive_collect_guard_path_context(start: Position, grid: list[str]) -> tuple[list[Position], list[Point], list[RawPosition]]:
+def _naive_collect_guard_path_context(start: Position, grid: list[str]) -> tuple[list[StepContext], list[RawPosition]]:
     height = len(grid)
     width = len(grid[0])
     x, y, direction = start
 
-    positions: list[Position] = list()
-    obstacles: list[Point] = list()
+    step_contexts: list[StepContext] = list()
     wall_hits: list[RawPosition] = list()
 
     visited = [[False] * width for _ in grid]
@@ -199,60 +202,42 @@ def _naive_collect_guard_path_context(start: Position, grid: list[str]) -> tuple
             visited[next_y][next_x] = True
             position = (x, y, direction)
             obstacle = (next_x, next_y)
-            positions.append(position)
-            obstacles.append(obstacle)
+            step_contexts.append((position, obstacle, len(wall_hits)))
 
         x = next_x
         y = next_y
 
-    return (positions, obstacles, wall_hits)
+    return (step_contexts, wall_hits)
 
 
-# Starting loop check from current position (with or without context)
-def _naive_count_loops_with_context(start: VisitedTile, grid: list[str]) -> int:
-    height = len(grid)
-    width = len(grid[0])
-    x, y, direction = (start.x, start.y, start.direction)
+# # Starting loop check from global starting position
+# def _naive_count_loops(start: Position, grid: list[str], step_contexts: list[StepContext]) -> int:
+#     loop_count = 0
 
-    loop_count = 0
-    visited = [[False] * width for _ in grid]
-    visited[y][x] = True
-    # wall_hits = list()
-    while True:
-        wall_hit = False
+#     for _, obstacle, _ in step_contexts:
+#         if _naive_detect_loop(start, grid, obstacle):
+#             loop_count += 1
 
-        next_x = x + direction.dx
-        next_y = y + direction.dy
-        if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
-            break
-
-        next_symbol = grid[next_y][next_x]
-        if next_symbol == '#':
-            wall_hit = True
-            # wall_hits.append((x, y, direction))
-            next_x = x
-            next_y = y
-            direction = direction.turn_right()
-        
-        if not wall_hit and not visited[next_y][next_x]:
-            visited[next_y][next_x] = True
-            position = VisitedTile(x, y, direction)
-            obstacle = (next_x, next_y)
-            if _naive_detect_loop(position, grid, obstacle):
-            # if _naive_detect_loop(position, grid, obstacle, wall_hits):
-                loop_count += 1
-        x = next_x
-        y = next_y
-
-    return loop_count
+#     return loop_count
 
 
-# Starting loop check from global starting position
-def _naive_count_loops(start: Position, grid: list[str], obstacles: list[Point]) -> int:
+# # Starting loop check from current position (no context)
+# def _naive_count_loops(grid: list[str], step_contexts: list[StepContext]) -> int:
+#     loop_count = 0
+
+#     for position, obstacle, _ in step_contexts:
+#         if _naive_detect_loop(position, grid, obstacle):
+#             loop_count += 1
+
+#     return loop_count
+
+
+# Starting loop check from current position with previous wall hits
+def _naive_count_loops(grid: list[str], step_contexts: list[StepContext], wall_hits: list[RawPosition]) -> int:
     loop_count = 0
 
-    for obstacle in obstacles:
-        if _naive_detect_loop(start, grid, obstacle):
+    for position, obstacle, wall_hit_index in step_contexts:
+        if _naive_detect_loop(position, grid, obstacle, wall_hits[:wall_hit_index]):
             loop_count += 1
 
     return loop_count
@@ -263,7 +248,7 @@ def _naive_detect_loop(
     start: Position,
     grid: list[str],
     obstacle: tuple[int, int],
-    # previous_wall_hits: Iterable[tuple[int, int, str]] = None
+    previous_wall_hits: Iterable[tuple[int, int, str]] = None
 ) -> bool:
 
     height = len(grid)
@@ -271,9 +256,7 @@ def _naive_detect_loop(
     obstacle_x, obstacle_y = obstacle
 
     x, y, direction = start 
-    visited_tiles: set[RawPosition] = set()
-    # visited_tiles: set[Position] = set()
-    # visited_tiles: set[tuple[int, int, str]] = set(previous_wall_hits) if previous_wall_hits is not None else set()
+    visited_tiles: set[RawPosition] = set(previous_wall_hits) if previous_wall_hits is not None else set()
     while True:
         next_x = x + direction.dx
         next_y = y + direction.dy
@@ -288,8 +271,6 @@ def _naive_detect_loop(
             next_direction = direction.turn_right()
 
             position = (x, y, direction.symbol)
-            # position = Position(x, y, direction)
-            # position = Position(x, y, direction.symbol)
             if position in visited_tiles:
                 return True
             else:
@@ -301,7 +282,47 @@ def _naive_detect_loop(
 
     return False
 
+
 # region slower _naive_detect_loop implementations
+# # Starting loop check from current position (with or without context)
+# # Replaced with refactored path context collection
+# def _naive_count_loops_with_context(start: Position, grid: list[str]) -> int:
+#     height = len(grid)
+#     width = len(grid[0])
+#     x, y, direction = start
+
+#     loop_count = 0
+#     visited = [[False] * width for _ in grid]
+#     visited[y][x] = True
+#     # wall_hits = list()
+#     while True:
+#         wall_hit = False
+
+#         next_x = x + direction.dx
+#         next_y = y + direction.dy
+#         if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
+#             break
+
+#         next_symbol = grid[next_y][next_x]
+#         if next_symbol == '#':
+#             wall_hit = True
+#             # wall_hits.append((x, y, direction.symbol))
+#             next_x = x
+#             next_y = y
+#             direction = direction.turn_right()
+        
+#         if not wall_hit and not visited[next_y][next_x]:
+#             visited[next_y][next_x] = True
+#             position = (x, y, direction)
+#             obstacle = (next_x, next_y)
+#             if _naive_detect_loop(position, grid, obstacle):
+#             # if _naive_detect_loop(position, grid, obstacle, wall_hits):
+#                 loop_count += 1
+#         x = next_x
+#         y = next_y
+
+#     return loop_count
+
 
 # # different data structures to store visited tiles
 # def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
@@ -341,6 +362,7 @@ def _naive_detect_loop(
 #         direction = next_direction
 
 #     return False
+
 
 # # set with only wall hit tiles using VisitedTile dataclass
 # def _naive_detect_loop(start: VisitedTile, grid: list[str], obstacle: tuple[int, int]) -> bool:
@@ -406,9 +428,7 @@ def _naive_detect_loop(
 #         direction = next_direction
 
 #     return False
-
 # endregion
-
 # endregion
 
 
@@ -527,9 +547,9 @@ if __name__ == '__main__':
     print(f'Part 2: {solve_part2(input)}')
 
     # import timeit
-    # n = 1000
-    # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
-    # print(f'Part 1: {dur / n:.5f}s (average of {n})')
-    # n = 10
+    # # n = 1000
+    # # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
+    # # print(f'Part 1: {dur / n:.5f}s (average of {n})')
+    # n = 20
     # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
     # print(f'Part 2: {dur / n:.5f}s (average of {n})')
