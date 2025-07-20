@@ -5,7 +5,8 @@ from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass
 from itertools import pairwise
-from collections import defaultdict
+from typing import NamedTuple
+from collections import defaultdict, namedtuple
 from collections.abc import Iterable
 
 
@@ -49,7 +50,13 @@ class VisitedTile:
     y: int
     direction: Direction
 
-# type Position = tuple[int, int, Direction]
+type Position = tuple[int, int, Direction]
+type RawPosition = tuple[int, int, str]
+# Position = namedtuple('Position', ['x', 'y', 'direction'])
+# class Position(NamedTuple):
+#     x: int
+#     y: int
+#     direction: Direction
 # endregion
 
 
@@ -96,7 +103,10 @@ def solve_part2(input: str) -> int:
 #      ^-- with previous wall hits: 0.86610 +- 0.00281 seconds time elapsed  ( +-  0.32% )
 # 2025-07-20
 #   Part 2 (only wall hit tiles, without using dataclass, with IO, only Part 2):
-#     set: 2.43223 +- 0.00426 seconds time elapsed  ( +-  0.18% )
+#     set: 2.41075 +- 0.00890 seconds time elapsed  ( +-  0.37% )
+#      ^-- with namedtuple: 2.87063 +- 0.00825 seconds time elapsed  ( +-  0.29% )
+#      ^-- with "primitive" namedtuple: 2.65190 +- 0.00865 seconds time elapsed  ( +-  0.33% )
+#      ^-- with typed NamedTuple: 2.8704 +- 0.0249 seconds time elapsed  ( +-  0.87% )
 #     starting loop check from current position (no context): 0.78544 +- 0.00345 seconds time elapsed  ( +-  0.44% )
 #      ^-- with previous wall hits: 0.87183 +- 0.00408 seconds time elapsed  ( +-  0.47% )
 
@@ -149,10 +159,10 @@ def _naive_part2(input: str) -> int:
         if symbol in ['^', '>', 'v', '<']
     )
 
-    # visited_tiles = _naive_collect_visited_tiles(start, grid)
-    # return _naive_count_loops(start, grid, visited_tiles)
+    visited_tiles = _naive_collect_visited_tiles(start, grid)
+    return _naive_count_loops(start, grid, visited_tiles)
 
-    return _naive_count_loops_with_context(start, grid)
+    # return _naive_count_loops_with_context(start, grid)
 
 
 # FIXME This does not work when trying to reuse visited tile as starting position for loop check
@@ -189,7 +199,7 @@ def _naive_collect_visited_tiles(start: VisitedTile, grid: list[str]) -> list[Vi
     return visited_tiles
 
 
-# Starting loop check from current position
+# Starting loop check from current position (with or without context)
 def _naive_count_loops_with_context(start: VisitedTile, grid: list[str]) -> int:
     height = len(grid)
     width = len(grid[0])
@@ -198,7 +208,7 @@ def _naive_count_loops_with_context(start: VisitedTile, grid: list[str]) -> int:
     loop_count = 0
     visited = [[False] * width for _ in grid]
     visited[y][x] = True
-    wall_hits = list()
+    # wall_hits = list()
     while True:
         wall_hit = False
 
@@ -210,7 +220,7 @@ def _naive_count_loops_with_context(start: VisitedTile, grid: list[str]) -> int:
         next_symbol = grid[next_y][next_x]
         if next_symbol == '#':
             wall_hit = True
-            wall_hits.append((x, y, direction))
+            # wall_hits.append((x, y, direction))
             next_x = x
             next_y = y
             direction = direction.turn_right()
@@ -219,8 +229,8 @@ def _naive_count_loops_with_context(start: VisitedTile, grid: list[str]) -> int:
             visited[next_y][next_x] = True
             position = VisitedTile(x, y, direction)
             obstacle = (next_x, next_y)
-            # if _naive_detect_loop(position, grid, obstacle):
-            if _naive_detect_loop(position, grid, obstacle, wall_hits):
+            if _naive_detect_loop(position, grid, obstacle):
+            # if _naive_detect_loop(position, grid, obstacle, wall_hits):
                 loop_count += 1
         x = next_x
         y = next_y
@@ -245,7 +255,7 @@ def _naive_detect_loop(
     start: VisitedTile,
     grid: list[str],
     obstacle: tuple[int, int],
-    previous_wall_hits: Iterable[tuple[int, int, str]] = None
+    # previous_wall_hits: Iterable[tuple[int, int, str]] = None
 ) -> bool:
 
     height = len(grid)
@@ -253,8 +263,9 @@ def _naive_detect_loop(
     obstacle_x, obstacle_y = obstacle
 
     x, y, direction = (start.x, start.y, start.direction)
-    # visited_tiles: set[tuple[int, int, str]] = set()
-    visited_tiles: set[tuple[int, int, str]] = set(previous_wall_hits) if previous_wall_hits is not None else set()
+    visited_tiles: set[RawPosition] = set()
+    # visited_tiles: set[Position] = set()
+    # visited_tiles: set[tuple[int, int, str]] = set(previous_wall_hits) if previous_wall_hits is not None else set()
     while True:
         next_x = x + direction.dx
         next_y = y + direction.dy
@@ -269,6 +280,8 @@ def _naive_detect_loop(
             next_direction = direction.turn_right()
 
             position = (x, y, direction.symbol)
+            # position = Position(x, y, direction)
+            # position = Position(x, y, direction.symbol)
             if position in visited_tiles:
                 return True
             else:
