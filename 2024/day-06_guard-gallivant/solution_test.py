@@ -47,8 +47,8 @@ example_solution2 = 6
 
 # # Loop when placing obstacle on visited cell
 # example = '''
-#     .#............
-#     ......x......#
+#     .#....x.......
+#     ......f......#
 #     .^...........#
 #     .....#........
 #     ............#.
