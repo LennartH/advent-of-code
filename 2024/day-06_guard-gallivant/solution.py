@@ -50,6 +50,7 @@ class VisitedTile:
     y: int
     direction: Direction
 
+type Point = tuple[int, int]
 type Position = tuple[int, int, Direction]
 type RawPosition = tuple[int, int, str]
 # Position = namedtuple('Position', ['x', 'y', 'direction'])
@@ -109,6 +110,8 @@ def solve_part2(input: str) -> int:
 #      ^-- with typed NamedTuple: 2.8704 +- 0.0249 seconds time elapsed  ( +-  0.87% )
 #     starting loop check from current position (no context): 0.78544 +- 0.00345 seconds time elapsed  ( +-  0.44% )
 #      ^-- with previous wall hits: 0.87183 +- 0.00408 seconds time elapsed  ( +-  0.47% )
+#     set (refactored): 2.3963 +- 0.0125 seconds time elapsed  ( +-  0.52% )
+#      ^-- full context: 2.41534 +- 0.00851 seconds time elapsed  ( +-  0.35% )
 
 def _naive_part1(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
@@ -153,50 +156,56 @@ def _naive_count_visited_tiles(start: VisitedTile, grid: list[str]) -> int:
 def _naive_part2(input: str) -> int:
     grid = [line.strip() for line in input.splitlines()]
     start = next(
-        VisitedTile(x, y, Direction.from_symbol(symbol))
+        (x, y, Direction.from_symbol(symbol))
         for y, row in enumerate(grid)
         for x, symbol in enumerate(row)
         if symbol in ['^', '>', 'v', '<']
     )
 
-    visited_tiles = _naive_collect_visited_tiles(start, grid)
-    return _naive_count_loops(start, grid, visited_tiles)
+    positions, obstacles, wall_hits = _naive_collect_guard_path_context(start, grid)
+    return _naive_count_loops(start, grid, obstacles)
 
     # return _naive_count_loops_with_context(start, grid)
 
 
-# FIXME This does not work when trying to reuse visited tile as starting position for loop check
-def _naive_collect_visited_tiles(start: VisitedTile, grid: list[str]) -> list[VisitedTile]:
+def _naive_collect_guard_path_context(start: Position, grid: list[str]) -> tuple[list[Position], list[Point], list[RawPosition]]:
     height = len(grid)
     width = len(grid[0])
-    x, y, direction = (start.x, start.y, start.direction)
+    x, y, direction = start
 
-    within_grid = True
+    positions: list[Position] = list()
+    obstacles: list[Point] = list()
+    wall_hits: list[RawPosition] = list()
+
     visited = [[False] * width for _ in grid]
-    visited_tiles = list()
-    while within_grid:
+    visited[y][x] = True
+    while True:
         wall_hit = False
 
         next_x = x + direction.dx
         next_y = y + direction.dy
         if next_x < 0 or next_x >= width or next_y < 0 or next_y >= height:
-            within_grid = False
-        else:
-            next_symbol = grid[next_y][next_x]
-            if next_symbol == '#':
-                wall_hit = True
-                next_x = x
-                next_y = y
-                direction = direction.turn_right()
+            break
+
+        next_symbol = grid[next_y][next_x]
+        if next_symbol == '#':
+            wall_hit = True
+            wall_hits.append((x, y, direction.symbol))
+            next_x = x
+            next_y = y
+            direction = direction.turn_right()
         
-        if not visited[y][x] and not wall_hit:
-            # Do not add visited tile after hitting a wall or obstacle placement for part 2 gets tricky (wrong direction)
-            visited[y][x] = True
-            visited_tiles.append(VisitedTile(x, y, direction))
+        if not wall_hit and not visited[next_y][next_x]:
+            visited[next_y][next_x] = True
+            position = (x, y, direction)
+            obstacle = (next_x, next_y)
+            positions.append(position)
+            obstacles.append(obstacle)
+
         x = next_x
         y = next_y
 
-    return visited_tiles
+    return (positions, obstacles, wall_hits)
 
 
 # Starting loop check from current position (with or without context)
@@ -239,11 +248,10 @@ def _naive_count_loops_with_context(start: VisitedTile, grid: list[str]) -> int:
 
 
 # Starting loop check from global starting position
-def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[VisitedTile]) -> int:
+def _naive_count_loops(start: Position, grid: list[str], obstacles: list[Point]) -> int:
     loop_count = 0
 
-    for visited_tile in visited_tiles[1:]:
-        obstacle = (visited_tile.x, visited_tile.y)
+    for obstacle in obstacles:
         if _naive_detect_loop(start, grid, obstacle):
             loop_count += 1
 
@@ -252,7 +260,7 @@ def _naive_count_loops(start: VisitedTile, grid: list[str], visited_tiles: list[
 
 # set with only wall hit tiles without using VisitedTile dataclass
 def _naive_detect_loop(
-    start: VisitedTile,
+    start: Position,
     grid: list[str],
     obstacle: tuple[int, int],
     # previous_wall_hits: Iterable[tuple[int, int, str]] = None
@@ -262,7 +270,7 @@ def _naive_detect_loop(
     width = len(grid[0])
     obstacle_x, obstacle_y = obstacle
 
-    x, y, direction = (start.x, start.y, start.direction)
+    x, y, direction = start 
     visited_tiles: set[RawPosition] = set()
     # visited_tiles: set[Position] = set()
     # visited_tiles: set[tuple[int, int, str]] = set(previous_wall_hits) if previous_wall_hits is not None else set()
