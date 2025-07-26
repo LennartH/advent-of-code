@@ -587,12 +587,12 @@ def _closest_obstacle(position: int, delta: int, obstacles: list[int]) -> int:
 if __name__ == '__main__':
     input = Path(__file__).parent.joinpath('input').read_text()
     # print(f'Part 1: {solve_part1(input)}')
-    # print(f'Part 2: {solve_part2(input)}')
+    print(f'Part 2: {solve_part2(input)}')
 
-    import timeit
-    # n = 1000
-    # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
-    # print(f'Part 1: {dur / n:.5f}s (average of {n})')
-    n = 50
-    dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
-    print(f'Part 2: {dur / n:.5f}s (average of {n})')
+    # import timeit
+    # # n = 1000
+    # # dur = timeit.timeit('solve_part1(input)', number=n, globals=globals())
+    # # print(f'Part 1: {dur / n:.5f}s (average of {n})')
+    # n = 50
+    # dur = timeit.timeit('solve_part2(input)', number=n, globals=globals())
+    # print(f'Part 2: {dur / n:.5f}s (average of {n})')
