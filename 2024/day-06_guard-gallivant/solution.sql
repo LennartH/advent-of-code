@@ -636,6 +636,7 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 --         ^-- obstacle_hit via CASE: 1.6021 +- 0.0133 seconds time elapsed  ( +-  0.83% )
 -- 2025-07-27
 --   loop detection (no context): 1.5900 +- 0.0220 seconds time elapsed  ( +-  1.38% )
+--    ^-- tuple for current tile: 1.5547 +- 0.0102 seconds time elapsed  ( +-  0.66% )
 
 CREATE OR REPLACE TABLE obstacles AS (
     WITH
@@ -696,26 +697,21 @@ CREATE OR REPLACE TABLE obstacle_moves AS (
 
 CREATE OR REPLACE TABLE loops AS (
     -- #TODO add previous/future tiles from original guard path
-    -- #TODO compare with tuple for current position instead of separate columns
     WITH RECURSIVE
         all_moves AS MATERIALIZED (
             FROM wall_moves
             UNION ALL
             FROM obstacle_moves
         ),
+        -- #TODO is this necessary?
         initial_steps AS (
             FROM obstacles o
             JOIN obstacle_moves m ON o.y = m.from_y AND o.x = m.from_x AND o.dir = m.from_dir
             SELECT
                 index, step_index, tile_index,
                 obstacle_y, obstacle_x,
-                y: m.to_y,
-                x: m.to_x,
-                dir: m.to_dir,
-                previous_tiles: [
-                    {'y': o.y, 'x': o.x, 'dir': o.dir},
-                    {'y': m.to_y, 'x': m.to_x, 'dir': m.to_dir},
-                ],
+                tile: {'y': m.to_y, 'x': m.to_x, 'dir': m.to_dir},
+                previous_tiles: [{'y': o.y, 'x': o.x, 'dir': o.dir}, tile],
         ),
         loops AS (
             FROM initial_steps
@@ -726,28 +722,27 @@ CREATE OR REPLACE TABLE loops AS (
                 done: false,
             UNION ALL
             FROM obstacled_step
-            JOIN directions ON dir = to_dir
             SELECT
                 it: it + 1,
                 index, step_index, tile_index,
                 obstacle_y, obstacle_x,
-                y: if(obstacle_hit, obstacle_y - dy, to_y),
-                x: if(obstacle_hit, obstacle_x - dx, to_x),
-                dir: to_dir,
-                previous_tiles: list_append(previous_tiles, {'y': if(obstacle_hit, obstacle_y - dy, to_y), 'x': if(obstacle_hit, obstacle_x - dy, to_x), 'dir': to_dir}),
-                loop: list_contains(previous_tiles, {'y': if(obstacle_hit, obstacle_y - dy, to_y), 'x': if(obstacle_hit, obstacle_x - dy, to_x), 'dir': to_dir}),
-                -- done: list_contains(future_tiles, {'y': if(obstacle_hit, obstacle_y - dy, to_y), 'x': if(obstacle_hit, obstacle_x - dy, to_x), 'dir': to_dir}),
+                tile: if(obstacle_hit, obstacle_tile, move_tile),
+                previous_tiles: list_append(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+                loop: list_contains(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+                -- done: list_contains(future_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
                 done: false,
             WHERE NOT loop AND NOT done
         ),
         obstacled_step AS (
             FROM loops l
-            JOIN all_moves m ON l.y = m.from_y AND l.x = m.from_x AND l.dir = m.from_dir
+            JOIN all_moves m ON l.tile.y = m.from_y AND l.tile.x = m.from_x AND l.tile.dir = m.from_dir
+            JOIN directions d ON m.to_dir = d.dir
             SELECT
                 it,
                 index, step_index, tile_index,
                 obstacle_y, obstacle_x,
-                m.* EXCLUDE (exit),
+                move_tile: {'y': m.to_y, 'x': m.to_x, 'dir': d.dir},
+                obstacle_tile: {'y': obstacle_y - dy, 'x': obstacle_x - dx, 'dir': d.dir},
                 obstacle_hit: (
                     abs(m.from_y - obstacle_y) + abs(m.from_x - obstacle_x) +
                     abs(obstacle_y - m.to_y) + abs(obstacle_x - m.to_x)
@@ -765,6 +760,81 @@ CREATE OR REPLACE TABLE loops AS (
 
     FROM loops
 );
+
+-- -- using tuples instead of separate columns for positions
+-- -- no real change, might be different if done for all tables of the approach
+-- CREATE OR REPLACE TABLE loops AS (
+--     WITH RECURSIVE
+--         all_moves AS MATERIALIZED (
+--             FROM wall_moves
+--             SELECT
+--                 from_tile: {'y': from_y, 'x': from_x, 'dir': from_dir},
+--                 to_tile: {'y': to_y, 'x': to_x, 'dir': to_dir},
+--                 exit,
+--             UNION ALL
+--             FROM obstacle_moves
+--             SELECT
+--                 from_tile: {'y': from_y, 'x': from_x, 'dir': from_dir},
+--                 to_tile: {'y': to_y, 'x': to_x, 'dir': to_dir},
+--                 exit,
+--         ),
+--         initial_steps AS (
+--             FROM obstacles o
+--             -- JOIN obstacle_moves m ON o.y = m.from_y AND o.x = m.from_x AND o.dir = m.from_dir
+--             JOIN all_moves m ON o.y = m.from_tile.y AND o.x = m.from_tile.x AND o.dir = m.from_tile.dir
+--             SELECT
+--                 index, step_index, tile_index,
+--                 obstacle_y, obstacle_x,
+--                 tile: m.to_tile,
+--                 previous_tiles: [m.from_tile, m.to_tile],
+--         ),
+--         loops AS (
+--             FROM initial_steps
+--             SELECT
+--                 it: 0,
+--                 *,
+--                 loop: false,
+--                 done: false,
+--             UNION ALL
+--             FROM obstacled_step
+--             SELECT
+--                 it: it + 1,
+--                 index, step_index, tile_index,
+--                 obstacle_y, obstacle_x,
+--                 tile: if(obstacle_hit, obstacle_tile, move_tile),
+--                 previous_tiles: list_append(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+--                 loop: list_contains(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+--                 -- done: list_contains(future_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+--                 done: false,
+--             WHERE NOT loop AND NOT done
+--         ),
+--         obstacled_step AS (
+--             FROM loops l
+--             JOIN all_moves m ON l.tile = m.from_tile
+--             JOIN directions d ON m.to_tile.dir = d.dir
+--             SELECT
+--                 it,
+--                 index, step_index, tile_index,
+--                 obstacle_y, obstacle_x,
+--                 move_tile: m.to_tile,
+--                 obstacle_tile: {'y': obstacle_y - dy, 'x': obstacle_x - dx, 'dir': d.dir},
+--                 obstacle_hit: (
+--                     abs(m.from_tile.y - obstacle_y) + abs(m.from_tile.x - obstacle_x) +
+--                     abs(obstacle_y - m.to_tile.y) + abs(obstacle_x - m.to_tile.x)
+--                 ) = abs(m.from_tile.y - m.to_tile.y) + abs(m.from_tile.x - m.to_tile.x),
+--                 -- obstacle_hit: CASE m.to_dir
+--                 --     WHEN '^' THEN obstacle_x = m.to_tile.x AND obstacle_y BETWEEN m.to_tile.y AND m.from_tile.y
+--                 --     WHEN '>' THEN obstacle_y = m.to_tile.y AND obstacle_x BETWEEN m.from_tile.x AND m.to_tile.x
+--                 --     WHEN 'v' THEN obstacle_x = m.to_tile.x AND obstacle_y BETWEEN m.from_tile.y AND m.to_tile.y
+--                 --     WHEN '<' THEN obstacle_y = m.to_tile.y AND obstacle_x BETWEEN m.to_tile.x AND m.from_tile.x
+--                 -- END,
+--                 previous_tiles,
+--                 loop, done,
+--             WHERE NOT m.exit OR obstacle_hit
+--         )
+
+--     FROM loops
+-- );
 -- #endregion
 
 
