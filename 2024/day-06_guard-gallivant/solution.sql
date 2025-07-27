@@ -108,18 +108,18 @@ SET VARIABLE exampleSolution2 = 6;
 -- SET VARIABLE exampleSolution1 = 8;
 -- SET VARIABLE exampleSolution2 = 1;
 
--- -- Loop with wall from original path
--- SET VARIABLE example = '
---     .#.#.........
---     .......#.....
---     .............
---     #.x.......<..
---     .........#...
---     .#...........
---     ......#.#....
--- ';
--- SET VARIABLE exampleSolution1 = 27;
--- SET VARIABLE exampleSolution2 = 4;
+-- Loop with wall from original path
+SET VARIABLE example = '
+    .#.#.........
+    .......#.....
+    .............
+    #.x.......<..
+    .........#...
+    .#...........
+    ......#.#....
+';
+SET VARIABLE exampleSolution1 = 27;
+SET VARIABLE exampleSolution2 = 4;
 
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
@@ -592,7 +592,7 @@ CREATE OR REPLACE TABLE guard_path AS (
         path AS (
             FROM wall_moves
             SELECT
-                step_index: 0,
+                step_index: 1,
                 *,
             WHERE from_dir = to_dir
             UNION ALL
@@ -644,7 +644,13 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 --    ^-- [BROKEN] without initial_steps CTE: 1.5667 +- 0.0149 seconds time elapsed  ( +-  0.95% )
 --         ^-- result: 1517, expected: 1516 | first obstacle always loops, because wall_moves contains (start) -> (first_wall)
 -- |--^-- without initial_steps CTE: 1.5461 +- 0.0116 seconds time elapsed  ( +-  0.75% )
--- > loop detection (no context): 1.5461 +- 0.0116 seconds time elapsed  ( +-  0.75% )
+-- |
+-- > loop detection (no context): 1.6377 +- 0.0196 seconds time elapsed  ( +-  1.20% )
+--    ^-- with previous tiles of original path: 1.6731 +- 0.0117 seconds time elapsed  ( +-  0.70% )
+--    ^-- [BROKEN] with previous & future tiles of original path: 0.86507 +- 0.00921 seconds time elapsed  ( +-  1.06% )
+--         ^-- result: 1473, expected: 1516
+--    ^-- [less broken] with previous & future tiles of original path: 1.3155 +- 0.0129 seconds time elapsed  ( +-  0.98% )
+--         ^-- works for input, but not for example
 
 CREATE OR REPLACE TABLE obstacles AS (
     WITH
@@ -703,38 +709,106 @@ CREATE OR REPLACE TABLE obstacle_moves AS (
         ) = 1
 );
 
+-- #FIXME doesn't work for example: obstacles_with_context filters obstacles if not at least one row "qualifies"
+-- #TODO cleanup
+-- #TODO improve context building
 CREATE OR REPLACE TABLE loops AS (
-    -- #TODO add previous/future tiles from original guard path
+    -- #TODO remove unnecessary columns
     WITH RECURSIVE
         all_moves AS MATERIALIZED (
             FROM wall_moves SELECT * EXCLUDE(start) WHERE NOT start
             UNION ALL
             FROM obstacle_moves
         ),
-        loops AS (
-            FROM obstacles
+        -- #TODO move to obstacles table?
+        obstacles_with_context AS (
+            FROM obstacles o, guard_path p
+            SELECT
+                o.*,
+                path_index: p.step_index,
+                path_tile: {'y': p.from_y, 'x': p.from_x, 'dir': p.from_dir},
+                obstacle_hit: (
+                    abs(p.from_y - obstacle_y) + abs(p.from_x - obstacle_x) +
+                    abs(obstacle_y - p.to_y) + abs(obstacle_x - p.to_x)
+                ) = abs(p.from_y - p.to_y) + abs(p.from_x - p.to_x),
+                -- last_obstacle_hit_index: max(path_index) FILTER (WHERE obstacle_hit) OVER (PARTITION BY index)
+            QUALIFY
+                path_index < o.step_index OR
+                path_index > max(path_index) FILTER (WHERE obstacle_hit) OVER (PARTITION BY index)
+        ),
+        obstacles_with_path AS (
+            FROM obstacles_with_context
+            SELECT
+                index, 
+                step_index: first(step_index),
+                tile_index: first(tile_index),
+                y: first(y),
+                x: first(x),
+                dir: first(dir),
+                obstacle_y: first(obstacle_y),
+                obstacle_x: first(obstacle_x),
+                next_dir: first(next_dir),
+                previous_tiles: list(path_tile ORDER BY path_index) FILTER (WHERE path_index < step_index),
+                future_tiles: list(path_tile ORDER BY path_index) FILTER (WHERE path_index >= step_index),
+            GROUP BY index
+        ),
+
+    -- FROM obstacles_with_path
+    -- ORDER BY index
+    -- ;
+
+
+    --     obstacles_with_path AS (
+    --         FROM obstacles
+    --         SELECT
+    --             *,
+    --             original_path: (
+    --                 FROM guard_path
+    --                 SELECT list({'y': from_y, 'x': from_x, 'dir': from_dir} ORDER BY step_index)
+    --                 WHERE step_index > 1
+    --             ),
+    --     ),
+        loop_starts AS (
+            -- FROM obstacles
+            FROM obstacles_with_path
             SELECT
                 it: 0,
                 index, step_index, tile_index,
                 obstacle_y, obstacle_x,
                 tile: {'y': y, 'x': x, 'dir': dir},
-                previous_tiles: [tile],
+                -- previous_tiles: [tile],
+                -- previous_tiles: original_path[:step_index],
+                -- previous_tiles: list_append(original_path[:step_index], tile),
+                -- future_tiles: original_path[step_index+1:],
+                previous_tiles: coalesce(previous_tiles, []),
+                future_tiles: coalesce(future_tiles, []),
                 loop: false,
                 done: false,
+        ),
+    
+    -- FROM loop_starts
+    -- ORDER BY index
+    -- ;
+
+
+        loops AS (
+            FROM loop_starts
+            -- SELECT * EXCLUDE(original_path)
             UNION ALL
-            FROM obstacled_step
+            FROM loop_step
             SELECT
                 it: it + 1,
                 index, step_index, tile_index,
                 obstacle_y, obstacle_x,
                 tile: if(obstacle_hit, obstacle_tile, move_tile),
                 previous_tiles: list_append(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+                future_tiles,
                 loop: list_contains(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
-                -- done: list_contains(future_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
-                done: false,
+                done: list_contains(future_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+                -- done: false,
             WHERE NOT loop AND NOT done
         ),
-        obstacled_step AS (
+        loop_step AS (
             FROM loops l
             JOIN all_moves m ON l.tile.y = m.from_y AND l.tile.x = m.from_x AND l.tile.dir = m.from_dir
             JOIN directions d ON m.to_dir = d.dir
@@ -754,13 +828,73 @@ CREATE OR REPLACE TABLE loops AS (
                 --     WHEN 'v' THEN obstacle_x = m.to_x AND obstacle_y BETWEEN m.from_y AND m.to_y
                 --     WHEN '<' THEN obstacle_y = m.to_y AND obstacle_x BETWEEN m.to_x AND m.from_x
                 -- END,
-                previous_tiles,
+                previous_tiles, future_tiles,
                 loop, done,
             WHERE NOT m.exit OR obstacle_hit
         )
 
     FROM loops
 );
+
+-- -- loop detection (no context)
+-- CREATE OR REPLACE TABLE loops AS (
+--     -- #TODO add previous/future tiles from original guard path
+--     WITH RECURSIVE
+--         all_moves AS MATERIALIZED (
+--             FROM wall_moves SELECT * EXCLUDE(start) WHERE NOT start
+--             UNION ALL
+--             FROM obstacle_moves
+--         ),
+--         loops AS (
+--             FROM obstacles
+--             SELECT
+--                 it: 0,
+--                 index, step_index, tile_index,
+--                 obstacle_y, obstacle_x,
+--                 tile: {'y': y, 'x': x, 'dir': dir},
+--                 previous_tiles: [tile],
+--                 loop: false,
+--                 done: false,
+--             UNION ALL
+--             FROM obstacled_step
+--             SELECT
+--                 it: it + 1,
+--                 index, step_index, tile_index,
+--                 obstacle_y, obstacle_x,
+--                 tile: if(obstacle_hit, obstacle_tile, move_tile),
+--                 previous_tiles: list_append(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+--                 loop: list_contains(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+--                 -- done: list_contains(future_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
+--                 done: false,
+--             WHERE NOT loop AND NOT done
+--         ),
+--         obstacled_step AS (
+--             FROM loops l
+--             JOIN all_moves m ON l.tile.y = m.from_y AND l.tile.x = m.from_x AND l.tile.dir = m.from_dir
+--             JOIN directions d ON m.to_dir = d.dir
+--             SELECT
+--                 it,
+--                 index, step_index, tile_index,
+--                 obstacle_y, obstacle_x,
+--                 move_tile: {'y': m.to_y, 'x': m.to_x, 'dir': d.dir},
+--                 obstacle_tile: {'y': obstacle_y - dy, 'x': obstacle_x - dx, 'dir': d.dir},
+--                 obstacle_hit: (
+--                     abs(m.from_y - obstacle_y) + abs(m.from_x - obstacle_x) +
+--                     abs(obstacle_y - m.to_y) + abs(obstacle_x - m.to_x)
+--                 ) = abs(m.from_y - m.to_y) + abs(m.from_x - m.to_x),
+--                 -- obstacle_hit: CASE m.to_dir
+--                 --     WHEN '^' THEN obstacle_x = m.to_x AND obstacle_y BETWEEN m.to_y AND m.from_y
+--                 --     WHEN '>' THEN obstacle_y = m.to_y AND obstacle_x BETWEEN m.from_x AND m.to_x
+--                 --     WHEN 'v' THEN obstacle_x = m.to_x AND obstacle_y BETWEEN m.from_y AND m.to_y
+--                 --     WHEN '<' THEN obstacle_y = m.to_y AND obstacle_x BETWEEN m.to_x AND m.from_x
+--                 -- END,
+--                 previous_tiles,
+--                 loop, done,
+--             WHERE NOT m.exit OR obstacle_hit
+--         )
+
+--     FROM loops
+-- );
 
 -- -- using tuples instead of separate columns for positions
 -- -- no real change, might be different if done for all tables of the approach
