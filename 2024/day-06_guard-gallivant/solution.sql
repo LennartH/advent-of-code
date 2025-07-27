@@ -553,9 +553,13 @@ CREATE OR REPLACE TABLE wall_moves AS (
                 from_x: x,
                 from_dir: symbol,
                 next_dir: symbol,
+                start: true,
             WHERE symbol IN ('^', '>', 'v', '<')
             UNION ALL
             FROM wall_hits
+            SELECT
+                *,
+                start: false,
         ),
         wall_moves AS (
             FROM step_starts t1
@@ -571,6 +575,7 @@ CREATE OR REPLACE TABLE wall_moves AS (
                 to_y: coalesce(t2.from_y, d.edge_y, t1.from_y),
                 to_x: coalesce(t2.from_x, d.edge_x, t1.from_x),
                 to_dir: t1.next_dir,
+                start: t1.start,
                 exit: t2.from_y IS NULL,
         )
 
@@ -632,11 +637,14 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 --    ^-- [BROKEN] obstacle_hit via CASE: 1.6605 +- 0.0126 seconds time elapsed  ( +-  0.76% )
 --         ^-- result: 1574, expected: 1516
 --         v-- Times are a bit wonky (up to 0.2s diff between runs)
---    ^-- exits in precalculated moves: 1.5864 +- 0.0186 seconds time elapsed  ( +-  1.17% )
---         ^-- obstacle_hit via CASE: 1.6021 +- 0.0133 seconds time elapsed  ( +-  0.83% )
--- 2025-07-27
---   loop detection (no context): 1.5900 +- 0.0220 seconds time elapsed  ( +-  1.38% )
+-- |--^-- exits in precalculated moves: 1.5864 +- 0.0186 seconds time elapsed  ( +-  1.17% )
+-- |       ^-- obstacle_hit via CASE: 1.6021 +- 0.0133 seconds time elapsed  ( +-  0.83% )
+-- > loop detection (no context): 1.5586 +- 0.0101 seconds time elapsed  ( +-  0.65% )
 --    ^-- tuple for current tile: 1.5547 +- 0.0102 seconds time elapsed  ( +-  0.66% )
+--    ^-- [BROKEN] without initial_steps CTE: 1.5667 +- 0.0149 seconds time elapsed  ( +-  0.95% )
+--         ^-- result: 1517, expected: 1516 | first obstacle always loops, because wall_moves contains (start) -> (first_wall)
+-- |--^-- without initial_steps CTE: 1.5461 +- 0.0116 seconds time elapsed  ( +-  0.75% )
+-- > loop detection (no context): 1.5461 +- 0.0116 seconds time elapsed  ( +-  0.75% )
 
 CREATE OR REPLACE TABLE obstacles AS (
     WITH
@@ -649,7 +657,7 @@ CREATE OR REPLACE TABLE obstacles AS (
                 obstacle_y: y + dy,
                 obstacle_x: x + dx,
                 next_dir,
-            WHERE index != (FROM visited_tiles SELECT max(index))  -- #TODO can this be improved?
+            WHERE index != (FROM visited_tiles SELECT max(index))
               AND NOT EXISTS (FROM walls WHERE y = obstacle_y AND x = obstacle_x)
             QUALIFY row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
         )
@@ -699,25 +707,18 @@ CREATE OR REPLACE TABLE loops AS (
     -- #TODO add previous/future tiles from original guard path
     WITH RECURSIVE
         all_moves AS MATERIALIZED (
-            FROM wall_moves
+            FROM wall_moves SELECT * EXCLUDE(start) WHERE NOT start
             UNION ALL
             FROM obstacle_moves
         ),
-        -- #TODO is this necessary?
-        initial_steps AS (
-            FROM obstacles o
-            JOIN obstacle_moves m ON o.y = m.from_y AND o.x = m.from_x AND o.dir = m.from_dir
-            SELECT
-                index, step_index, tile_index,
-                obstacle_y, obstacle_x,
-                tile: {'y': m.to_y, 'x': m.to_x, 'dir': m.to_dir},
-                previous_tiles: [{'y': o.y, 'x': o.x, 'dir': o.dir}, tile],
-        ),
         loops AS (
-            FROM initial_steps
+            FROM obstacles
             SELECT
                 it: 0,
-                *,
+                index, step_index, tile_index,
+                obstacle_y, obstacle_x,
+                tile: {'y': y, 'x': x, 'dir': dir},
+                previous_tiles: [tile],
                 loop: false,
                 done: false,
             UNION ALL
