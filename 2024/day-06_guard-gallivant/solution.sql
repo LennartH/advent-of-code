@@ -525,7 +525,7 @@ CREATE OR REPLACE TABLE walls AS (
     FROM tiles WHERE symbol = '#'
 );
 
-CREATE OR REPLACE TABLE wall_moves AS (  -- #TODO better name + cleanup
+CREATE OR REPLACE TABLE wall_moves AS (
     WITH
         -- walls AS MATERIALIZED (
         -- -- walls AS (
@@ -568,9 +568,7 @@ CREATE OR REPLACE TABLE wall_moves AS (  -- #TODO better name + cleanup
             END
             SELECT
                 t1.from_y, t1.from_x, t1.from_dir,
-                -- to_y: t2.from_y,
                 to_y: coalesce(t2.from_y, d.edge_y, t1.from_y),
-                -- to_x: t2.from_x,
                 to_x: coalesce(t2.from_x, d.edge_x, t1.from_x),
                 to_dir: t1.next_dir,
                 exit: t2.from_y IS NULL,
@@ -600,22 +598,8 @@ CREATE OR REPLACE TABLE guard_path AS (
                 m.*,
             WHERE NOT p.exit
         )
-        -- exit_step AS (
-        --     FROM (FROM path ORDER BY step_index DESC LIMIT 1)
-        --     JOIN directions ON prev_dir = to_dir
-        --     SELECT
-        --         step_index: step_index + 1,
-        --         from_y: to_y,
-        --         from_x: to_x,
-        --         from_dir: to_dir,
-        --         to_y: coalesce(edge_y, to_y),
-        --         to_x: coalesce(edge_x, to_x),
-        --         to_dir: dir,
-        -- )
 
     FROM path
-    -- UNION ALL
-    -- FROM exit_step
 );
 
 CREATE OR REPLACE TABLE visited_tiles AS (
@@ -647,7 +631,11 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 --   loop detection without context: 1.7592 +- 0.0122 seconds time elapsed  ( +-  0.69% )
 --    ^-- [BROKEN] obstacle_hit via CASE: 1.6605 +- 0.0126 seconds time elapsed  ( +-  0.76% )
 --         ^-- result: 1574, expected: 1516
---    ^-- exits in precalculated moves: 1.42262 +- 0.00819 seconds time elapsed  ( +-  0.58% )
+--         v-- Times are a bit wonky (up to 0.2s diff between runs)
+--    ^-- exits in precalculated moves: 1.5864 +- 0.0186 seconds time elapsed  ( +-  1.17% )
+--         ^-- obstacle_hit via CASE: 1.6021 +- 0.0133 seconds time elapsed  ( +-  0.83% )
+-- 2025-07-27
+--   loop detection (no context): 1.5900 +- 0.0220 seconds time elapsed  ( +-  1.38% )
 
 CREATE OR REPLACE TABLE obstacles AS (
     WITH
@@ -764,59 +752,16 @@ CREATE OR REPLACE TABLE loops AS (
                     abs(m.from_y - obstacle_y) + abs(m.from_x - obstacle_x) +
                     abs(obstacle_y - m.to_y) + abs(obstacle_x - m.to_x)
                 ) = abs(m.from_y - m.to_y) + abs(m.from_x - m.to_x),
-                -- obstacle_hit: CASE m.to_dir -- #FIXME result: 1574, expected: 1516
-                --     WHEN '^' THEN obstacle_x = m.to_x AND obstacle_y >= m.to_y
-                --     WHEN '>' THEN obstacle_y = m.to_y AND obstacle_x <= m.to_x
-                --     WHEN 'v' THEN obstacle_x = m.to_x AND obstacle_y <= m.to_y
-                --     WHEN '<' THEN obstacle_y = m.to_y AND obstacle_x >= m.to_x
+                -- obstacle_hit: CASE m.to_dir
+                --     WHEN '^' THEN obstacle_x = m.to_x AND obstacle_y BETWEEN m.to_y AND m.from_y
+                --     WHEN '>' THEN obstacle_y = m.to_y AND obstacle_x BETWEEN m.from_x AND m.to_x
+                --     WHEN 'v' THEN obstacle_x = m.to_x AND obstacle_y BETWEEN m.from_y AND m.to_y
+                --     WHEN '<' THEN obstacle_y = m.to_y AND obstacle_x BETWEEN m.to_x AND m.from_x
                 -- END,
                 previous_tiles,
                 loop, done,
             WHERE NOT m.exit OR obstacle_hit
         )
-        -- obstacled_step AS (
-        --     FROM loops l
-        --     JOIN directions d ON l.dir = d.prev_dir
-        --     LEFT JOIN all_moves m ON l.y = m.from_y AND l.x = m.from_x AND l.dir = m.from_dir
-        --     SELECT
-        --         it,
-        --         index, step_index, tile_index,
-        --         obstacle_y, obstacle_x,
-        --         from_y: l.y,
-        --         from_x: l.x,
-        --         from_dir: l.dir,
-        --         m.to_y,
-        --         -- to_y: coalesce(m.to_y, d.edge_y, l.y),
-        --         m.to_x,
-        --         -- to_x: coalesce(m.to_x, d.edge_x, l.x),
-        --         to_dir: d.dir,
-        --         obstacle_hit: (
-        --             abs(l.y - obstacle_y) + abs(l.x - obstacle_x) +
-        --             abs(obstacle_y - coalesce(m.to_y, d.edge_y, l.y)) + abs(obstacle_x - coalesce(m.to_x, d.edge_x, l.x))
-        --         ) = abs(l.y - coalesce(m.to_y, d.edge_y, l.y)) + abs(l.x - coalesce(m.to_x, d.edge_x, l.x)),
-        --         -- obstacle_hit: CASE d.dir -- #FIXME result: 1574, expected: 1516
-        --         --     WHEN '^' THEN obstacle_x = l.x AND obstacle_y >= coalesce(m.to_y, d.edge_y)
-        --         --     WHEN '>' THEN obstacle_y = l.y AND obstacle_x <= coalesce(m.to_x, d.edge_x)
-        --         --     WHEN 'v' THEN obstacle_x = l.x AND obstacle_y <= coalesce(m.to_y, d.edge_y)
-        --         --     WHEN '<' THEN obstacle_y = l.y AND obstacle_x >= coalesce(m.to_x, d.edge_x)
-        --         -- END,
-        --         previous_tiles,
-        --         loop, done,
-        --     WHERE m.to_y IS NOT NULL OR obstacle_hit
-        --     -- WHERE NOT m.exit OR obstacle_hit
-        -- )
-
-    -- FROM loops
-    -- WHERE index = 2
-    -- ORDER BY it, index
-    -- ;
-
-
-    -- FROM obstacled_step
-    -- WHERE index = 2
-    -- ORDER BY it, index
-    -- ;
-
 
     FROM loops
 );
