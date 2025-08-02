@@ -1,0 +1,182 @@
+┌─────────────────────────────────────┐
+│┌───────────────────────────────────┐│
+││    Query Profiling Information    ││
+│└───────────────────────────────────┘│
+└─────────────────────────────────────┘
+EXPLAIN ANALYZE -- CREATE OR REPLACE TABLE loops AS ( -- CREATE OR REPLACE VIEW loops AS (     WITH RECURSIVE         all_moves AS MATERIALIZED (             FROM wall_moves SELECT * EXCLUDE(start) WHERE NOT start             UNION ALL             FROM obstacle_moves         ),         loop_starts AS (             FROM obstacles_with_path             SELECT                 -- it: 0,                 index,                 -- step_index, tile_index,                 obstacle_y, obstacle_x,                 tile: {'y': y, 'x': x, 'dir': dir},                 previous_tiles, future_tiles,                 loop: false,                 done: false,         ),         loops AS (             FROM loop_starts             UNION ALL             FROM loop_step             SELECT                 -- it: it + 1,                 index,                 -- step_index, tile_index,                 obstacle_y, obstacle_x,                 tile: if(obstacle_hit, obstacle_tile, move_tile),                 previous_tiles: list_append(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),                 future_tiles,                 loop: list_contains(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),                 done: list_contains(future_tiles, if(obstacle_hit, obstacle_tile, move_tile)),             WHERE NOT loop AND NOT done         ),         loop_step AS (             FROM loops l             JOIN all_moves m ON l.tile.y = m.from_y AND l.tile.x = m.from_x AND l.tile.dir = m.from_dir             JOIN directions d ON m.to_dir = d.dir             SELECT                 -- it,                 index,                 -- step_index, tile_index,                 obstacle_y, obstacle_x,                 move_tile: {'y': m.to_y, 'x': m.to_x, 'dir': d.dir},                 obstacle_tile: {'y': obstacle_y - dy, 'x': obstacle_x - dx, 'dir': d.dir},                 obstacle_hit: (                     abs(m.from_y - obstacle_y) + abs(m.from_x - obstacle_x) +                     abs(obstacle_y - m.to_y) + abs(obstacle_x - m.to_x)                 ) = abs(m.from_y - m.to_y) + abs(m.from_x - m.to_x),                 -- obstacle_hit: CASE m.to_dir                 --     WHEN '^' THEN obstacle_x = m.to_x AND obstacle_y BETWEEN m.to_y AND m.from_y                 --     WHEN '>' THEN obstacle_y = m.to_y AND obstacle_x BETWEEN m.from_x AND m.to_x                 --     WHEN 'v' THEN obstacle_x = m.to_x AND obstacle_y BETWEEN m.from_y AND m.to_y                 --     WHEN '<' THEN obstacle_y = m.to_y AND obstacle_x BETWEEN m.to_x AND m.from_x                 -- END,                 previous_tiles, future_tiles,                 loop, done,             WHERE NOT m.exit OR obstacle_hit         )      FROM loops;
+┌────────────────────────────────────────────────┐
+│┌──────────────────────────────────────────────┐│
+││              Total Time: 0.559s              ││
+│└──────────────────────────────────────────────┘│
+└────────────────────────────────────────────────┘
+┌───────────────────────────┐
+│           QUERY           │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│      EXPLAIN_ANALYZE      │
+│    ────────────────────   │
+│           0 Rows          │
+│          (0.00s)          │
+└─────────────┬─────────────┘
+┌─────────────┴─────────────┐
+│            CTE            │
+│    ────────────────────   │
+│    CTE Name: all_moves    │
+│       Table Index: 0      ├───────────────────────────────────────────┐
+│                           │                                           │
+│           0 Rows          │                                           │
+│          (0.00s)          │                                           │
+└─────────────┬─────────────┘                                           │
+┌─────────────┴─────────────┐                             ┌─────────────┴─────────────┐
+│           UNION           │                             │       RECURSIVE_CTE       │
+│    ────────────────────   │                             │    ────────────────────   │
+│                           │                             │      CTE Name: loops      │
+│                           ├──────────────┐              │      Table Index: 16      ├──────────────┐
+│                           │              │              │                           │              │
+│           0 Rows          │              │              │         22812 Rows        │              │
+│          (0.00s)          │              │              │          (0.63s)          │              │
+└─────────────┬─────────────┘              │              └─────────────┬─────────────┘              │
+┌─────────────┴─────────────┐┌─────────────┴─────────────┐┌─────────────┴─────────────┐┌─────────────┴─────────────┐
+│         TABLE_SCAN        ││         TABLE_SCAN        ││         PROJECTION        ││         PROJECTION        │
+│    ────────────────────   ││    ────────────────────   ││    ────────────────────   ││    ────────────────────   │
+│     Table: wall_moves     ││   Table: obstacle_moves   ││           index           ││           index           │
+│   Type: Sequential Scan   ││   Type: Sequential Scan   ││         obstacle_y        ││         obstacle_y        │
+│                           ││                           ││         obstacle_x        ││         obstacle_x        │
+│        Projections:       ││        Projections:       ││            tile           ││            tile           │
+│           from_y          ││           from_y          ││       previous_tiles      ││       previous_tiles      │
+│           from_x          ││           from_x          ││        future_tiles       ││        future_tiles       │
+│          from_dir         ││          from_dir         ││            loop           ││            loop           │
+│            to_y           ││            to_y           ││            done           ││            done           │
+│            to_x           ││            to_x           ││                           ││                           │
+│           to_dir          ││           to_dir          ││                           ││                           │
+│            exit           ││            exit           ││                           ││                           │
+│                           ││                           ││                           ││                           │
+│    Filters: (NOT start)   ││                           ││                           ││                           │
+│                           ││                           ││                           ││                           │
+│         3071 Rows         ││         15388 Rows        ││         4432 Rows         ││         18380 Rows        │
+│          (0.00s)          ││          (0.00s)          ││          (0.00s)          ││          (0.25s)          │
+└───────────────────────────┘└───────────────────────────┘└─────────────┬─────────────┘└─────────────┬─────────────┘
+                                                          ┌─────────────┴─────────────┐┌─────────────┴─────────────┐
+                                                          │         TABLE_SCAN        ││         PROJECTION        │
+                                                          │    ────────────────────   ││    ────────────────────   │
+                                                          │           Table:          ││           index           │
+                                                          │    obstacles_with_path    ││         obstacle_y        │
+                                                          │                           ││         obstacle_x        │
+                                                          │   Type: Sequential Scan   ││            tile           │
+                                                          │                           ││       previous_tiles      │
+                                                          │        Projections:       ││        future_tiles       │
+                                                          │           index           ││                           │
+                                                          │         obstacle_y        ││                           │
+                                                          │         obstacle_x        ││                           │
+                                                          │             y             ││                           │
+                                                          │             x             ││                           │
+                                                          │            dir            ││                           │
+                                                          │       previous_tiles      ││                           │
+                                                          │        future_tiles       ││                           │
+                                                          │                           ││                           │
+                                                          │         4432 Rows         ││         18380 Rows        │
+                                                          │          (0.02s)          ││          (0.00s)          │
+                                                          └───────────────────────────┘└─────────────┬─────────────┘
+                                                                                       ┌─────────────┴─────────────┐
+                                                                                       │         PROJECTION        │
+                                                                                       │    ────────────────────   │
+                                                                                       │           index           │
+                                                                                       │         obstacle_y        │
+                                                                                       │         obstacle_x        │
+                                                                                       │         move_tile         │
+                                                                                       │       obstacle_tile       │
+                                                                                       │        obstacle_hit       │
+                                                                                       │       previous_tiles      │
+                                                                                       │        future_tiles       │
+                                                                                       │                           │
+                                                                                       │         18380 Rows        │
+                                                                                       │          (0.01s)          │
+                                                                                       └─────────────┬─────────────┘
+                                                                                       ┌─────────────┴─────────────┐
+                                                                                       │         HASH_JOIN         │
+                                                                                       │    ────────────────────   │
+                                                                                       │      Join Type: INNER     │
+                                                                                       │                           │
+                                                                                       │        Conditions:        ├───────────────────────────────────────────┐
+                                                                                       │        to_dir = dir       │                                           │
+                                                                                       │                           │                                           │
+                                                                                       │         18380 Rows        │                                           │
+                                                                                       │          (0.02s)          │                                           │
+                                                                                       └─────────────┬─────────────┘                                           │
+                                                                                       ┌─────────────┴─────────────┐                             ┌─────────────┴─────────────┐
+                                                                                       │         PROJECTION        │                             │         TABLE_SCAN        │
+                                                                                       │    ────────────────────   │                             │    ────────────────────   │
+                                                                                       │             #0            │                             │     Table: directions     │
+                                                                                       │             #1            │                             │   Type: Sequential Scan   │
+                                                                                       │             #2            │                             │                           │
+                                                                                       │             #3            │                             │                           │
+                                                                                       │             #4            │                             │                           │
+                                                                                       │             #6            │                             │                           │
+                                                                                       │             #7            │                             │                           │
+                                                                                       │             #8            │                             │                           │
+                                                                                       │             #9            │                             │                           │
+                                                                                       │            #10            │                             │                           │
+                                                                                       │                           │                             │                           │
+                                                                                       │         18380 Rows        │                             │          468 Rows         │
+                                                                                       │          (0.00s)          │                             │          (0.00s)          │
+                                                                                       └─────────────┬─────────────┘                             └───────────────────────────┘
+                                                                                       ┌─────────────┴─────────────┐
+                                                                                       │           FILTER          │
+                                                                                       │    ────────────────────   │
+                                                                                       │  ((NOT exit) OR ((((abs(  │
+                                                                                       │  (from_y - obstacle_y)) + │
+                                                                                       │  abs((from_x - obstacle_x)│
+                                                                                       │   )) + abs((obstacle_y -  │
+                                                                                       │  to_y))) + abs((obstacle_x│
+                                                                                       │  - to_x))) = (abs((from_y │
+                                                                                       │  - to_y)) + abs((from_x - │
+                                                                                       │          to_x)))))        │
+                                                                                       │                           │
+                                                                                       │         18380 Rows        │
+                                                                                       │          (0.00s)          │
+                                                                                       └─────────────┬─────────────┘
+                                                                                       ┌─────────────┴─────────────┐
+                                                                                       │         HASH_JOIN         │
+                                                                                       │    ────────────────────   │
+                                                                                       │      Join Type: INNER     │
+                                                                                       │                           │
+                                                                                       │        Conditions:        │
+                                                                                       │  from_y = struct_extract  │
+                                                                                       │        (tile, 'y')        │
+                                                                                       │  from_x = struct_extract  ├──────────────┐
+                                                                                       │        (tile, 'x')        │              │
+                                                                                       │ from_dir = struct_extract │              │
+                                                                                       │       (tile, 'dir')       │              │
+                                                                                       │                           │              │
+                                                                                       │         19748 Rows        │              │
+                                                                                       │          (0.23s)          │              │
+                                                                                       └─────────────┬─────────────┘              │
+                                                                                       ┌─────────────┴─────────────┐┌─────────────┴─────────────┐
+                                                                                       │          CTE_SCAN         ││         PROJECTION        │
+                                                                                       │    ────────────────────   ││    ────────────────────   │
+                                                                                       │        CTE Index: 0       ││             #0            │
+                                                                                       │                           ││             #1            │
+                                                                                       │                           ││             #2            │
+                                                                                       │                           ││             #3            │
+                                                                                       │                           ││             #4            │
+                                                                                       │                           ││             #5            │
+                                                                                       │                           ││                           │
+                                                                                       │        2159703 Rows       ││         20155 Rows        │
+                                                                                       │          (0.01s)          ││          (0.00s)          │
+                                                                                       └───────────────────────────┘└─────────────┬─────────────┘
+                                                                                                                    ┌─────────────┴─────────────┐
+                                                                                                                    │           FILTER          │
+                                                                                                                    │    ────────────────────   │
+                                                                                                                    │((NOT loop) AND (NOT done))│
+                                                                                                                    │                           │
+                                                                                                                    │         20155 Rows        │
+                                                                                                                    │          (0.00s)          │
+                                                                                                                    └─────────────┬─────────────┘
+                                                                                                                    ┌─────────────┴─────────────┐
+                                                                                                                    │     RECURSIVE_CTE_SCAN    │
+                                                                                                                    │    ────────────────────   │
+                                                                                                                    │       CTE Index: 16       │
+                                                                                                                    │                           │
+                                                                                                                    │         22812 Rows        │
+                                                                                                                    │          (0.04s)          │
+                                                                                                                    └───────────────────────────┘

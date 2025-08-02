@@ -526,6 +526,7 @@ CREATE OR REPLACE TABLE walls AS (
 );
 
 CREATE OR REPLACE TABLE wall_moves AS (
+-- CREATE OR REPLACE VIEW wall_moves AS (
     WITH
         -- walls AS MATERIALIZED (
         -- -- walls AS (
@@ -564,6 +565,7 @@ CREATE OR REPLACE TABLE wall_moves AS (
         wall_moves AS (
             FROM step_starts t1
             JOIN directions d ON t1.next_dir = d.dir
+            -- #TODO join walls directly instead of wall_hits
             LEFT JOIN wall_hits t2 ON t1.next_dir = t2.from_dir AND CASE t1.next_dir
                 WHEN '^' THEN t1.from_x = t2.from_x AND t1.from_y >= t2.from_y
                 WHEN '>' THEN t1.from_y = t2.from_y AND t1.from_x <= t2.from_x
@@ -588,6 +590,7 @@ CREATE OR REPLACE TABLE wall_moves AS (
 );
 
 CREATE OR REPLACE TABLE guard_path AS (
+-- CREATE OR REPLACE VIEW guard_path AS (
     WITH RECURSIVE
         path AS (
             FROM wall_moves
@@ -608,6 +611,7 @@ CREATE OR REPLACE TABLE guard_path AS (
 );
 
 CREATE OR REPLACE TABLE visited_tiles AS (
+-- CREATE OR REPLACE VIEW visited_tiles AS (
     WITH
         visited_tiles AS (
             FROM guard_path
@@ -671,7 +675,18 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 -- |--^-- [fixed] join on step encounters obstacle instead of cross join: 1.05113 +- 0.00606 seconds (+- 0.58%)
 -- |
 -- > loop detection with previous & future tiles: 1.05113 +- 0.00606 seconds (+- 0.58%)
+--    ^-- summarize on all records
+--         ^-- with context: {"column_name":"it","column_type":"INTEGER","min":"0","max":"116","approx_unique":117,"avg":"8.135542696826231","std":"16.221280252001044","q25":"1", "q50":"2", "q75":"6", "count":22812, "null_percentage":0.00}
+--         ^--   no context: {"column_name":"it","column_type":"INTEGER","min":"0","max":"136","approx_unique":137,"avg":"33.77146611806854","std":"28.32741466174109", "q25":"10","q50":"27","q75":"50","count":127841,"null_percentage":0.00}
+--    ^-- summarize max(it) by index
+--         ^-- with context: {"column_name":"max(it)","column_type":"INTEGER","min":"0","max":"116", "approx_unique":52, "avg":"4.147111913357401","std":"7.900476676489249","q25":"1","q50":"2", "q75":"5","count":4432,"null_percentage":0.00}
+--         ^--   no context: {"column_name":"max(it)","column_type":"INTEGER","min":"0","max":"136","approx_unique":135,"avg":"27.844990974729242","std":"33.84294880267516","q25":"2","q50":"8","q75":"51","count":4432,"null_percentage":0.00}
 --    ^-- inner join & >= index: 1.05701 +- 0.00599 seconds (+- 0.57%)
+--    ^-- obstacle_hit via CASE: 1.06471 +- 0.00330 seconds time elapsed  ( +-  0.31% )
+--    ^-- removed unnecessary columns: 1.02328 +- 0.00554 seconds time elapsed  ( +-  0.54% )
+--         ^-- struct used for join: 1.07441 +- 0.00694 seconds time elapsed  ( +-  0.65% )
+--    ^-- dedicated table for all_moves: 1.22807 +- 0.00881 seconds time elapsed  ( +-  0.72% )
+--         ^-- dedicated index on (from_y, from_x, from_dir): 1.2248 +- 0.0113 seconds time elapsed  ( +-  0.93% )
 
 -- CREATE OR REPLACE TABLE obstacles AS (
 --     WITH
@@ -692,15 +707,17 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 --     FROM obstacles
 -- );
 
--- join on step encounters obstacle instead of cross join
 -- #TODO use this in raywalking approach
+-- join on step encounters obstacle instead of cross join
 CREATE OR REPLACE TABLE obstacles_with_path AS (
+-- CREATE OR REPLACE VIEW obstacles_with_path AS (
     WITH
         obstacles AS (
             FROM visited_tiles t
             JOIN directions d USING (dir)
             SELECT
-                index, step_index, tile_index,
+                index, step_index,
+                -- tile_index,
                 y, x, dir,
                 obstacle_y: y + dy,
                 obstacle_x: x + dx,
@@ -740,6 +757,7 @@ CREATE OR REPLACE TABLE obstacles_with_path AS (
 );
 
 CREATE OR REPLACE TABLE obstacle_moves AS (
+-- CREATE OR REPLACE VIEW obstacle_moves AS (
     WITH
         obstacle_hits AS MATERIALIZED (
             -- FROM obstacles o, directions d
@@ -778,9 +796,17 @@ CREATE OR REPLACE TABLE obstacle_moves AS (
         ) = 1
 );
 
--- #TODO EXPLAIN ANALYZE
+-- CREATE OR REPLACE TABLE all_moves AS (
+--     FROM wall_moves SELECT * EXCLUDE(start) WHERE NOT start
+--     UNION ALL
+--     FROM obstacle_moves
+-- );
+-- CREATE INDEX IF NOT EXISTS idx_all_moves_from_tile ON all_moves USING ART (from_y, from_x, from_dir);
+-- CREATE INDEX IF NOT EXISTS idx_all_moves_from_tile ON all_moves (from_y, from_x, from_dir);
+
 CREATE OR REPLACE TABLE loops AS (
-    -- #TODO remove unnecessary columns
+-- CREATE OR REPLACE VIEW loops AS (
+    -- EXPLAIN ANALYZE
     WITH RECURSIVE
         all_moves AS MATERIALIZED (
             FROM wall_moves SELECT * EXCLUDE(start) WHERE NOT start
@@ -790,8 +816,9 @@ CREATE OR REPLACE TABLE loops AS (
         loop_starts AS (
             FROM obstacles_with_path
             SELECT
-                it: 0,
-                index, step_index, tile_index,
+                -- it: 0,
+                index,
+                -- step_index, tile_index,
                 obstacle_y, obstacle_x,
                 tile: {'y': y, 'x': x, 'dir': dir},
                 previous_tiles, future_tiles,
@@ -803,8 +830,9 @@ CREATE OR REPLACE TABLE loops AS (
             UNION ALL
             FROM loop_step
             SELECT
-                it: it + 1,
-                index, step_index, tile_index,
+                -- it: it + 1,
+                index,
+                -- step_index, tile_index,
                 obstacle_y, obstacle_x,
                 tile: if(obstacle_hit, obstacle_tile, move_tile),
                 previous_tiles: list_append(previous_tiles, if(obstacle_hit, obstacle_tile, move_tile)),
@@ -816,13 +844,14 @@ CREATE OR REPLACE TABLE loops AS (
         loop_step AS (
             FROM loops l
             JOIN all_moves m ON l.tile.y = m.from_y AND l.tile.x = m.from_x AND l.tile.dir = m.from_dir
-            JOIN directions d ON m.to_dir = d.dir
+            JOIN directions d ON m.to_dir = d.dir  -- #TODO can this be avoided?
             SELECT
-                it,
-                index, step_index, tile_index,
+                -- it,
+                index,
+                -- step_index, tile_index,
                 obstacle_y, obstacle_x,
                 move_tile: {'y': m.to_y, 'x': m.to_x, 'dir': d.dir},
-                obstacle_tile: {'y': obstacle_y - dy, 'x': obstacle_x - dx, 'dir': d.dir},
+                obstacle_tile: {'y': obstacle_y - d.dy, 'x': obstacle_x - d.dx, 'dir': d.dir},
                 obstacle_hit: (
                     abs(m.from_y - obstacle_y) + abs(m.from_x - obstacle_x) +
                     abs(obstacle_y - m.to_y) + abs(obstacle_x - m.to_x)
