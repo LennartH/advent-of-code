@@ -519,6 +519,9 @@ CREATE OR REPLACE TABLE directions AS (
 -- 2025-07-27
 --   precalculated steps: 0.18268 +- 0.00231 seconds (+- 1.26%)
 --    ^-- wall_moves including exit moves: 0.17750 +- 0.00253 seconds (+- 1.42%)
+-- 2025-08-02
+--   precalculated steps: 0.17680 +- 0.00230 seconds (+- 1.30%)
+--    ^-- fewer directions joins: 0.18113 +- 0.00242 seconds (+- 1.34%)
 
 -- #TODO test other approaches with dedicated table for walls
 CREATE OR REPLACE TABLE walls AS (
@@ -576,7 +579,8 @@ CREATE OR REPLACE TABLE wall_moves AS (
                 t1.from_y, t1.from_x, t1.from_dir,
                 to_y: coalesce(t2.from_y, d.edge_y, t1.from_y),
                 to_x: coalesce(t2.from_x, d.edge_x, t1.from_x),
-                to_dir: t1.next_dir,
+                to_dir: d.dir,
+                d.dy, d.dx,
                 start: t1.start,
                 exit: t2.from_y IS NULL,
         )
@@ -615,7 +619,6 @@ CREATE OR REPLACE TABLE visited_tiles AS (
     WITH
         visited_tiles AS (
             FROM guard_path
-            JOIN directions ON dir = to_dir
             SELECT
                 step_index,
                 tile_index: unnest(generate_series(0, abs(from_y - to_y) + abs(from_x - to_x))) + 1,
@@ -682,11 +685,12 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 --         ^-- with context: {"column_name":"max(it)","column_type":"INTEGER","min":"0","max":"116", "approx_unique":52, "avg":"4.147111913357401","std":"7.900476676489249","q25":"1","q50":"2", "q75":"5","count":4432,"null_percentage":0.00}
 --         ^--   no context: {"column_name":"max(it)","column_type":"INTEGER","min":"0","max":"136","approx_unique":135,"avg":"27.844990974729242","std":"33.84294880267516","q25":"2","q50":"8","q75":"51","count":4432,"null_percentage":0.00}
 --    ^-- inner join & >= index: 1.05701 +- 0.00599 seconds (+- 0.57%)
---    ^-- obstacle_hit via CASE: 1.06471 +- 0.00330 seconds time elapsed  ( +-  0.31% )
---    ^-- removed unnecessary columns: 1.02328 +- 0.00554 seconds time elapsed  ( +-  0.54% )
---         ^-- struct used for join: 1.07441 +- 0.00694 seconds time elapsed  ( +-  0.65% )
---    ^-- dedicated table for all_moves: 1.22807 +- 0.00881 seconds time elapsed  ( +-  0.72% )
---         ^-- dedicated index on (from_y, from_x, from_dir): 1.2248 +- 0.0113 seconds time elapsed  ( +-  0.93% )
+--    ^-- obstacle_hit via CASE: 1.06471 +- 0.00330 seconds (+- 0.31%)
+--    ^-- removed unnecessary columns: 1.02328 +- 0.00554 seconds (+- 0.54%)
+--         ^-- struct used for join: 1.07441 +- 0.00694 seconds (+- 0.65%)
+--    ^-- dedicated table for all_moves: 1.22807 +- 0.00881 seconds (+- 0.72%)
+--         ^-- dedicated index on (from_y, from_x, from_dir): 1.2248 +- 0.0113 seconds (+- 0.93%)
+--    ^-- without direction join in loop_step: 0.94550 +- 0.00708 seconds (+- 0.75%)
 
 -- CREATE OR REPLACE TABLE obstacles AS (
 --     WITH
@@ -759,7 +763,8 @@ CREATE OR REPLACE TABLE obstacles_with_path AS (
 CREATE OR REPLACE TABLE obstacle_moves AS (
 -- CREATE OR REPLACE VIEW obstacle_moves AS (
     WITH
-        obstacle_hits AS MATERIALIZED (
+        -- obstacle_hits AS (
+        obstacle_hits AS (
             -- FROM obstacles o, directions d
             FROM obstacles_with_path o, directions d
             SELECT
@@ -785,6 +790,7 @@ CREATE OR REPLACE TABLE obstacle_moves AS (
                 to_y: w.y - d.dy,
                 to_x: w.x - d.dx,
                 to_dir: d.dir,
+                d.dy, d.dx,
                 exit: false
         )
 
@@ -844,14 +850,13 @@ CREATE OR REPLACE TABLE loops AS (
         loop_step AS (
             FROM loops l
             JOIN all_moves m ON l.tile.y = m.from_y AND l.tile.x = m.from_x AND l.tile.dir = m.from_dir
-            JOIN directions d ON m.to_dir = d.dir  -- #TODO can this be avoided?
             SELECT
                 -- it,
                 index,
                 -- step_index, tile_index,
                 obstacle_y, obstacle_x,
-                move_tile: {'y': m.to_y, 'x': m.to_x, 'dir': d.dir},
-                obstacle_tile: {'y': obstacle_y - d.dy, 'x': obstacle_x - d.dx, 'dir': d.dir},
+                move_tile: {'y': m.to_y, 'x': m.to_x, 'dir': m.to_dir},
+                obstacle_tile: {'y': obstacle_y - m.dy, 'x': obstacle_x - m.dx, 'dir': m.to_dir},
                 obstacle_hit: (
                     abs(m.from_y - obstacle_y) + abs(m.from_x - obstacle_x) +
                     abs(obstacle_y - m.to_y) + abs(obstacle_x - m.to_x)
