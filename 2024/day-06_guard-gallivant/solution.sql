@@ -521,7 +521,14 @@ CREATE OR REPLACE TABLE directions AS (
 --    ^-- wall_moves including exit moves: 0.17750 +- 0.00253 seconds (+- 1.42%)
 -- 2025-08-02
 --   precalculated steps: 0.17680 +- 0.00230 seconds (+- 1.30%)
---    ^-- fewer directions joins: 0.18113 +- 0.00242 seconds (+- 1.34%)
+-- |--^-- fewer directions joins: 0.17608 +- 0.00220 seconds time elapsed  ( +-  1.25% )
+-- |
+-- > precalculated steps: 0.17608 +- 0.00220 seconds time elapsed  ( +-  1.25% )
+--    ^-- wall_moves join with walls instead of wall_hits: 0.16043 +- 0.00310 seconds time elapsed  ( +-  1.93% )
+--         ^-- result: 4419, expected: 4433
+-- |-------^-- wall_hits not materialized: 0.15472 +- 0.00282 seconds time elapsed  ( +-  1.82% )
+-- |
+-- > precalculated steps: 0.15472 +- 0.00282 seconds time elapsed  ( +-  1.82% )
 
 -- #TODO test other approaches with dedicated table for walls
 CREATE OR REPLACE TABLE walls AS (
@@ -535,8 +542,8 @@ CREATE OR REPLACE TABLE wall_moves AS (
         -- -- walls AS (
         --     FROM tiles WHERE symbol = '#'
         -- ),
-        wall_hits AS MATERIALIZED (
-        -- wall_hits AS (
+        -- wall_hits AS MATERIALIZED (
+        wall_hits AS (
             FROM walls w, directions d
             SELECT
                 from_y: w.y - d.dy,
@@ -569,20 +576,29 @@ CREATE OR REPLACE TABLE wall_moves AS (
             FROM step_starts t1
             JOIN directions d ON t1.next_dir = d.dir
             -- #TODO join walls directly instead of wall_hits
-            LEFT JOIN wall_hits t2 ON t1.next_dir = t2.from_dir AND CASE t1.next_dir
-                WHEN '^' THEN t1.from_x = t2.from_x AND t1.from_y >= t2.from_y
-                WHEN '>' THEN t1.from_y = t2.from_y AND t1.from_x <= t2.from_x
-                WHEN 'v' THEN t1.from_x = t2.from_x AND t1.from_y <= t2.from_y
-                WHEN '<' THEN t1.from_y = t2.from_y AND t1.from_x >= t2.from_x
+            -- LEFT JOIN wall_hits t2 ON t1.next_dir = t2.from_dir AND CASE t1.next_dir
+            --     WHEN '^' THEN t1.from_x = t2.from_x AND t1.from_y >= t2.from_y
+            --     WHEN '>' THEN t1.from_y = t2.from_y AND t1.from_x <= t2.from_x
+            --     WHEN 'v' THEN t1.from_x = t2.from_x AND t1.from_y <= t2.from_y
+            --     WHEN '<' THEN t1.from_y = t2.from_y AND t1.from_x >= t2.from_x
+            -- END
+            LEFT JOIN walls w ON CASE d.dir
+                WHEN '^' THEN t1.from_x = w.x AND t1.from_y >= w.y
+                WHEN '>' THEN t1.from_y = w.y AND t1.from_x <= w.x
+                WHEN 'v' THEN t1.from_x = w.x AND t1.from_y <= w.y
+                WHEN '<' THEN t1.from_y = w.y AND t1.from_x >= w.x
             END
             SELECT
                 t1.from_y, t1.from_x, t1.from_dir,
-                to_y: coalesce(t2.from_y, d.edge_y, t1.from_y),
-                to_x: coalesce(t2.from_x, d.edge_x, t1.from_x),
+                -- to_y: coalesce(t2.from_y, d.edge_y, t1.from_y),
+                to_y: coalesce(w.y - d.dy, d.edge_y, t1.from_y),
+                -- to_x: coalesce(t2.from_x, d.edge_x, t1.from_x),
+                to_x: coalesce(w.x - d.dx, d.edge_x, t1.from_x),
                 to_dir: d.dir,
                 d.dy, d.dx,
                 start: t1.start,
-                exit: t2.from_y IS NULL,
+                -- exit: t2.from_y IS NULL,
+                exit: w.y IS NULL,
         )
 
     FROM wall_moves
