@@ -825,6 +825,7 @@ CREATE OR REPLACE TABLE obstacles_with_path AS (
               AND NOT EXISTS (FROM walls WHERE y = obstacle_y AND x = obstacle_x)
             QUALIFY row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
         ),
+        -- #TODO left join visited tiles on obstacle position & qualify over largest step index
         obstacles_with_context AS (
             FROM obstacles o
             LEFT JOIN guard_path p ON p.step_index > o.step_index AND (
