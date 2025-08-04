@@ -2,14 +2,17 @@
 &ensp;&ensp;[Part 1](#part-1)</br>
 &ensp;&ensp;[Part 2](#part-2)</br>
 &ensp;&ensp;[Abstract Approach](#abstract-approach)</br>
-[**Python Solution**](#python-solution)</br>
+&ensp;&ensp;&ensp;&ensp;[_Naive Approach_](#naive-approach)</br>
+&ensp;&ensp;&ensp;&ensp;[_Raywalking Approach_](#raywalking-approach)</br>
+&ensp;&ensp;&ensp;&ensp;[_Loop Detection Optimizations_](#loop-detection-optimizations)</br>
+<!-- [**Python Solution**](#python-solution)</br>
 &ensp;&ensp;[Part 1](#part-1-1)</br>
 &ensp;&ensp;&ensp;&ensp;[_Naive Approach_](#naive-approach)</br>
 &ensp;&ensp;&ensp;&ensp;[_Raywalking Approach_](#raywalking-approach)</br>
 &ensp;&ensp;[Part 2](#part-2-1)</br>
 [**SQL Solution**](#sql-solution)</br>
 &ensp;&ensp;[Original Approach](#original-approach)</br>
-&ensp;&ensp;[Improving the Original SQL Solution](#improving-the-original-sql-solution)</br>
+&ensp;&ensp;[Improving the Original SQL Solution](#improving-the-original-sql-solution)</br> -->
 [**Stats**](#stats)</br>
 
 ### Day 6: Guard Gallivant
@@ -51,16 +54,16 @@ Start         1)            2)            3)            4)            5)        
 
 #### Part 1
 
-Since this is only day 6, part 1 starts off easy. The task is to count the number of **distinct tiles** that were visited before leaving the map (including the starting position). The only thing to keep in mind is to not count tiles multiple times, so a simple step count won't do. Below is the path when encountering the 4th wall and after leaving the map. Tiles visited more than once are marked as `X`. In the example a total of **41** distinct tiles are visited.
+Since this is only day 6, part 1 starts off easy. The task is to count the number of **distinct tiles** that were visited before leaving the map (including the starting position). The only thing to keep in mind is to not count tiles multiple times, so a simple step count won't do. Below is the path when encountering the 6th wall and after leaving the map. Tiles visited more than once are marked as `X`. In the example a total of **41** distinct tiles are visited.
 ```
-4)              Exit      
+6)              Exit      
 ....#.....      ....#.....
 ....+---+#      ....+---+#
 ....|...|.      ....|...|.
 ..#.|...|.      ..#.|...|.
-....|..#|.      ..+-X-+#|.
-....|...|.      ..|.|.|.|.
-.#<-X---+.      .#+-X-X-+.
+..+-X->#|.      ..+-X-+#|.
+..|.|...|.      ..|.|.|.|.
+.#+-X---+.      .#+-X-X-+.
 ........#.      .+----X+#.
 #.........      #+----+|..
 ......#...      ......#v..
@@ -103,7 +106,28 @@ Map                Path               Invalid Loop
 ...........#.      ...........#.      ...........#.
 ```
 
-TODO some other notes for possible loops: arbitrary loop length, loops outside of original path (see below separation for stuff)
+A few other things that are not shown in the puzzle example. All loops in the example "re-use" walls from the original path, but that doesn't have to be the case (especially for larger maps):
+```
+Map            Path           Loop     
+.........      .^.......      .........
+....#....      .|..#....      .O..#....
+.......#.      .|.....#.      .+--+-+#.
+...#.....      .|.#.....      .|.#+-+..
+......#..      .|....#..      .|....#..
+.^.......      .|.......      .^.......
+.........      .........      .........
+```
+
+Also, note that loop three from above consists of more than 4 segments. But it's also possible to have loops with fewer. In general loops can have an arbitrary length:
+```
+Map         Path        Loop  
+......      ...^..      ......
+.#..#.      .#.|#.      .#..#.
+.....#      .+-X+#      .+--+#
+......      .|.||.      .|..|.
+.^#...      .|#++.      .^#O+.
+....#.      ....#.      ....#.
+```
 
 #### Abstract Approach
 
@@ -115,7 +139,7 @@ The most simple approach I can think of is to move tile by tile, checking ahead 
 
 ##### Raywalking Approach
 
-Most of the movement done in the naive approach is unnecessary, since nothing needs to be done apart from advancing the current position by 1 in the current direction. Only when a wall is encountered the program state is impacted significantly. So the idea is to directly move to the closest wall in the current direction, skipping all steps in between. Finding the closest wall reminded me of casting a ray of light, hence the name raywalking for this approach. This reduces the number of steps significantly. In the example from above it takes **11** _ray steps_ to exit the map, compared to **55** steps for the naive approach, a factor of **0.2**. The impact gets more apparent looking at my actual input. **138** _ray steps_ compared to **4960** naive steps, a factor of about **0.028**. Also, (nearly) every visited tile leads to another walk of the map for part 2.
+Most of the movement done in the naive approach is unnecessary, since nothing needs to be done apart from advancing the current position by 1 in the current direction. Only when a wall is encountered the program state is impacted significantly. **So the idea is to directly move to the closest wall in the current direction, skipping all steps in between.** Finding the closest wall reminded me of casting a ray of light, hence the name raywalking for this approach. This reduces the number of steps significantly. In the example from above it takes **11** _ray steps_ to exit the map, compared to **55** steps for the naive approach, a factor of **0.2**. The impact gets more apparent looking at my actual input. **138** _ray steps_ compared to **4960** naive steps, a factor of about **0.028**. Also, (nearly) every visited tile leads to another walk of the map for part 2.
 
 Of course this doesn't come without downsides. Finding the closest wall to arbitrary positions needs to be more efficient than simply walking forward until a wall is encountered. So some supporting data structures providing efficient access to walls are necessary. Another issue is to count the distinct visited tiles and collect the obstacle placements without performing all those moves that were saved by raywalking. But this won't invalidate the approach, since searching for loops in part 2 is still benefiting significantly. Both downsides are a lot easier to manage in SQL than in Python (suspicious, I know) and I'll go into some detail in the sections for my SQL / Python solution.
 
@@ -139,9 +163,9 @@ Path              Obstacle
 #+----+|..        #F----F|..
 ......#v..        ......#|..
 ```
-Placing an obstacle effectively splits the original path in 2 sets. A set of tiles visited before encountering the obstacle and a set of tiles that would have been visited, ultimately exiting the map. These 2 sets are useful for early loop detection termination. In the example the next position after encountering the obstacle is the first entry of the tiles that have been visited previously. In general, as soon as a tile from that set is visited again, a loop has been found.
+Placing an obstacle effectively splits the original path in 2 sets. A set of tiles visited before encountering the obstacle and a set of tiles that would have been visited, ultimately exiting the map. These 2 sets are useful for early loop detection termination. In the example the next position after encountering the obstacle is the first entry of the tiles that have been visited previously. **In general, as soon as a tile from the set of previous tiles is visited again, a loop has been found.**
 
-Similarly the set of future tiles can be used to detect early that an obstacle cannot lead to a loop:
+Similarly **the set of future tiles can be used to detect early that an obstacle cannot cause a loop**:
 ```
 Path              Obstacle  
 ....#.....        ....#.....       obstacle: (7, 1)
@@ -164,20 +188,22 @@ Map               Obstacle
 .............     .||...|......
 #.........<..     #FO<--+----..      previous tiles: []
 .........#...     ..|...|..#...        future tiles: [(1, 3, <), (1, 1, ^), (6, 1, >), (6, 5, v), (2, 5, <)]
-.#...........     .#F---F......
-......#.#....     ......#.#....      positions after obstacle: [
-                                         (3, 1, ^), (6, 1, >), (6, 5, v), 
-Path              Obstacle Path    +---> (2, 5, <), (2, 4, ^), (8, 4, >), (8, 5, v), 
-.#^#.........     .#.#.........    |     (2, 5, <), ...
-.++---+#.....     ...+--+#.....    | ]
-.||...|......     ...|..|......    |
-#++---+----..     #.O+--+----..    +--- this is the loop
-..|...|..#...     ..+---+-+#...    
-.#+---+......     .#+-<-+-+....    
-......#.#....     ......#.#....    
+.#...........     .#F---F......                                                 ^
+......#.#....     ......#.#....                                                 |
+                                     positions after obstacle: [         in future tiles
+Path              Obstacle Path          (3, 1, ^),                             |
+.#^#.........     .#.#.........          (6, 1, >), (6, 5, v), <----------------+
+.++---+#.....     ...+--+#.....    +---> (2, 5, <), (2, 4, ^), (8, 4, >), (8, 5, v), 
+.||...|......     ...|..|......    |     (2, 5, <), ... ^
+#++---+----..     #.O+--+----..    | ]                  |
+..|...|..#...     ..+---+-+#...    |                    +---second obstacle encounter
+.#+---+......     .#+-<-+-+....    |
+......#.#....     ......#.#....    +--- this is the loop
 ```
 
-TODO conclusion for early loop detection termination
+Here the second position after encountering the obstacle is contained by the set of future tiles, but the obstacle is encountered again from a different direction just before the map would be exited. This alters the original path again, so terminating the loop detection at that point would be premature. **So not all future tiles can be used, but only the ones after the obstacle would be encountered the last time**. For the example that is an empty set, but that's unlikely for the real input.
+
+These optimizations can be used regardless of the chosen approach, but I'd argue that a naive approach with early loop detection termination isn't really naive anymore. With that out of the way, we can start looking at some actual implementations for day 6.
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -185,102 +211,10 @@ TODO conclusion for early loop detection termination
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Note that the third loop consists of more than 4 segments. It's also possible to have loops with fewer segments.
-```
-Map         Path        Loop  
-......      ...^..      ......
-.#..#.      .#.|#.      .#..#.
-.....#      .+-X+#      .+--+#
-......      .|.||.      .|..|.
-.^#...      .|#++.      .^#O+.
-....#.      ....#.      ....#.
-```
-
-Loops don't have to be composed of segments of the original path, but can be on portions on the map that are only accessible by the newly placed obstacle.
-```
-Map            Loop     
-.........      .........
-....#....      .O..#....
-.......#.      .+--+-+#.
-...#.....      .|.#+-+..
-......#..      .|....#..
-.^.......      .^.......
-.........      .........
-```
-
-Or a more extreme example.
-```
-Map           Path          Loop    
-.#...#..      .#...#..      .#...#..
-......#.      xXXXXX#.      .+--O̶+#.
-.....#..      .x...#..      .|...#..
-.^......      .^......      .^......
-........      ........      ........
-```
-
-**Approach**
-
-The brute force approach would be to try every empty tile, place the obstacle there and run the movements until the map is exited or the step count exceeds a threshold which would be counted as a loop (e.g. the total area of the map). This can be improved (duh) in two regards. Reducing the number of tiles to place the obstacle on and reducing the number of steps necessary to detect (or reject) a loop.
-
-Reducing the number of viable tiles is simple enough. For the obstacle to have any effect it must be encountered, so only tiles collected during part 1 have to be tested. As mentioned before the obstacle must be placed before starting to move, so it's sufficient to test each tile once.
-
-To reduce the number of necessary steps before knowing that placing the obstacle did or did not create a loop it helps to look at the anatomy of an obstacle placement. Given the original path from part 1, placing an obstacle splits it into two sets. A set of tiles `W` visited before encountering the obstacle and a set of tiles `E` that would have been visited, ultimately leading off the map. In the example below tiles of these sets are marked as `w` and `e` or `z`, if contained in both sets. A third set of tiles `O` contains all tiles visted after encountering the new obstacle. In the example below those are marked as `o` (overwriting other symbols).
-```
-..#...#.......      ..#...#.......      ..#...#.......
-.#....+------E      .#....eeeeeeee      .#....eeeeeeee
-.+----+---+#..      .wwwwwz>Oee#..      .wwwwwzoOee#..
-.|....|..#|...      .w....e..#e...      .w....eo.#e...
-.|...#+---+...      .w...#eeeee...      .w...#eoeee...
-.^......#.#...      .w......#.#...      .w.....o#.#...
-..............      ..............      .......o......
-```
-
-This already shows that it won't be enough to store the tile positions, the direction when the tile was visited is necessary as well. All that can be used to create rules to determine if a loop has been created, but also if it is guaranteed to leave the map. Note that in those rules "revisiting a tile" is meant as being in the same position having the same direction.
-
-- Revisiting a tile of set `W` or `O` will always result in a loop
-- Revisiting a tile of set `E` wil always exit the map
-
-Other situations need to be explored fully, since loops can be arbitrarily long or the obstacle leads to a far away portion of the map with a "natural" loop. Below are some examples with `X` marking the tile matching the rule.
-```
-Revisiting a tile of set E
-..#...#.......      ..#...#.......      ..#...#.......
-.#....+------E      .#....eeeeeeee      .#....eeeeeeee
-.O----+---+#..      .Oeeeeeeeee#..      .Oeeeeeeeee#..
-.|....|..#|...      .^....e..#e...      .oooooooo#e...
-.|...#+---+...      .w...#eeeee...      .w...#eXoee...
-.^......#.#...      .w......#.#...      .w......#.#...
-..............      ..............      ..............
-
-Revisiting a tile of set W
-..#...#.......      ..#...#.......      ..#...#.......
-.#....O------E      .#....Oeeeeeee      .#....Oeeeeeee
-.+----+---+#..      .wwwww^wwww#..      .wwwwwoXwww#..
-.|....|..#|...      .w....w..#w...      .w....w..#w...
-.|...#+---+...      .w...#wwwww...      .w...#wwwww...
-.^......#.#...      .w......#.#...      .w......#.#...
-..............      ..............      ..............
-
-..#...#.......      ..#...#.......      ..#...#.......
-.#....+--O---E      .#....ww>Oeeee      .#....wwoOeeee
-.+----+---+#..      .wwwwwwwwww#..      .wwwwwwwoww#..
-.|....|..#|...      .w....w..#w...      .w....w.o#w...
-.|...#+---+...      .w...#wwwww...      .w...#wXoww...
-.^......#.#...      .w......#.#...      .w......#.#...
-..............      ..............      ..............
-
-Revisiting a tile of set O
-..#...#.......      ..#...#.......      ..#...#.......
-.#....+-----OE      .#....wwwww>Oe      .#oXooooooooOe
-.+----+---+#..      .wwwwwwwwww#..      .wwwwwwwwww#..
-.|....|..#|...      .w....w..#w...      .w....w..#w...
-.|...#+---+...      .w...#wwwww...      .w...#wwwww...
-.^......#.#...      .w......#.#...      .w......#.#...
-..............      ..............      ..............
-```
-
-So much for the theory, on to actually doing things.
 
 ### Python Solution
+
+FIXME structure solutions by approach or by part?
 
 #### Part 1
 
