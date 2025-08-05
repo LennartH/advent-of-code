@@ -5,6 +5,8 @@
     "testing.openTesting": "openOnTestFailure",
     "testing.automaticallyOpenTestResults": "openOnTestFailure",
     "cSpell.words": [
+        "getvariable",
+        "maxrows",
         "pathfinding",
         "raywalking"
     ]

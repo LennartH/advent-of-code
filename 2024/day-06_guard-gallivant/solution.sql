@@ -781,7 +781,11 @@ CREATE OR REPLACE TABLE visited_tiles AS (
 --         ^-- struct used for join: 1.07441 +- 0.00694 seconds (+- 0.65%)
 --    ^-- dedicated table for all_moves: 1.22807 +- 0.00881 seconds (+- 0.72%)
 --         ^-- dedicated index on (from_y, from_x, from_dir): 1.2248 +- 0.0113 seconds (+- 0.93%)
---    ^-- without direction join in loop_step: 0.93478 +- 0.00858 seconds (+- 0.92%)
+-- ---^-- without direction join in loop_step: 0.93478 +- 0.00858 seconds (+- 0.92%)
+-- |
+-- 2025-08-02
+-- > loop detection with previous & future tiles: 0.9422 +- 0.0101 seconds time elapsed  ( +-  1.07% )
+--    ^-- join visited tiles instead of guard path for finding last obstacle hit: 0.94438 +- 0.00687 seconds time elapsed  ( +-  0.73% )
 
 -- CREATE OR REPLACE TABLE obstacles AS (
 --     WITH
@@ -825,20 +829,28 @@ CREATE OR REPLACE TABLE obstacles_with_path AS (
               AND NOT EXISTS (FROM walls WHERE y = obstacle_y AND x = obstacle_x)
             QUALIFY row_number() OVER (PARTITION BY obstacle_y, obstacle_x ORDER BY index) = 1
         ),
-        -- #TODO left join visited tiles on obstacle position & qualify over largest step index
+        -- obstacles_with_context AS (
+        --     FROM obstacles o
+        --     LEFT JOIN guard_path p ON p.step_index > o.step_index AND (
+        --     -- JOIN guard_path p ON p.step_index >= o.step_index AND (
+        --             abs(p.from_y - obstacle_y) + abs(p.from_x - obstacle_x) +
+        --             abs(obstacle_y - p.to_y) + abs(obstacle_x - p.to_x)
+        --         ) = abs(p.from_y - p.to_y) + abs(p.from_x - p.to_x)
+        --     SELECT
+        --         o.*,
+        --         path_index: coalesce(p.step_index, o.step_index),
+        --         -- path_index: p.step_index
+        --     QUALIFY
+        --         row_number() OVER (PARTITION BY index ORDER BY path_index DESC) = 1
+        -- ),
         obstacles_with_context AS (
             FROM obstacles o
-            LEFT JOIN guard_path p ON p.step_index > o.step_index AND (
-            -- JOIN guard_path p ON p.step_index >= o.step_index AND (
-                    abs(p.from_y - obstacle_y) + abs(p.from_x - obstacle_x) +
-                    abs(obstacle_y - p.to_y) + abs(obstacle_x - p.to_x)
-                ) = abs(p.from_y - p.to_y) + abs(p.from_x - p.to_x)
+            LEFT JOIN visited_tiles t ON o.obstacle_y = t.y AND o.obstacle_x = t.x
             SELECT
                 o.*,
-                path_index: coalesce(p.step_index, o.step_index),
-                -- path_index: p.step_index
+                path_index: t.step_index,
             QUALIFY
-                row_number() OVER (PARTITION BY index ORDER BY path_index DESC) = 1
+                row_number() OVER (PARTITION BY o.index ORDER BY path_index DESC) = 1
         ),
         obstacles_with_path AS (
             FROM obstacles_with_context
