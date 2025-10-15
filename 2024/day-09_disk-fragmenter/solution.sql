@@ -55,17 +55,59 @@ CREATE OR REPLACE VIEW disk_map AS (
         SELECT sizes: string_split(line, '')::INTEGER[],
     )
     SELECT
-          id: generate_subscripts(sizes, 1),
-        size: unnest(sizes),
+        chunk_id: generate_subscripts(sizes, 1),
+            size: unnest(sizes),
+);
+
+CREATE OR REPLACE VIEW chunks AS (
+    FROM disk_map
+    SELECT
+        chunk_id,
+            size,
+        is_empty: chunk_id % 2 = 0,
+         file_id: if(is_empty, NULL, row_number() OVER (PARTITION BY is_empty ORDER BY chunk_id ASC) - 1),
+    -- ORDER BY
+    --     chunk_id ASC
+);
+
+CREATE OR REPLACE VIEW blocks AS (
+    FROM          c: chunks
+    CROSS JOIN dups: generate_series(1, c.size)
+    SELECT
+        c.chunk_id,
+        c.is_empty,
+         c.file_id,
+          block_id: dups.generate_series,
+    -- ORDER BY
+    --     chunk_id,
+    --     block_id
+);
+
+CREATE OR REPLACE VIEW fragmented_blocks AS (
+    WITH
+        file_blocks AS (
+            FROM blocks WHERE NOT is_empty ORDER BY chunk_id DESC, block_id DESC
+        ),
+        empty_blocks AS (
+            FROM blocks WHERE is_empty ORDER BY chunk_id ASC, block_id ASC
+        )
+
+    FROM            f: file_blocks
+    POSITIONAL JOIN e: empty_blocks
+    SELECT
+        -- FIXME: block_id should be continous to make "folding" into empty blocks easier
+        *
+        ;
+        
 );
 
 -- Do stuff
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        -- part1: (FROM fragmented_blocks SELECT sum(block * id)),
+        -- part1: (FROM fragmented_blocks SELECT sum(block * file_id)),
         part1: NULL,
-        -- part2: (FROM defragmented_blocks SELECT sum(block * id)),
+        -- part2: (FROM defragmented_blocks SELECT sum(block * file_id)),
         part2: NULL
 );
 
