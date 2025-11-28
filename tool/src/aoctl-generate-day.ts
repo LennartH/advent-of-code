@@ -163,6 +163,7 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
 
   const listHeader = readmeListHeader(options);
   let headerIndex = readmeContent.indexOf(listHeader);
+  const addedNewHeader = headerIndex < 0;
   let listStartIndex = readmeContent.indexOf('\n-', headerIndex) + 1;
   if (headerIndex < 0) {
     const yearValue = Number(options.year);
@@ -194,7 +195,8 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
     solutionUrl: solutionUrl[options.language](options),
     puzzleUrl: puzzleUrl(options),
   });
-  const updatedContent = `${beforeList}${newEntry}\n${afterList}`;
+  const newEntrySuffix = addedNewHeader ? '\n\n' : '\n';
+  const updatedContent = `${beforeList}${newEntry}${newEntrySuffix}${afterList}`;
 
   await fs.writeFile(readmePath, updatedContent);
   console.log(`Added entry for Day '${options.day}: ${options.title}' to readme`);
