@@ -205,12 +205,6 @@ Here the second position after encountering the obstacle is contained by the set
 
 These optimizations can be used regardless of the chosen approach, but I'd argue that a naive approach with early loop detection termination isn't really naive anymore. With that out of the way, we can start looking at some actual implementations for day 6.
 
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 ### Python Solution
 
@@ -220,17 +214,25 @@ FIXME structure solutions by approach or by part?
 
 ##### Naive Approach
 
-Part 1 is pretty straightforward, but there are still a few things to play around with. The intuitive approach is to simply walk the map according to the rules. The first question is how to collect the visited tiles without overcounting. I see three different ways to do that, the runtimes are the average of 1000 runs using `timeit` excluding IO from reading the input, but including parsing the input:
-1. **Using a set**, letting Python take care of the deduplication 
-    - When creating entries with `f'{x},{y}'`: _0.00320s_
-    - When creating entries with `(x,y)`: _0.00176s_
-2. **Using a list** while walking and deduplicate once after exiting the map with `set`
-    - When creating entries with `f'{x},{y}'`: _0.00300s_
-    - When creating entries with `(x,y)`: _0.00175s_
+TODO add relative measures with slowest as baseline
+
+The naive approach for part 1 is pretty straightforward, simply walk the map according to the rules. But there are still a few things to play around with regarding how to only count the distinct visited tiles. The main decisions are to just increment a counter during traversal or to actually collect the visited positions and in case of the latter, what data structures to use. I tested a few different combinations, the runtimes are the average of 1000 runs using `timeit` excluding IO from reading the input, but including parsing the input:
+1. **Using a set**, deduplicating the visited tiles from the start
+    - with **strings** like `f'{x},{y}'` for entries: _0.00320s_
+    - with **tuples** like `(x,y)` for entries: _0.00176s_
+2. **Using a list**, collecting all visited tiles and deduplicating at the end by creating a `set` from the list
+    - with **strings** like `f'{x},{y}'` for entries: _0.00300s_
+    - with **tuples** like `(x,y)` for entries: _0.00175s_
 3. **Using a boolean grid** to track which tiles have been visited
-    - Collecting positions, creating entries with `f'{x},{y}'`: _0.00280s_
-    - Collecting positions, creating entries with `(x,y)`: _0.00162s_
+    - collecting visited tiles as **strings** like `f'{x},{y}'`: _0.00280s_
+    - collecting visited tiles as **tuples** like `(x,y)` for entries: _0.00162s_
     - Only incrementing a counter: _0.00144s_
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 This shows that using a string to represent a position is a lot more costly than using a tuple and that it doesn't seem to matter, whether a set is used from the start or only at the end to determine the total count of visited tiles. Solving part 1 only requires the number visited tiles, but the list of positions and directions is useful for part 2. This is the main reason to I decided to stick with approach 3, so I that the direction doesn't have to be excluded when calculating the hash during deduplication.
 
