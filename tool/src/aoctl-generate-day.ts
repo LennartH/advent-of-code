@@ -190,21 +190,25 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
     listStartIndex = headerIndex + listHeader.length + 2;
   }
 
-  // FIXME doesn't work for new headers
-  // FIXME doesn't work when appending to bottom of file
   const afterList = readmeContent.slice(listStartIndex);
+  const nextHeaderIndex = afterList.indexOf('###');
+  const hasNextHeader = nextHeaderIndex !== -1;
 
-  const insertEntryAt = Array.from(afterList.matchAll(readmeEntryMatcher))
-                             .find(match => parseInt(options.day) >= parseInt(match[1]))?.index || (afterList.length);
-  const beforeEntry = readmeContent.slice(0, listStartIndex + insertEntryAt);
-  const afterEntry = readmeContent.slice(listStartIndex + insertEntryAt);
+  let entryOffset = 0;
+  if (!addedNewHeader) {
+    const listEntries = (hasNextHeader ? afterList.slice(0, nextHeaderIndex) : afterList).trim();
+    entryOffset = Array.from(listEntries.matchAll(readmeEntryMatcher))
+                       .find(match => parseInt(options.day) >= parseInt(match[1]))?.index ?? (listEntries.length + 1);
+  }
+  const beforeEntry = readmeContent.slice(0, listStartIndex + entryOffset);
+  const afterEntry = readmeContent.slice(listStartIndex + entryOffset);
 
   const newEntry = readmeEntry({
     ...options,
     solutionUrl: solutionUrl[options.language](options),
     puzzleUrl: puzzleUrl(options),
   });
-  const newEntrySuffix = addedNewHeader ? '\n\n' : '\n';
+  const newEntrySuffix = addedNewHeader && hasNextHeader ? '\n\n' : '\n';
   const updatedContent = `${beforeEntry}${newEntry}${newEntrySuffix}${afterEntry}`;
 
   await fs.writeFile(readmePath, updatedContent);
