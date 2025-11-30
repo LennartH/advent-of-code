@@ -8,6 +8,7 @@ import { kebabCase, startCase } from 'lodash';
 import * as fs from 'node:fs/promises';
 import * as fssync from 'fs';
 import * as path from 'path';
+import * as cheerio from 'cheerio';
 
 const rootPath = path.resolve(__dirname, '../..');
 
@@ -41,8 +42,8 @@ const currentYearDefault = Math.min(currentYear, maxYear).toString();
 const command = new Command()
   .argument('<output>', 'Path to the output directory')  // TODO make optional and infer from year value
   .addOption(new Option('-l, --language <language>', 'Template language to use').choices(languages).default('python').makeOptionMandatory())
-  .requiredOption('-t, --title <title>', 'Title of the puzzle')
   .requiredOption('-d, --day <number>', `Number of the day [${minDay}-${maxDay}]`, parseDayNumber, currentDayDefault)
+  .option('-t, --title <title>', 'Title of the puzzle')
   .option('-y, --year <number>', `Number of the year [${minYear}-${maxYear}]`, parseYear, currentYearDefault)
   .option('-u, --update-readme', 'Add an entry for the generated file to the readme', true)
   .option('--no-update-readme', 'Do not update readme')
@@ -83,6 +84,9 @@ function parseYear(value: string): string | boolean {
 }
 
 async function generateDayFiles(output: string, options: GenerateDayOptions) {
+  if (!options.title) {
+    options.title = await fetchPuzzleTitle(options);
+  }
   options.title = startCase(options.title.toLowerCase());
   const pathOptions = {
     ...options,
@@ -132,7 +136,6 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
     if (!process.env[aocTokenEnv]) {
       console.log(`Error: ${aocTokenEnv} not found`)
     } else {
-      const {year, day} = options;
       // TODO Implement caching independent from title (e.g. cache downloaded input files by year and day in $HOME/.aoctl/inputs)
       const inputFilePath = path.join(outputPath, 'input');
       const inputFileExists = await fs.access(inputFilePath, fs.constants.F_OK)
@@ -141,7 +144,7 @@ async function generateDayFiles(output: string, options: GenerateDayOptions) {
       if (inputFileExists) {
         console.log(`Info - Input file already exists`);
       } else {
-        await fetchPuzzleInput(year, day, inputFilePath);
+        await fetchPuzzleInput(options, inputFilePath);
       }
     }
   }
@@ -217,9 +220,34 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
   console.log(`Added entry for Day '${options.day}: ${options.title}' to readme`);
 }
 
-async function fetchPuzzleInput(year: number | string, day: number | string, outputPath: string): Promise<void> {
+async function fetchPuzzleTitle(options: {year: string, day: string}): Promise<string> {
+  const url = `https://adventofcode.com/${options.year}/day/${options.day}`;
+  let puzzleHeaderText: string;
+  let puzzleTitle: string | undefined = undefined;
   try {
-    const response = await axios.get(`https://adventofcode.com/${year}/day/${day}/input`, {
+    const response = await axios.get(url, {
+      headers: {
+        'User-Agent': 'github.com/LennartH/advent-of-code/tree/main/tool',
+        'Cookie': `session=${process.env[aocTokenEnv]}`
+      }
+    });
+    const $ = cheerio.load(response.data);
+    puzzleHeaderText = $('main > article:first-of-type > h2').text().trim();
+    puzzleTitle = puzzleHeaderText.match(/--- Day \d+: ([\w ]+) ---/)?.[1];
+  } catch (error) {
+    throw new Error(`Unable to get title from ${url}`, { cause: error })
+  }
+
+  if (!puzzleTitle) {
+    throw new Error(`Unable to parse title from '${puzzleHeaderText}`);
+  }
+  return puzzleTitle;
+}
+
+async function fetchPuzzleInput(options: {year: string, day: string}, outputPath: string): Promise<void> {
+  try {
+    const url = `https://adventofcode.com/${options.year}/day/${options.day}/input`;
+    const response = await axios.get(url, {
       headers: {
         'User-Agent': 'github.com/LennartH/advent-of-code/tree/main/tool',
         'Cookie': `session=${process.env[aocTokenEnv]}`
