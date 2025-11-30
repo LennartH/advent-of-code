@@ -166,49 +166,51 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
 
   const listHeader = readmeListHeader(options);
   let headerIndex = readmeContent.indexOf(listHeader);
-  const addedNewHeader = headerIndex < 0;
-  let listStartIndex = readmeContent.indexOf('\n-', headerIndex) + 1;
-  if (headerIndex < 0) {
+  const isNewHeader = headerIndex < 0;
+  if (isNewHeader) {
     const yearValue = Number(options.year);
     const yearHeaders = readmeContent.match(readmeListHeaderMatcher) || [];
-    const existingYears = yearHeaders?.map((h) => Number(h.split(' ')[1]));
 
-    if (existingYears.length === 0 || yearValue < Math.min(...existingYears)) {
-      readmeContent += `\n${listHeader}\n\n`;
-    } else {
-      for (let i = 0; i < existingYears.length; i++) {
-        const currentYear = existingYears[i];
-        if (yearValue > currentYear) {
-          const nextHeaderIndex = readmeContent.indexOf(yearHeaders[i]);
-          readmeContent = readmeContent.slice(0, nextHeaderIndex) + `${listHeader}\n\n` + readmeContent.slice(nextHeaderIndex);
-          break;
-        }
+    let insertIndex = readmeContent.length;
+    for (const header of yearHeaders) {
+      const existingYear = Number(header.split(' ')[1]);
+      if (yearValue > existingYear) {
+        insertIndex = readmeContent.indexOf(header);
+        break;
       }
     }
 
+    const headerPrefix = insertIndex === readmeContent.length ? '\n' : '';
+    readmeContent = readmeContent.slice(0, insertIndex) + `${headerPrefix}${listHeader}\n\n` + readmeContent.slice(insertIndex);
     headerIndex = readmeContent.indexOf(listHeader);
-    listStartIndex = headerIndex + listHeader.length + 2;
   }
 
+  const listStartIndex = headerIndex + listHeader.length + 2;
   const afterList = readmeContent.slice(listStartIndex);
   const nextHeaderIndex = afterList.indexOf('###');
   const hasNextHeader = nextHeaderIndex !== -1;
 
   let entryOffset = 0;
-  if (!addedNewHeader) {
-    const listEntries = (hasNextHeader ? afterList.slice(0, nextHeaderIndex) : afterList).trim();
-    entryOffset = Array.from(listEntries.matchAll(readmeEntryMatcher))
-                       .find(match => parseInt(options.day) >= parseInt(match[1]))?.index ?? (listEntries.length + 1);
+  if (!isNewHeader) {
+    const listContent = hasNextHeader
+      ? afterList.slice(0, nextHeaderIndex).trim()
+      : afterList.trim();
+    
+    const dayNumber = Number(options.day);
+    const entryMatch = Array.from(listContent.matchAll(readmeEntryMatcher))
+      .find(match => dayNumber >= Number(match[1]));
+    
+    entryOffset = entryMatch?.index ?? (listContent.length + 1);
   }
+
   const beforeEntry = readmeContent.slice(0, listStartIndex + entryOffset);
   const afterEntry = readmeContent.slice(listStartIndex + entryOffset);
-
   const newEntry = readmeEntry({
     ...options,
     solutionUrl: solutionUrl[options.language](options),
     puzzleUrl: puzzleUrl(options),
   });
-  const newEntrySuffix = addedNewHeader && hasNextHeader ? '\n\n' : '\n';
+  const newEntrySuffix = isNewHeader && hasNextHeader ? '\n\n' : '\n';
   const updatedContent = `${beforeEntry}${newEntry}${newEntrySuffix}${afterEntry}`;
 
   await fs.writeFile(readmePath, updatedContent);

@@ -7,7 +7,7 @@
   },
   "scripts": {
     "cli": "node -r ts-node/register src/aoctl.ts",
-    "cli:test": "rimraf out && node -r ts-node/register src/aoctl.ts generate day out --no-load-input -l duckdb -t test -y 2022 -d 2",
+    "cli:test": "rimraf out && node -r ts-node/register src/aoctl.ts generate day out --no-load-input -l duckdb -t test -y 2024 -d 1",
     "build": "rimraf dist && tsc -p tsconfig.build.json && chmod +x dist/aoctl.js",
     "format": "prettier --write .",
     "test": "jest"
