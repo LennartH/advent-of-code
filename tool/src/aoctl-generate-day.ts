@@ -25,6 +25,7 @@ const languages = fssync.readdirSync(templateDir, { withFileTypes: true }) .filt
 
 const now = new Date();
 
+// TODO Handle maxDay being 12 after 2024
 const minDay = 1;
 const maxDay = 25;
 const currentDay = now.getDate();
@@ -33,12 +34,12 @@ const currentDayDefault = currentDay > maxDay ? undefined : currentDay.toString(
 const minYear = 2015;
 const currentYear = now.getFullYear();
 const maxYear = now.getMonth() === 11 ? currentYear : currentYear - 1;
-const currentYearDefault = currentYear.toString();
+const currentYearDefault = Math.min(currentYear, maxYear).toString();
 
 // TODO Add option to dry-run
 // TODO Support adding additional language to an existing solution with fewer options (or as separate command)
 const command = new Command()
-  .argument('<output>', 'Path to the output directory')
+  .argument('<output>', 'Path to the output directory')  // TODO make optional and infer from year value
   .addOption(new Option('-l, --language <language>', 'Template language to use').choices(languages).default('python').makeOptionMandatory())
   .requiredOption('-t, --title <title>', 'Title of the puzzle')
   .requiredOption('-d, --day <number>', `Number of the day [${minDay}-${maxDay}]`, parseDayNumber, currentDayDefault)
@@ -156,7 +157,9 @@ const solutionUrl: Record<string, ReturnType<typeof Handlebars.compile>> = {
 }
 const puzzleUrl = Handlebars.compile('https://adventofcode.com/{{year}}/day/{{day}}');
 const readmeListHeader = Handlebars.compile('### {{year}}');
+const readmeListHeaderMatcher = /### \d{4}/g
 const readmeEntry = Handlebars.compile('- **Day {{day}}: {{title}}** [Solution]({{solutionUrl}}) / [Puzzle]({{puzzleUrl}})');
+const readmeEntryMatcher = /^- \*\*Day (\d{1,2}):/gm
 
 async function addEntryToReadme(readmePath: string, options: {year: string, day: string, title: string, directory: string, language: string}) {
   let readmeContent = await fs.readFile(readmePath, 'utf-8');
@@ -167,7 +170,7 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
   let listStartIndex = readmeContent.indexOf('\n-', headerIndex) + 1;
   if (headerIndex < 0) {
     const yearValue = Number(options.year);
-    const yearHeaders = readmeContent.match(/### \d{4}/g) || [];
+    const yearHeaders = readmeContent.match(readmeListHeaderMatcher) || [];
     const existingYears = yearHeaders?.map((h) => Number(h.split(' ')[1]));
 
     if (existingYears.length === 0 || yearValue < Math.min(...existingYears)) {
@@ -187,16 +190,22 @@ async function addEntryToReadme(readmePath: string, options: {year: string, day:
     listStartIndex = headerIndex + listHeader.length + 2;
   }
 
-  // TODO Insert at correct position if days are done out of order
-  const beforeList = readmeContent.slice(0, listStartIndex);
+  // FIXME doesn't work for new headers
+  // FIXME doesn't work when appending to bottom of file
   const afterList = readmeContent.slice(listStartIndex);
+
+  const insertEntryAt = Array.from(afterList.matchAll(readmeEntryMatcher))
+                             .find(match => parseInt(options.day) >= parseInt(match[1]))?.index || (afterList.length);
+  const beforeEntry = readmeContent.slice(0, listStartIndex + insertEntryAt);
+  const afterEntry = readmeContent.slice(listStartIndex + insertEntryAt);
+
   const newEntry = readmeEntry({
     ...options,
     solutionUrl: solutionUrl[options.language](options),
     puzzleUrl: puzzleUrl(options),
   });
   const newEntrySuffix = addedNewHeader ? '\n\n' : '\n';
-  const updatedContent = `${beforeList}${newEntry}${newEntrySuffix}${afterList}`;
+  const updatedContent = `${beforeEntry}${newEntry}${newEntrySuffix}${afterEntry}`;
 
   await fs.writeFile(readmePath, updatedContent);
   console.log(`Added entry for Day '${options.day}: ${options.title}' to readme`);
