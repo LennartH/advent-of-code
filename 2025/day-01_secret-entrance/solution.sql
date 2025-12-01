@@ -70,33 +70,33 @@ SET VARIABLE mode = 'example';
 CREATE OR REPLACE TABLE rotations AS (
     FROM query_table(getvariable('mode'))
     SELECT
-        id: row_number() OVER (),
+               id: row_number() OVER (),
         direction: line[1],
-        distance: line[2:]::INTEGER,
+         distance: line[2:]::INTEGER,
 );
 
 CREATE OR REPLACE TABLE positions AS (
     WITH
         cumulative_positions AS (
             SELECT
-                id: 0,
-                rotation: 0,
+                                 id: 0,
+                           rotation: 0,
                 cumulative_position: 50,
             UNION ALL
             FROM rotations
             SELECT
-                id,
-                rotation: if(direction = 'L', -1, 1) * distance,
+                                 id,
+                           rotation: if(direction = 'L', -1, 1) * distance,
                 cumulative_position: 50 + sum(rotation) OVER (ORDER BY id ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
         ),
         positions AS (
             FROM cumulative_positions
             SELECT
-                id,
-                rotation,
+                                 id,
+                           rotation,
                 cumulative_position,
-                position: (cumulative_position % 100 + 100) % 100,
-                previous_position: lag(position, 1, 0) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW),
+                           position: (cumulative_position % 100 + 100) % 100,
+                  previous_position: lag(position, 1, 0) OVER (ORDER BY id ROWS BETWEEN 1 PRECEDING AND CURRENT ROW),
             QUALIFY
                 id > 0
         ),
@@ -107,10 +107,9 @@ CREATE OR REPLACE TABLE positions AS (
                 previous_position,
                 rotation,
                 position,
-                gap: NULL,
-                -- makes zero visits calculation agnostic of rotation direction and prevents zero visit when starting from 0
+                -- makes calculation of zero_visits work in either direction
                 visits_helper: abs(rotation) + if(rotation < 0 AND previous_position != 0, 100 - previous_position, previous_position),
-                zero_visits: visits_helper // 100,
+                  zero_visits: visits_helper // 100,
         )
 
     FROM positions_with_zero_visits
