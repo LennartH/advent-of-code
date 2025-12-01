@@ -1,5 +1,9 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
+### 2025
+
+- **Day 1: Secret Entrance** [Solution](./2025/day-01_secret-entrance/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/1)
+
 ### 2024 [SQL]
 
 See [this](https://github.com/LennartH/advent-of-code/tree/main/2024#2024-sql-with-duckdb) for some thoughts about using SQL for AoC and [here](https://github.com/LennartH/advent-of-code/tree/main/2024#running-a-solution)
