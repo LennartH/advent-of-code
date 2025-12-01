@@ -1,6 +1,6 @@
 My solutions to the awesome puzzles of [advent of code](https://adventofcode.com/about).
 
-### 2025
+### 2025 [SQL]
 
 - **Day 1: Secret Entrance** [Solution](./2025/day-01_secret-entrance/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/1)
 
