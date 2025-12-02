@@ -3,6 +3,14 @@ SET VARIABLE example = '
 ';
 SET VARIABLE exampleSolution1 = 1227775554;
 SET VARIABLE exampleSolution2 = 4174379265;
+
+-- -- challenge input from https://www.reddit.com/r/adventofcode/comments/1pc2h1l/comment/nruor09/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+-- SET VARIABLE example = '
+--     98765432-1234567890,1000000000000000000000000-1500000000000000000000000,988970940900875998011400-1050032916531789321707634,123456789012345678901234567890-234567890123456789012345678901
+-- ';
+-- SET VARIABLE exampleSolution1 = NULL;  -- last 24 digits: 678017181064742987556396
+-- SET VARIABLE exampleSolution2 = NULL;  -- last 24 digits: 566774526871242591557185
+
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
@@ -50,8 +58,7 @@ CREATE OR REPLACE TABLE invalid_ids AS (
     FROM id_base_with_repetitions
     SELECT
          invalid_id: repeat(base::STRING, repetitions)::BIGINT,
-        repetitions: min(repetitions)
-    GROUP BY invalid_id
+        repetitions,
 );
 
 CREATE OR REPLACE TABLE invalid_ids_in_ranges AS (
@@ -62,7 +69,7 @@ CREATE OR REPLACE TABLE invalid_ids_in_ranges AS (
 CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM invalid_ids_in_ranges SELECT sum(invalid_id) WHERE repetitions = 2),
-        part2: (FROM invalid_ids_in_ranges SELECT sum(invalid_id)),
+        part2: (FROM invalid_ids_in_ranges SELECT sum(DISTINCT invalid_id)),
 );
 
 
