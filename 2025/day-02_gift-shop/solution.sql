@@ -40,17 +40,17 @@ CREATE OR REPLACE TABLE invalid_ids AS (
         id_base(base) AS (
             SELECT unnest(range(1, 1000000))
         ),
-        id_base_with_repetitions(base, repititions) AS (
+        id_base_with_repetitions(base, repetitions) AS (
             FROM id_base
             SELECT
                 base,
-                repititions: unnest(generate_series(2, 12 // len(base::STRING))),
+                repetitions: unnest(generate_series(2, 12 // len(base::STRING))),
         )
 
     FROM id_base_with_repetitions
     SELECT
-         invalid_id: repeat(base::STRING, repititions)::BIGINT,
-        repititions: min(repititions)
+         invalid_id: repeat(base::STRING, repetitions)::BIGINT,
+        repetitions: min(repetitions)
     GROUP BY invalid_id
 );
 
@@ -61,7 +61,7 @@ CREATE OR REPLACE TABLE invalid_ids_in_ranges AS (
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        part1: (FROM invalid_ids_in_ranges SELECT sum(invalid_id) WHERE repititions = 2),
+        part1: (FROM invalid_ids_in_ranges SELECT sum(invalid_id) WHERE repetitions = 2),
         part2: (FROM invalid_ids_in_ranges SELECT sum(invalid_id)),
 );
 
