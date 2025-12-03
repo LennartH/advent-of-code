@@ -5,13 +5,13 @@ SET VARIABLE example = '
     818181911112111
 ';
 SET VARIABLE exampleSolution1 = 357;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 3121910778619;
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
 FROM read_text('input') SELECT regexp_split_to_table(trim(content, E'\n '), '\n\s*') as line;
 SET VARIABLE solution1 = 17263;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 170731717900423;
 
 .maxrows 75
 SET VARIABLE mode = 'example';
@@ -56,10 +56,50 @@ CREATE OR REPLACE TABLE largest_bank_joltages AS (
             + if(largest_battery_value_after IS NULL, largest_battery_value, largest_battery_value_after),
 );
 
+CREATE OR REPLACE TABLE largest_bank_joltages_safety_override AS (
+    WITH RECURSIVE
+        banks AS (
+            FROM batteries
+            SELECT
+                bank_id,
+                batteries: list(battery_value ORDER BY battery_id),
+            GROUP BY ALL
+        ),
+        largest_sequence AS (
+            FROM banks
+            SELECT
+                *,
+                battery_count: length(batteries),
+                remaining: 12,
+                battery_from: 1,
+                largest: []::INTEGER[],
+            UNION ALL
+            FROM largest_sequence
+            SELECT
+                bank_id,
+                batteries,
+                battery_count,
+                remaining: remaining - 1,
+                battery_from: list_indexOf(
+                    batteries[battery_from : battery_count - remaining + 1],
+                    list_max(batteries[battery_from : battery_count - remaining + 1])
+                ) + battery_from,
+                largest: list_append(largest, list_max(batteries[battery_from : battery_count - remaining + 1])),
+            WHERE
+                remaining > 0
+        )
+    
+    FROM largest_sequence
+    SELECT
+        bank_id,
+        joltage: aggregate(largest, 'string_agg', '')::BIGINT,
+    WHERE remaining = 0
+);
+
 CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM largest_bank_joltages SELECT sum(joltage)),
-        part2: NULL,
+        part2: (FROM largest_bank_joltages_safety_override SELECT sum(joltage)),
 );
 
 
