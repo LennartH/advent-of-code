@@ -2,6 +2,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 
 ### 2025 [SQL]
 
+- **Day 3: Lobby** [Solution](./2025/day-03_lobby/solution.py) / [Puzzle](https://adventofcode.com/2025/day/3)
 - **Day 2: Gift Shop** [Solution](./2025/day-02_gift-shop/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/2)
 - **Day 1: Secret Entrance** [Solution](./2025/day-01_secret-entrance/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/1)
 
