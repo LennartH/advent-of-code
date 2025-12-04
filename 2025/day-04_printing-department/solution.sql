@@ -20,8 +20,8 @@ SET VARIABLE solution1 = 1560;
 SET VARIABLE solution2 = 9609;
 
 .maxrows 75
--- SET VARIABLE mode = 'example';
-SET VARIABLE mode = 'input';
+SET VARIABLE mode = 'example';
+-- SET VARIABLE mode = 'input';
 
 CREATE OR REPLACE TABLE grid AS (
     FROM query_table(getvariable('mode'))
@@ -57,38 +57,37 @@ CREATE OR REPLACE TABLE accessible_rolls AS (
         adjacent_rolls < 4
 );
 
-CREATE OR REPLACE TABLE cleared_rolls AS (
+CREATE OR REPLACE TABLE cleared_grid AS (
     WITH RECURSIVE
-        cleared_rolls(y, x, symbol) USING KEY (y, x) AS (
+        cleared_grid(y, x, symbol) USING KEY (y, x) AS (
             FROM grid
             UNION
             FROM (
-                FROM recurring.cleared_rolls r
-                JOIN recurring.cleared_rolls a ON a.symbol = '@' 
+                FROM recurring.cleared_grid r
+                JOIN recurring.cleared_grid a ON a.symbol = '@' 
                     AND (a.y = r.y - 1 OR a.y = r.y + 1 OR a.y = r.y)
                     AND (a.x = r.x - 1 OR a.x = r.x + 1 OR a.x = r.x)
                 SELECT
                     r.y, r.x,
-                    ax: a.x,
-                    ay: a.y,
-                WHERE
-                    r.symbol = '@'
+                    symbol: r.symbol,
+                    adjacent_rolls: count(*) - 1,
+                WHERE r.symbol = '@'
+                GROUP BY ALL
             )
             SELECT
                 y, x,
                 symbol: '.'
-            GROUP BY y, x
-            HAVING
-                count(*) - 1 < 4
+            WHERE adjacent_rolls < 4
         )
     
-    FROM cleared_rolls
+    FROM cleared_grid
+    SELECT x, y, symbol
 );
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM accessible_rolls SELECT count(*)),
-        part2: (FROM grid SELECT count(*) WHERE symbol = '@') - (FROM cleared_rolls SELECT count(*) WHERE symbol = '@'),
+        part2: (FROM grid SELECT count(*) WHERE symbol = '@') - (FROM cleared_grid SELECT count(*) WHERE symbol = '@'),
 );
 
 
