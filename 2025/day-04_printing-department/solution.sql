@@ -26,67 +26,48 @@ SET VARIABLE mode = 'example';
 CREATE OR REPLACE TABLE grid AS (
     FROM query_table(getvariable('mode'))
     SELECT
-        y: row_number() OVER (),
-        x: generate_subscripts(string_split(line, ''), 1),
+             y: row_number() OVER (),
+             x: generate_subscripts(string_split(line, ''), 1),
         symbol: unnest(string_split(line, '')),
-);
-
-CREATE OR REPLACE TABLE accessible_rolls AS (
-    WITH
-        rolls_with_adjacent_rolls AS (
-            FROM grid r
-            JOIN grid a ON a.symbol = '@' 
-                       AND (a.y = r.y - 1 OR a.y = r.y + 1 OR a.y = r.y)
-                       AND (a.x = r.x - 1 OR a.x = r.x + 1 OR a.x = r.x)
-                    --    AND NOT (a.y = r.y AND a.x = r.x)  -- FIXME This removes 2 valid results
-            SELECT
-                r.y, r.x,
-                r.symbol,
-                ax: a.x,
-                ay: a.y,
-            WHERE
-                r.symbol = '@'
-        )
-    
-    FROM rolls_with_adjacent_rolls
-    SELECT
-        y, x,
-        adjacent_rolls: count(*) - 1,
-    GROUP BY ALL
-    HAVING
-        adjacent_rolls < 4
 );
 
 CREATE OR REPLACE TABLE cleared_grid AS (
     WITH RECURSIVE
-        cleared_grid(y, x, symbol) USING KEY (y, x) AS (
+        cleared_grid(y, x, symbol, iteration) USING KEY (y, x) AS (
             FROM grid
+            SELECT *, 0
             UNION
             FROM (
                 FROM recurring.cleared_grid r
                 JOIN recurring.cleared_grid a ON a.symbol = '@' 
                     AND (a.y = r.y - 1 OR a.y = r.y + 1 OR a.y = r.y)
                     AND (a.x = r.x - 1 OR a.x = r.x + 1 OR a.x = r.x)
+                    -- AND NOT (a.y = r.y AND a.x = r.x)  -- FIXME This removes 2 valid results
                 SELECT
-                    r.y, r.x,
-                    symbol: r.symbol,
+                          r.y, r.x,
+                            symbol: r.symbol,
                     adjacent_rolls: count(*) - 1,
+                       r.iteration,
                 WHERE r.symbol = '@'
                 GROUP BY ALL
             )
             SELECT
-                y, x,
-                symbol: '.'
-            WHERE adjacent_rolls < 4
+                     y, x,
+                -- hacky stuff to track which rolls are removed first (for part 1 solution)
+                   symbol: if(adjacent_rolls < 4, '.', symbol),
+                iteration: if(adjacent_rolls < 4, iteration + 1, NULL),
+            WHERE adjacent_rolls < 4 OR iteration = 0
         )
     
     FROM cleared_grid
-    SELECT x, y, symbol
+    SELECT 
+         x, y, symbol, 
+        first_removal: iteration = 1
 );
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        part1: (FROM accessible_rolls SELECT count(*)),
+        part1: (FROM cleared_grid SELECT count(*) WHERE first_removal),
         part2: (FROM grid SELECT count(*) WHERE symbol = '@') - (FROM cleared_grid SELECT count(*) WHERE symbol = '@'),
 );
 
