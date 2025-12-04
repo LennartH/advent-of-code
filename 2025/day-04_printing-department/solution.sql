@@ -39,16 +39,14 @@ CREATE OR REPLACE TABLE cleared_grid AS (
             UNION
             FROM (
                 FROM recurring.cleared_grid r
-                JOIN recurring.cleared_grid a ON a.symbol = '@' 
-                    AND (a.y = r.y - 1 OR a.y = r.y + 1 OR a.y = r.y)
-                    AND (a.x = r.x - 1 OR a.x = r.x + 1 OR a.x = r.x)
-                    -- AND NOT (a.y = r.y AND a.x = r.x)  -- FIXME This removes 2 valid results
+                JOIN recurring.cleared_grid a ON abs(r.x - a.x) <= 1 AND abs(r.y - a.y) <= 1
+                    -- AND (r.x, r.y) != (a.x, a.y)  -- FIXME This removes 2 valid results
                 SELECT
                           r.y, r.x,
                             symbol: r.symbol,
                     adjacent_rolls: count(*) - 1,
                        r.iteration,
-                WHERE r.symbol = '@'
+                WHERE r.symbol = '@' AND a.symbol = '@'
                 GROUP BY ALL
             )
             SELECT
