@@ -12,7 +12,7 @@ SET VARIABLE example = '
     32
 ';
 SET VARIABLE exampleSolution1 = 3;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 14;
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
@@ -33,6 +33,7 @@ CREATE OR REPLACE TABLE parser AS (
 CREATE OR REPLACE TABLE ranges AS (
     FROM parser
     SELECT
+           id: row_number() OVER (),
         lower: parts[1],
         upper: parts[2],
     WHERE length(parts) = 2
@@ -53,12 +54,21 @@ CREATE OR REPLACE TABLE ingredient_freshness AS (
         is_fresh: r.lower IS NOT NULL,
 );
 
--- Do stuff
+-- FIXME
+CREATE OR REPLACE TABLE ranges_without_overlaps AS (
+    FROM ranges r
+    LEFT JOIN ranges rr ON r.upper <= rr.lower
+    SELECT
+        r.id,
+        r.lower,
+        upper: coalesce(min(rr.lower) - 1, r.upper),
+    GROUP BY ALL
+);
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
         part1: (FROM ingredient_freshness SELECT count(*) WHERE is_fresh),
-        part2: NULL,
+        part2: (FROM ranges SELECT sum(upper - lower + 1)),
 );
 
 
