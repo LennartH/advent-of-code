@@ -13,12 +13,36 @@ SET VARIABLE example = '
 ';
 SET VARIABLE exampleSolution1 = 3;
 SET VARIABLE exampleSolution2 = 14;
+
+-- SET VARIABLE example = '
+--     3-10
+--     12-15
+
+--     18-25
+--     22-28
+
+--     31-35
+--     30-40
+
+--     45-49
+--     42-47
+
+--     51-60
+--     51-60
+
+--     1
+--     5
+--     33
+-- ';
+-- SET VARIABLE exampleSolution1 = 2;
+-- SET VARIABLE exampleSolution2 = 52;
+
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
 FROM read_text('input') SELECT regexp_split_to_table(trim(content, E'\n '), '\n\s*') as line;
 SET VARIABLE solution1 = 828;
-SET VARIABLE solution2 = NULL;
+SET VARIABLE solution2 = 352681648086146;
 
 .maxrows 75
 SET VARIABLE mode = 'example';
@@ -32,7 +56,7 @@ CREATE OR REPLACE TABLE parser AS (
 
 CREATE OR REPLACE TABLE ranges AS (
     FROM parser
-    SELECT
+    SELECT DISTINCT ON (lower, upper)  -- eliminate duplicates in input
            id: row_number() OVER (),
         lower: parts[1],
         upper: parts[2],
@@ -46,29 +70,44 @@ CREATE OR REPLACE TABLE ingredients AS (
     WHERE length(parts) = 1
 );
 
-CREATE OR REPLACE TABLE ingredient_freshness AS (
+CREATE OR REPLACE TABLE fresh_ingredients AS (
     FROM ingredients i
-    LEFT JOIN ranges r ON i.id BETWEEN r.lower AND r.upper
-    SELECT DISTINCT ON (i.id)
-        i.id,
-        is_fresh: r.lower IS NOT NULL,
+    JOIN ranges r ON i.id BETWEEN r.lower AND r.upper
+    SELECT DISTINCT ON (i.id) i.id
 );
 
--- FIXME
 CREATE OR REPLACE TABLE ranges_without_overlaps AS (
-    FROM ranges r
-    LEFT JOIN ranges rr ON r.upper <= rr.lower
-    SELECT
-        r.id,
-        r.lower,
-        upper: coalesce(min(rr.lower) - 1, r.upper),
-    GROUP BY ALL
+    WITH
+        eliminate_contained AS (
+            FROM ranges r
+            ANTI JOIN ranges rr ON r.id != rr.id
+                AND r.upper BETWEEN rr.lower AND rr.upper
+                AND r.lower BETWEEN rr.lower AND rr.upper
+            SELECT r.*
+        ),
+        with_overlaps AS (
+            FROM eliminate_contained r
+            LEFT JOIN eliminate_contained rr ON r.id != rr.id AND r.upper BETWEEN rr.lower AND rr.upper
+            SELECT
+                r.*,
+                other_lower: min(rr.lower),
+            GROUP BY ALL
+        ),
+        eliminate_overlaps AS (
+            FROM with_overlaps
+            SELECT
+                id,
+                lower,
+                upper: coalesce(other_lower - 1, upper),
+        )
+
+    FROM eliminate_overlaps
 );
 
 CREATE OR REPLACE VIEW results AS (
     SELECT
-        part1: (FROM ingredient_freshness SELECT count(*) WHERE is_fresh),
-        part2: (FROM ranges SELECT sum(upper - lower + 1)),
+        part1: (FROM fresh_ingredients SELECT count(*)),
+        part2: (FROM ranges_without_overlaps SELECT sum(upper - lower + 1)),
 );
 
 
