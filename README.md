@@ -2,6 +2,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 
 ### 2025 [SQL]
 
+- **Day 6: Trash Compactor** [Solution](./2025/day-06_trash-compactor/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/6)
 - **Day 5: Cafeteria** [Solution](./2025/day-05_cafeteria/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/5)
 - **Day 4: Printing Department** [Solution](./2025/day-04_printing-department/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/4)
 - **Day 3: Lobby** [Solution](./2025/day-03_lobby/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/3)
