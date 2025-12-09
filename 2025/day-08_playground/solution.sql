@@ -22,7 +22,7 @@ SET VARIABLE example = '
 ';
 SET VARIABLE exampleConnections = 10;
 SET VARIABLE exampleSolution1 = 40;
-SET VARIABLE exampleSolution2 = NULL;
+SET VARIABLE exampleSolution2 = 25272;
 CREATE OR REPLACE VIEW example AS SELECT regexp_split_to_table(trim(getvariable('example'), E'\n '), '\n\s*') as line;
 
 CREATE OR REPLACE TABLE input AS
@@ -32,9 +32,9 @@ SET VARIABLE solution1 = 46398;
 SET VARIABLE solution2 = NULL;
 
 .maxrows 75
-SET VARIABLE mode = 'example';
--- SET VARIABLE mode = 'input';
-SET VARIABLE connections = if(
+-- SET VARIABLE mode = 'example';
+SET VARIABLE mode = 'input';
+SET VARIABLE part1Connections = if(
     getvariable('mode') = 'example',
     getvariable('exampleConnections'),
     getvariable('inputConnections')
@@ -47,20 +47,24 @@ CREATE OR REPLACE TABLE junction_boxes AS (
         position: string_split(line, ',')::INT[],
 );
 
-CREATE OR REPLACE TABLE closest_junction_boxes AS (
+-- TODO prune to only keep necessary closest connections?
+-- TODO duplicate edges for more efficient joins?
+CREATE OR REPLACE TABLE junction_box_distances AS (
     FROM junction_boxes j1
     JOIN junction_boxes j2 ON j1.id < j2.id
     SELECT
               j1_id: j1.id,
-        j1_position: j1.position,
               j2_id: j2.id,
-        j2_position: j2.position,
            distance: list_distance(j1.position, j2.position),
     ORDER BY distance ASC
-    LIMIT getvariable('connections')
 );
 
-CREATE OR REPLACE TABLE connected_junction_boxes AS (
+CREATE OR REPLACE TABLE part1_edges AS (
+    FROM junction_box_distances
+    LIMIT getvariable('part1Connections')
+);
+
+CREATE OR REPLACE TABLE part1_connected_boxes AS (
     WITH RECURSIVE
         connected_junction_boxes(id, component) USING KEY (id) AS (
             FROM junction_boxes
@@ -70,7 +74,7 @@ CREATE OR REPLACE TABLE connected_junction_boxes AS (
             UNION 
             FROM recurring.connected_junction_boxes j1
             JOIN recurring.connected_junction_boxes j2 ON j2.component < j1.component
-            JOIN closest_junction_boxes e ON (e.j1_id, e.j2_id) = (j1.id, j2.id) OR (e.j1_id, e.j2_id) = (j2.id, j1.id)
+            JOIN part1_edges e ON (e.j1_id, e.j2_id) = (j1.id, j2.id) OR (e.j1_id, e.j2_id) = (j2.id, j1.id)
             SELECT
                        id: j1.id,
                 component: min(j2.component),
@@ -81,11 +85,33 @@ CREATE OR REPLACE TABLE connected_junction_boxes AS (
 );
 
 CREATE OR REPLACE TABLE circuit_sizes AS (
-    FROM connected_junction_boxes
+    FROM part1_connected_boxes
     SELECT
         component,
              size: count(*),
     GROUP BY component
+);
+
+-- FIXME takes ages and doesn't yield the last 2 connected boxes
+--  ^-- "iterate" over closest connections instead of BFS?
+CREATE OR REPLACE TABLE part2_connected_boxes AS (
+    WITH RECURSIVE
+        connected_junction_boxes(id, component) USING KEY (id) AS (
+            FROM junction_boxes
+            SELECT
+                id,
+                component: id,
+            UNION 
+            FROM recurring.connected_junction_boxes j1
+            JOIN recurring.connected_junction_boxes j2 ON j2.component < j1.component
+            JOIN junction_box_distances e ON (e.j1_id, e.j2_id) = (j1.id, j2.id) OR (e.j1_id, e.j2_id) = (j2.id, j1.id)
+            SELECT
+                       id: j1.id,
+                component: min(j2.component),
+            GROUP BY j1.id
+        )
+
+    FROM connected_junction_boxes
 );
 
 CREATE OR REPLACE VIEW results AS (

@@ -2,7 +2,7 @@ My solutions to the awesome puzzles of [advent of code](https://adventofcode.com
 
 ### 2025 [SQL]
 
-- **Day 8: Playground** [Solution](./2025/day-08_playground/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/8)
+- **Day 8: Playground** (only Part 1) [Solution](./2025/day-08_playground/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/8)
 - **Day 7: Laboratories** [Solution](./2025/day-07_laboratories/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/7)
 - **Day 6: Trash Compactor** [Solution](./2025/day-06_trash-compactor/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/6)
 - **Day 5: Cafeteria** [Solution](./2025/day-05_cafeteria/solution.sql) / [Puzzle](https://adventofcode.com/2025/day/5)
